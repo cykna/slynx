@@ -1,8 +1,13 @@
 pub mod declaration;
 pub mod error;
+pub mod macros;
 mod scope;
 pub mod types;
-use std::{collections::HashMap, mem::discriminant, sync::atomic::AtomicU64};
+use std::{
+    collections::HashMap,
+    mem::discriminant,
+    sync::{Arc, atomic::AtomicU64},
+};
 
 use crate::{
     ast::{
@@ -16,6 +21,7 @@ use crate::{
             HirExpressionKind, HirStatment, HirStatmentKind,
         },
         error::{HIRError, HIRErrorKind},
+        macros::{DeclarationMacro, StatmentMacro},
         scope::HIRScope,
         types::{HirType, HirValue, HirValueKind},
     },
@@ -40,27 +46,88 @@ pub struct SlynxHir {
     types: HashMap<HirId, HirType>,
     ///The scopes of this HIR. On the final it's expected to have only one, which is the global one
     scopes: Vec<HIRScope>,
+    decl_macros: HashMap<&'static str, Arc<dyn DeclarationMacro>>,
+    stmt_macros: HashMap<&'static str, Arc<dyn StatmentMacro>>,
     pub declarations: Vec<HirDeclaration>,
 }
 
 impl SlynxHir {
-    pub fn new(ast: Vec<ASTDeclaration>) -> Result<Self, HIRError> {
-        let mut out = Self {
+    pub fn new() -> Self {
+        let out = Self {
             scopes: vec![HIRScope::new()],
             names: HashMap::new(),
             types: HashMap::new(),
             declarations: Vec::new(),
+            decl_macros: HashMap::new(),
+            stmt_macros: HashMap::new(),
         };
-
-        for ast in &ast {
-            out.hoist(ast)?;
-        }
-        for ast in ast {
-            out.resolve(ast)?;
-        }
-        Ok(out)
+        out
     }
 
+    ///Expands all the macro call declarations inside the given `ast`
+    fn expand_decls(&mut self, ast: &mut Vec<ASTDeclaration>) -> Result<(), HIRError> {
+        let mut idx = 0;
+        while idx < ast.len() {
+            if let Some(news) = self.expand_decl(idx, &ast[idx])? {
+                ast.remove(idx);
+                for (nidx, newast) in news.into_iter().enumerate() {
+                    ast.insert(idx + nidx, newast);
+                }
+            }
+
+            idx += 1;
+        }
+        Ok(())
+    }
+
+    ///Expands the statment macros inside the given `ast`. Since it's a Declaration array, this will look into
+    ///the statments inside the declarations, if some is a macro call, then expands it
+    fn expand_stmts(&mut self, ast: &mut Vec<ASTDeclaration>) -> Result<(), HIRError> {
+        for ast in ast {
+            match &mut ast.kind {
+                ASTDeclarationKind::MacroCall(..)
+                | ASTDeclarationKind::ElementDeclaration { .. } => {}
+                ASTDeclarationKind::FuncDeclaration { body, .. } => {
+                    let mut idx = 0;
+                    while idx < body.len() {
+                        if let Some(news) = self.expand_stmt(idx, &body[idx])? {
+                            body.remove(idx);
+                            for (nidx, newast) in news.into_iter().enumerate() {
+                                body.insert(idx + nidx, newast);
+                            }
+                        }
+                        idx += 1;
+                    }
+                }
+            }
+        }
+        Ok(())
+    }
+
+    ///Generates the declarations from the provided `ast`
+    pub fn generate(&mut self, mut ast: Vec<ASTDeclaration>) -> Result<(), HIRError> {
+        self.expand_decls(&mut ast)?;
+        self.expand_stmts(&mut ast)?;
+
+        for ast in &ast {
+            self.hoist(ast)?;
+        }
+        for ast in ast {
+            self.resolve(ast)?;
+        }
+        Ok(())
+    }
+
+    #[inline]
+    ///Inserts a new Macro that can be executed on declaration toplevel.
+    pub fn insert_declaration_macro(&mut self, macr: Arc<dyn DeclarationMacro>) {
+        self.decl_macros.insert(macr.name(), macr);
+    }
+    #[inline]
+    ///Inserts a new macro that can be executed on statment toplevel.
+    pub fn insert_statment_macro(&mut self, macr: Arc<dyn StatmentMacro>) {
+        self.stmt_macros.insert(macr.name(), macr);
+    }
     ///Retrieves information about the provided `name` going from the current scope to the outer ones, finishing on the global
     pub fn retrieve_information_of_scoped(
         &mut self,
@@ -592,5 +659,45 @@ impl SlynxHir {
             }
         }
         Ok(())
+    }
+    ///Expands, or atleast, tries to, the given AST if it's a macro call declaration
+    fn expand_decl(
+        &mut self,
+        idx: usize,
+        ast: &ASTDeclaration,
+    ) -> Result<Option<Vec<ASTDeclaration>>, HIRError> {
+        match &ast.kind {
+            ASTDeclarationKind::MacroCall(call_data) => {
+                let macr = self
+                    .decl_macros
+                    .get::<&str>(&call_data.name.as_ref())
+                    .ok_or(HIRError {
+                        kind: HIRErrorKind::NameNotRecognized(call_data.name.clone()),
+                        span: ast.span.clone(),
+                    })?;
+                Ok(Some(macr.execute(&call_data.args, idx)))
+            }
+            _ => Ok(None),
+        }
+    }
+    ///Expands, or atleast, tries to, the given AST if it's a macro call statment
+    fn expand_stmt(
+        &mut self,
+        idx: usize,
+        ast: &ASTStatment,
+    ) -> Result<Option<Vec<ASTStatment>>, HIRError> {
+        match &ast.kind {
+            ASTStatmentKind::MacroCall(call_data) => {
+                let macr = self
+                    .stmt_macros
+                    .get::<&str>(&call_data.name.as_ref())
+                    .ok_or(HIRError {
+                        kind: HIRErrorKind::NameNotRecognized(call_data.name.clone()),
+                        span: ast.span.clone(),
+                    })?;
+                Ok(Some(macr.execute(&call_data.args, idx)))
+            }
+            _ => Ok(None),
+        }
     }
 }

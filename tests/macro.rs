@@ -1,6 +1,21 @@
-use slynx::{checker::TypeChecker, hir::SlynxHir};
+use slynx::{
+    ast::ASTDeclaration,
+    checker::TypeChecker,
+    hir::{SlynxHir, macros::js::JSMacro},
+};
 #[cfg(test)]
 use std::path::PathBuf;
+use std::sync::Arc;
+
+fn generate_hir(ast: Vec<ASTDeclaration>) -> SlynxHir {
+    let mut hir = SlynxHir::new();
+    let js = Arc::new(JSMacro {});
+    hir.insert_declaration_macro(js.clone());
+    hir.insert_statment_macro(js);
+    hir.generate(ast).unwrap();
+
+    hir
+}
 
 #[test]
 fn test_macro() {
@@ -14,11 +29,9 @@ fn test_macro() {
         .collect::<Vec<usize>>();
 
     let value = slynx::slynx::ProgramParser::new().parse(&file).unwrap();
-    println!("{value:#?}");
-    let mut hir = match SlynxHir::new(value) {
-        Ok(hir) => hir,
-        Err(e) => panic!("{e:#?}"),
-    };
+
+    //println!("{value:#?}");
+    let mut hir = generate_hir(value);
     if let Err(e) = TypeChecker::check(&mut hir) {
         eprint!("Type Error: {:?}; ", e.kind);
         let line = match lines.binary_search(&e.span.start) {
@@ -28,5 +41,5 @@ fn test_macro() {
         let column = e.span.end - e.span.start;
         panic!("At {}:{}", line, column);
     };
-    println!("\n{hir:?}");
+    println!("\n{hir:#?}");
 }

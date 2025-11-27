@@ -41,8 +41,9 @@ fn main() {
 
     let value = slynx::ProgramParser::new().parse(&file).unwrap();
 
-    let mut hir = match hir::SlynxHir::new(value) {
-        Ok(hir) => hir,
+    let mut hir = hir::SlynxHir::new();
+    match hir.generate(value) {
+        Ok(_) => {}
         Err(e) => panic!("{e:#?}"),
     };
     if let Err(e) = TypeChecker::check(&mut hir) {
