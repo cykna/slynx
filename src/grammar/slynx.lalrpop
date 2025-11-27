@@ -197,6 +197,21 @@ Statment:ASTStatment = {
     }
 };
 
+MacroCall:ASTStatment = {
+    <start:@L> <name:Identifier> "!" LPAREN <stmts:Statment*> RPAREN <end:@R> => ASTStatment {
+        kind:ASTStatmentKind::MacroCall{
+            name, args:stmts
+        },
+        span:Span{end,start}
+    },
+    <start:@L> <name:Identifier> "!" LBRACE <stmts:Statment*> RBRACE <end:@R> => ASTStatment {
+        kind:ASTStatmentKind::MacroCall{
+            name, args:stmts
+        },
+        span:Span{end,start}
+    }
+};
+
 FunctionBody: Vec<ASTStatment> = {
     <mut stmts:(<Statment> ";")*> <expr:Expression?> => {
         if let Some(expr) = expr {

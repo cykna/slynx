@@ -94,6 +94,10 @@ pub struct ASTStatment {
 
 #[derive(Debug)]
 pub enum ASTStatmentKind {
+    MacroCall {
+        name: String,
+        args: Vec<ASTStatment>,
+    },
     Var {
         name: String,
         ty: Option<GenericIdentifier>,
