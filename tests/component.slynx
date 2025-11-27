@@ -1,0 +1,22 @@
+component Rect {
+	
+	pub(parent) prop text:int = 5;
+}
+
+component HelloBox {
+	pub prop seupai:float;
+	pub prop maria = 22;
+	pub prop children;
+	
+	Rect {
+		text: maria
+	}
+}
+
+func main(): Component {
+	HelloBox {
+		seupai: 5.0
+		maria: 12
+		Rect {}
+	}
+}

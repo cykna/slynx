@@ -1,0 +1,13 @@
+[package]
+name = "slynx"
+version = "0.1.0"
+edition = "2024"
+
+[build-dependencies]
+lalrpop = "0.22.2"
+
+[dependencies]
+clap = { version = "4.5.52", features = ["derive"] }
+lalrpop = "0.22.2"
+lalrpop-util = "0.22.2"
+

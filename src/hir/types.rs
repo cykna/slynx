@@ -1,0 +1,105 @@
+use crate::{
+    ast::{GenericIdentifier, PropertyModifier},
+    hir::{
+        HirId,
+        error::{HIRError, HIRErrorKind, InvalidTypeReason},
+    },
+};
+
+#[derive(Debug, Clone)]
+pub enum HirType {
+    Vector {
+        ty: Box<HirType>,
+    },
+    ///This reference type can be understood better explained like
+    ///object Name<T> {
+    ///  value: T
+    ///}
+    ///func f(): Name<int> {
+    ///  Name {value: 5}
+    ///}
+    ///Here, Name is the reference to the object type 'Name' with generic being 'int'
+    Reference {
+        ///The reference to the type this type maps to
+        rf: HirId,
+        ///If its got a generic
+        generics: Option<Box<HirType>>,
+    },
+
+    Function {
+        args: Vec<HirType>,
+        return_type: Box<HirType>,
+    },
+    ///A type used for floats. This is by default the type of js.
+    Float,
+    ///A type used for ints. There's no Uint because js is gay. The difference between this to floats is that this is limited to be 32bits
+    ///and it's optimized to use alot of byte operation to make things faster
+    Int,
+
+    ///A type used for 2 int16 in a single one
+    Int16x2,
+    ///A type used for 8 int8 in a signel one
+    Int8x4,
+
+    ///A type used for 2 int16 in a single one
+    Uint16x2,
+    ///A type used for 8 int8 in a signel one
+    Uint8x4,
+    GenericComponent,
+    ///A type specific for components
+    Component {
+        props: Vec<(PropertyModifier, String, HirType)>,
+    },
+    ///A type that represents no value
+    Void,
+    ///Type that must be resolved during type check
+    Infer,
+}
+
+impl HirType {
+    ///Tries to retrieve a value from its `gener`(ic) type
+    pub fn new(gener: &GenericIdentifier) -> Result<Self, HIRError> {
+        match gener.identifier.as_str() {
+            "Component" => Ok(Self::GenericComponent),
+            "void" => Ok(Self::Void),
+            "int" => Ok(Self::Int),
+            "float" => Ok(Self::Float),
+            "uint16x2" => Ok(Self::Uint16x2),
+            "uint8x4" => Ok(Self::Uint8x4),
+            "int16x2" => Ok(Self::Int16x2),
+            "int8x4" => Ok(Self::Int8x4),
+            "Vector" => {
+                let generic_ty = gener.generic.as_ref().ok_or(HIRError {
+                    kind: HIRErrorKind::InvalidType {
+                        ty: gener.to_string(),
+                        reason: InvalidTypeReason::MissingGeneric,
+                    },
+                    span: gener.span.clone(),
+                })?;
+                Ok(Self::Vector {
+                    ty: Box::new(Self::new(&generic_ty)?),
+                })
+            }
+            _ => Err(HIRError {
+                kind: HIRErrorKind::TypeNotRecognized(gener.to_string()),
+                span: gener.span.clone(),
+            }),
+        }
+    }
+}
+
+#[derive(Debug)]
+pub enum HirValueKind {
+    Variable,
+    MutableVariable,
+    Property { modifier: PropertyModifier },
+    Function { modifier: PropertyModifier },
+    Component { modifier: PropertyModifier },
+}
+
+///The representation of a compile or runtime value on the slynx. This can be either a variable, a property or a function
+#[derive(Debug)]
+pub struct HirValue {
+    pub kind: HirValueKind,
+    pub ty: HirType,
+}
