@@ -51,6 +51,10 @@ pub struct ElementDeffinition {
 }
 #[derive(Debug)]
 pub enum ElementDeffinitionKind {
+    MacroCall {
+        name: String,
+        args: MacroElementArgs,
+    },
     Property {
         name: String,
         modifier: PropertyModifier,
@@ -102,6 +106,23 @@ pub struct MacroCallStmt {
     pub name: String,
     pub args: Vec<ASTStatment>,
 }
+
+#[derive(Debug)]
+///Arguments for a macro when being called inside a element deffinition.
+///This is able to receive statments because it might be able to create functions with the
+///provided ones
+pub enum MacroElementArgs {
+    Empty,
+    Statments(Vec<ASTStatment>),
+    Deffinitions(Vec<ElementDeffinition>),
+}
+
+#[derive(Debug)]
+pub struct MacroCallElement {
+    pub name: String,
+    pub args: MacroElementArgs,
+}
+
 #[derive(Debug)]
 pub enum ASTStatmentKind {
     MacroCall(MacroCallStmt),

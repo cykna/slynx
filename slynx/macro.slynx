@@ -1,6 +1,3 @@
-@js {
-	component Gay {}
-}
 func main():Component {
 	@js {
 		5;

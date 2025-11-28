@@ -21,7 +21,7 @@ use crate::{
             HirExpressionKind, HirStatment, HirStatmentKind,
         },
         error::{HIRError, HIRErrorKind},
-        macros::{DeclarationMacro, StatmentMacro},
+        macros::{DeclarationMacro, ElementMacro, StatmentMacro},
         scope::HIRScope,
         types::{HirType, HirValue, HirValueKind},
     },
@@ -48,6 +48,7 @@ pub struct SlynxHir {
     scopes: Vec<HIRScope>,
     decl_macros: HashMap<&'static str, Arc<dyn DeclarationMacro>>,
     stmt_macros: HashMap<&'static str, Arc<dyn StatmentMacro>>,
+    elmt_macros: HashMap<&'static str, Arc<dyn ElementMacro>>,
     pub declarations: Vec<HirDeclaration>,
 }
 
@@ -60,6 +61,7 @@ impl SlynxHir {
             declarations: Vec::new(),
             decl_macros: HashMap::new(),
             stmt_macros: HashMap::new(),
+            elmt_macros: HashMap::new(),
         };
         out
     }
@@ -76,6 +78,28 @@ impl SlynxHir {
             }
 
             idx += 1;
+        }
+        Ok(())
+    }
+    ///Expands the element macros inside the given `ast`. Since it's a Declaration array, this will look into
+    ///the macro inside the declarations, if some is a macro call, then expands it
+    fn expand_elements(&mut self, ast: &mut Vec<ASTDeclaration>) -> Result<(), HIRError> {
+        for ast in ast {
+            match &mut ast.kind {
+                ASTDeclarationKind::ElementDeclaration { deffinitions, .. } => {
+                    let mut idx = 0;
+                    while idx < deffinitions.len() {
+                        if let Some(news) = self.expand_element(idx, &deffinitions[idx])? {
+                            deffinitions.remove(idx);
+                            for (nidx, newast) in news.into_iter().enumerate() {
+                                deffinitions.insert(idx + nidx, newast);
+                            }
+                        }
+                        idx += 1;
+                    }
+                }
+                _ => {}
+            }
         }
         Ok(())
     }
@@ -107,6 +131,7 @@ impl SlynxHir {
     ///Generates the declarations from the provided `ast`
     pub fn generate(&mut self, mut ast: Vec<ASTDeclaration>) -> Result<(), HIRError> {
         self.expand_decls(&mut ast)?;
+        self.expand_elements(&mut ast)?;
         self.expand_stmts(&mut ast)?;
 
         for ast in &ast {
@@ -514,6 +539,7 @@ impl SlynxHir {
                         span: child.span,
                     })
                 }
+                _ => {}
             }
         }
         Ok(out)
@@ -576,6 +602,7 @@ impl SlynxHir {
                                 ));
                             }
                             ElementDeffinitionKind::Child(_) => {}
+                            _ => {}
                         }
                     }
                     out
@@ -676,6 +703,26 @@ impl SlynxHir {
                         span: ast.span.clone(),
                     })?;
                 Ok(Some(macr.execute(&call_data.args, idx)))
+            }
+            _ => Ok(None),
+        }
+    }
+    ///Expands, or atleast, tries to, the given AST if it's a macro call statment
+    fn expand_element(
+        &mut self,
+        idx: usize,
+        ast: &ElementDeffinition,
+    ) -> Result<Option<Vec<ElementDeffinition>>, HIRError> {
+        match &ast.kind {
+            ElementDeffinitionKind::MacroCall { name, args } => {
+                let macr = self
+                    .elmt_macros
+                    .get::<&str>(&name.as_ref())
+                    .ok_or(HIRError {
+                        kind: HIRErrorKind::NameNotRecognized(name.clone()),
+                        span: ast.span.clone(),
+                    })?;
+                Ok(Some(macr.execute(&args, idx)))
             }
             _ => Ok(None),
         }
