@@ -134,7 +134,7 @@ impl Lexer {
                     if chars[idx] == '!' {
                         Token::macro_name(&buffer, start, idx)
                     } else {
-                        let mut span = Span { start, end: idx };
+                        let span = Span { start, end: idx };
                         match buffer.as_str() {
                             "component" => Token {
                                 kind: TokenKind::Component,
@@ -142,6 +142,14 @@ impl Lexer {
                             },
                             "func" => Token {
                                 kind: TokenKind::Func,
+                                span,
+                            },
+                            "pub" => Token {
+                                kind: TokenKind::Pub,
+                                span,
+                            },
+                            "prop" => Token {
+                                kind: TokenKind::Prop,
                                 span,
                             },
                             _ => Token::identifier(&buffer, start, idx),

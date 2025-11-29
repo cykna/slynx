@@ -35,6 +35,8 @@ pub enum TokenKind {
     MacroName(String),
     Component,
     Func,
+    Pub,
+    Prop,
 }
 
 impl Token {

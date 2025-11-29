@@ -77,7 +77,7 @@ impl HirType {
                     span: gener.span.clone(),
                 })?;
                 Ok(Self::Vector {
-                    ty: Box::new(Self::new(&generic_ty)?),
+                    ty: Box::new(Self::new(&generic_ty[0])?),
                 })
             }
             _ => Err(HIRError {

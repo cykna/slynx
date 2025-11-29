@@ -193,11 +193,11 @@ pub struct ASTDeclaration {
 pub enum ASTDeclarationKind {
     MacroCall(MacroCallDecl),
     ElementDeclaration {
-        name: String,
+        name: GenericIdentifier,
         deffinitions: Vec<ElementDeffinition>,
     },
     FuncDeclaration {
-        name: String,
+        name: GenericIdentifier,
         args: Vec<TypedName>,
         return_type: GenericIdentifier,
         body: Vec<ASTStatment>,

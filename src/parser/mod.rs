@@ -54,11 +54,6 @@ impl Parser {
         })
     }
 
-    ///Parses a component declaration. This initializes on the 'component' keyword
-    pub fn parse_component(&mut self, span: Span) -> Result<ASTDeclaration, ParseError> {
-        let ty = self.parse_type()?;
-    }
-
     pub fn parse_declarations(&mut self) -> Result<Vec<ASTDeclaration>, ParseError> {
         let mut out = Vec::new();
         while let Ok(token) = self.peek() {

@@ -4,7 +4,7 @@ test:
 test-logging file:
     cargo test -- --no-capture --show-output 2>&1 | tee {{file}}
 
-dev:
+debug:
     RUST_BACKTRACE=1 cargo run
 
 run:

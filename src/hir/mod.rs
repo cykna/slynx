@@ -572,7 +572,7 @@ impl SlynxHir {
                 };
 
                 self.create_hirid_for(
-                    name.clone(),
+                    name.to_string(), //add suport for generic identifier
                     HirValue {
                         kind: HirValueKind::Function {
                             modifier: PropertyModifier::Private,
@@ -609,7 +609,7 @@ impl SlynxHir {
                     out
                 };
                 self.create_hirid_for(
-                    name.clone(),
+                    name.to_string(), //add support for generic identifier
                     HirValue {
                         kind: HirValueKind::Component {
                             modifier: PropertyModifier::Private,
@@ -631,7 +631,7 @@ impl SlynxHir {
                 mut body,
                 ..
             } => {
-                let (id, func) = self.retrieve_information_of(&name, &ast.span)?;
+                let (id, func) = self.retrieve_information_of(&name.to_string(), &ast.span)?; //modify later to accept the generic identifier instead
 
                 self.enter_scope();
                 for arg in args {
@@ -664,7 +664,10 @@ impl SlynxHir {
                 };
 
                 self.declarations.push(HirDeclaration {
-                    kind: HirDeclarationKind::Function { statments, name },
+                    kind: HirDeclarationKind::Function {
+                        statments,
+                        name: name.to_string(),
+                    },
                     id,
                     ty: func,
                     span: ast.span,
@@ -674,7 +677,7 @@ impl SlynxHir {
             ASTDeclarationKind::ElementDeclaration { deffinitions, name } => {
                 self.enter_scope();
 
-                let (hir, ty) = self.retrieve_information_of(&name, &ast.span)?;
+                let (hir, ty) = self.retrieve_information_of(&name.to_string(), &ast.span)?; //modify later to accept the generic identifier instead
 
                 let defs = self.resolve_component_defs(deffinitions)?;
                 self.declarations.push(HirDeclaration {
