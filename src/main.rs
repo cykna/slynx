@@ -3,6 +3,7 @@ pub mod checker;
 pub mod compiler;
 pub mod hir;
 pub mod intermediate;
+pub mod parser;
 use std::path::PathBuf;
 
 use clap::Parser;
