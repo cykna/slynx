@@ -382,6 +382,7 @@ impl TypeChecker {
                 HirType::Uint16x2
             }
             HirExpressionKind::Float(_) => HirType::Float,
+            HirExpressionKind::StringLiteral(_) => HirType::Str,
             HirExpressionKind::Binary {
                 ref mut lhs,
                 ref mut rhs,
@@ -393,6 +394,7 @@ impl TypeChecker {
                 ty
             }
             HirExpressionKind::Identifier(_) => self.resolve(&expr.ty)?,
+
             HirExpressionKind::Element {
                 name,
                 ref mut values,
