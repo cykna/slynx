@@ -106,6 +106,7 @@ impl TypeChecker {
         }
     }
 
+    ///Tries to unify types `a` and `b` if possible
     fn unify(&mut self, a: &HirType, b: &HirType, span: &Span) -> Result<HirType, TypeError> {
         let a = self.resolve(a)?;
         let b = self.resolve(b)?;
@@ -417,6 +418,9 @@ impl TypeChecker {
 
     fn default_expr(&mut self, expr: &mut HirExpression) -> Result<(), TypeError> {
         match expr.kind {
+            HirExpressionKind::StringLiteral(_) => {
+                expr.ty = self.unify(&expr.ty, &HirType::Str, &expr.span)?
+            }
             HirExpressionKind::Int(_) => {
                 expr.ty = self.unify(&expr.ty, &HirType::Int, &expr.span)?
             }

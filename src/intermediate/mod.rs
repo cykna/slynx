@@ -52,8 +52,10 @@ impl IntermediateRepr {
                 IntermediateType::UBytes,
                 IntermediateType::Bytes,
                 IntermediateType::Component,
+                IntermediateType::Str,
             ],
             vecs: Vec::new(),
+            strings: StringPool::new(),
         }
     }
 
@@ -95,6 +97,7 @@ impl IntermediateRepr {
             HirType::Uint8x4 => 5,
             HirType::Int8x4 => 6,
             HirType::GenericComponent | HirType::Component { .. } => 7,
+            HirType::Str => 8,
             HirType::Reference { rf, .. } => {
                 let index = self
                     .types_mapping
@@ -126,7 +129,11 @@ impl IntermediateRepr {
     ///Generates a new expression and returns it's id on the current context
     fn generate_expr(&mut self, expr: HirExpression) -> usize {
         match expr.kind {
-            HirExpressionKind::StringLiteral(s) => {}
+            HirExpressionKind::StringLiteral(s) => {
+                let handle = self.strings.insert_string(&s);
+                self.active_context()
+                    .insert_expr(IntermediateExpr::StringLiteral(handle))
+            }
             HirExpressionKind::Int(int) => self
                 .active_context()
                 .insert_expr(IntermediateExpr::Int(int)),

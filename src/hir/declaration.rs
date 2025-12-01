@@ -82,6 +82,7 @@ impl HirExpression {
 #[repr(C)]
 pub enum HirExpressionKind {
     Int(i32),
+    StringLiteral(String),
     Int8x4(
         Box<HirExpression>,
         Box<HirExpression>,

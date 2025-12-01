@@ -1,5 +1,5 @@
 component H1 {
-    pub prop text: int = 5;
+    pub prop text: str = "Pedro comeu pastel";
 	js! {
 	    "out.element = document.createElement("h1");
 		out.element.textContent = param0;"

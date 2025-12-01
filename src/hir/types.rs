@@ -35,7 +35,6 @@ pub enum HirType {
     ///A type used for ints. There's no Uint because js is gay. The difference between this to floats is that this is limited to be 32bits
     ///and it's optimized to use alot of byte operation to make things faster
     Int,
-
     ///A type used for 2 int16 in a single one
     Int16x2,
     ///A type used for 8 int8 in a signel one
@@ -45,6 +44,10 @@ pub enum HirType {
     Uint16x2,
     ///A type used for 8 int8 in a signel one
     Uint8x4,
+
+    ///Equivalent type of `string` in js
+    Str,
+
     GenericComponent,
     ///A type specific for components
     Component {

@@ -101,6 +101,10 @@ impl Parser {
                 kind: ASTExpressionKind::Identifier(i),
                 span: current.span,
             }),
+            TokenKind::String(s) => Ok(ASTExpression {
+                kind: ASTExpressionKind::StringLiteral(s),
+                span: current.span,
+            }),
             TokenKind::LParen => {
                 let expr = self.parse_expression()?;
                 self.expect(&TokenKind::RParen)?;

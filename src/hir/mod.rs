@@ -391,6 +391,12 @@ impl SlynxHir {
     ) -> Result<HirExpression, HIRError> {
         match expr.kind {
             ASTExpressionKind::Binary { lhs, op, rhs } => self.resolve_binary(*lhs, op, *rhs, ty),
+            ASTExpressionKind::StringLiteral(s) => Ok(HirExpression {
+                id: HirId::new(),
+                ty: HirType::Str,
+                kind: HirExpressionKind::StringLiteral(s),
+                span: expr.span,
+            }),
             ASTExpressionKind::Identifier(name) => {
                 let (id, _) = self.retrieve_information_of_scoped(&name, &expr.span)?;
                 Ok(HirExpression {

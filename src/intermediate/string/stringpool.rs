@@ -1,5 +1,6 @@
 use std::ops::Index;
 
+#[derive(Debug)]
 ///A Pool of linear strings. This is used to don't use a lot of Strings inside a vector, since strings are Vec<u8> internally
 ///having a Vec<String> would be pretty unecessary when talking about lengths
 pub struct StringPool {
@@ -7,6 +8,7 @@ pub struct StringPool {
     len: usize,
 }
 
+#[derive(Debug, Clone)]
 ///A handle that is used to access some String inside a String pool.
 pub struct StringHandle {
     index: usize,

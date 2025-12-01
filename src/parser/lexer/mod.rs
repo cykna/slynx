@@ -103,6 +103,30 @@ impl Lexer {
                         Token::slash(idx)
                     }
                 }
+                '"' => {
+                    let mut buffer = String::new();
+                    idx += 1;
+                    let start = idx;
+                    while idx < chars.len() && chars[idx] != '"' {
+                        if chars[idx] == '\\' {
+                            idx += 1;
+                            match chars[idx] {
+                                'n' => buffer.push('\n'),
+                                't' => buffer.push('\t'),
+                                'r' => buffer.push('\r'),
+                                c @ '0'..'9' => buffer.push(c),
+                                '\\' => buffer.push('\\'),
+                                '"' => buffer.push('"'),
+                                _ => buffer.push('\\'),
+                            }
+                        } else {
+                            buffer.push(chars[idx]);
+                        }
+
+                        idx += 1;
+                    }
+                    Token::string(buffer, start, idx)
+                }
                 c if c.is_whitespace() => {
                     if c == '\n' {
                         lines.push(idx);
