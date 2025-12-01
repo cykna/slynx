@@ -2,7 +2,7 @@ use crate::{
     hir::macros::{ElementMacro, StatmentMacro},
     parser::ast::{
         ASTExpression, ASTExpressionKind, ASTStatment, ASTStatmentKind, ElementDeffinition,
-        ElementDeffinitionKind, MacroElementArgs, Span,
+        ElementDeffinitionKind, MacroElementArgs,
     },
 };
 
@@ -34,10 +34,30 @@ impl ElementMacro for JSMacro {
             MacroElementArgs::Empty | MacroElementArgs::Deffinitions(_) => {
                 vec![]
             }
-            MacroElementArgs::Statments(_) => vec![ElementDeffinition {
-                kind: ElementDeffinitionKind::RawJs("console.log('Hello world')".into()),
-                span: Span { start: 0, end: 0 },
-            }],
+            MacroElementArgs::Statments(s) => {
+                let mut out = Vec::new();
+                for statment in s {
+                    let ASTStatment {
+                        span,
+                        kind:
+                            ASTStatmentKind::Expression(ASTExpression {
+                                kind: ASTExpressionKind::StringLiteral(s),
+                                ..
+                            }),
+                    } = statment
+                    else {
+                        unreachable!(
+                            "Could not execute macro because statment {statment:?} wasnt a string literal"
+                        )
+                    };
+                    out.push(ElementDeffinition {
+                        kind: ElementDeffinitionKind::RawJs(s.clone().into()),
+                        span: span.clone(),
+                    });
+                }
+
+                out
+            }
         }
     }
 }
