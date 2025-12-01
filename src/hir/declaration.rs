@@ -41,6 +41,7 @@ pub enum ElementValueDeclaration {
         values: Vec<ElementValueDeclaration>,
         span: Span,
     },
+    Js(Cow<'static, str>),
 }
 
 #[derive(Debug)]

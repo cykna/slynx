@@ -183,6 +183,9 @@ impl IntermediateRepr {
                     }
                     props.push(out);
                 }
+                ElementValueDeclaration::Js(js) => {
+                    self.active_context().insert_js(js);
+                }
                 ElementValueDeclaration::Child { name, values, .. } => {
                     let idx = self.generate_child(name, values);
                     children.push(idx);

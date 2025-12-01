@@ -12,7 +12,7 @@ pub struct JSMacro {}
 
 impl StatmentMacro for JSMacro {
     fn name(&self) -> &'static str {
-        "@js"
+        "js"
     }
     fn execute(&self, args: &Vec<ASTStatment>, statment_index: usize) -> Vec<ASTStatment> {
         vec![ASTStatment {
@@ -27,7 +27,7 @@ impl StatmentMacro for JSMacro {
 
 impl ElementMacro for JSMacro {
     fn name(&self) -> &'static str {
-        "@js"
+        "js"
     }
     fn execute(&self, args: &MacroElementArgs, _: usize) -> Vec<ElementDeffinition> {
         match args {

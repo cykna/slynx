@@ -1,9 +1,7 @@
 component H1 {
+    pub prop text;
 	js! {
-	    H1<abc> {}
-	}
+
+    }
 }
-func main():Component {
-	H1 {}
-}
-func main():Component -> 5;
+func main():Component -> H1 {};

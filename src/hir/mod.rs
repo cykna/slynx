@@ -92,6 +92,7 @@ impl SlynxHir {
                     while idx < deffinitions.len() {
                         if let Some(news) = self.expand_element(idx, &deffinitions[idx])? {
                             deffinitions.remove(idx);
+
                             for (nidx, newast) in news.into_iter().enumerate() {
                                 deffinitions.insert(idx + nidx, newast);
                             }
@@ -144,6 +145,11 @@ impl SlynxHir {
         Ok(())
     }
 
+    #[inline]
+    ///Inserts a new Macro that can be executed on declaration toplevel.
+    pub fn insert_element_macro(&mut self, macr: Arc<dyn ElementMacro>) {
+        self.elmt_macros.insert(macr.name(), macr);
+    }
     #[inline]
     ///Inserts a new Macro that can be executed on declaration toplevel.
     pub fn insert_declaration_macro(&mut self, macr: Arc<dyn DeclarationMacro>) {
@@ -498,6 +504,7 @@ impl SlynxHir {
         let mut prop_idx = 0;
         for def in def {
             match def.kind {
+                ElementDeffinitionKind::RawJs(js) => out.push(ElementValueDeclaration::Js(js)),
                 ElementDeffinitionKind::Property {
                     modifier,
                     ty,
