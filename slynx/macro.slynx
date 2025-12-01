@@ -4,4 +4,6 @@ component H1 {
 	    "(out.element = document.createElement(\"h1\")).textContent = param0;"
     }
 }
-func main():Component -> H1 {};
+func main():Component -> H1 {
+	text: "Papel pedra tesora"
+};

@@ -4,6 +4,6 @@ function component1(param0 = "Pedro comeu pastel"){
   return out;
 }
 function main(){
-  return component1()
+  return component1("edro comeu pastel",)
 }
 main();
