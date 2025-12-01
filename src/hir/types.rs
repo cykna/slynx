@@ -67,6 +67,7 @@ impl HirType {
             "void" => Ok(Self::Void),
             "int" => Ok(Self::Int),
             "float" => Ok(Self::Float),
+            "str" => Ok(Self::Str),
             "uint16x2" => Ok(Self::Uint16x2),
             "uint8x4" => Ok(Self::Uint8x4),
             "int16x2" => Ok(Self::Int16x2),
