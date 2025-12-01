@@ -55,7 +55,12 @@ impl Index<StringHandle> for StringPool {
         unsafe { str::from_utf8_unchecked(&self.pool[index.index..index.len]) }
     }
 }
-
+impl Index<&StringHandle> for StringPool {
+    type Output = str;
+    fn index(&self, index: &StringHandle) -> &Self::Output {
+        unsafe { str::from_utf8_unchecked(&self.pool[index.index..index.len]) }
+    }
+}
 impl StringHandle {
     ///Slices this handle returning a new one with the provided `range`
     pub fn slice<R: std::ops::RangeBounds<usize>>(&self, range: R) -> StringHandle {
