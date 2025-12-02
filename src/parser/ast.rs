@@ -161,6 +161,8 @@ pub struct ASTExpression {
 pub enum ASTExpressionKind {
     Element(ElementExpression),
     IntLiteral(i32),
+    StringLiteral(String),
+    FloatLiteral(f32),
     Uint8x4Literal(
         Box<ASTExpression>,
         Box<ASTExpression>,
@@ -181,7 +183,6 @@ pub enum ASTExpressionKind {
         rhs: Box<ASTExpression>,
     },
     Identifier(String),
-    FloatLiteral(f32),
 }
 #[derive(Debug)]
 pub struct ASTDeclaration {

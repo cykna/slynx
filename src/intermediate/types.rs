@@ -8,6 +8,7 @@ pub enum IntermediateType {
     Bytes,
     UBytes,
     Component,
+    Str,
     ///Index inside the intermediate repr
     Complex(Vec<usize>),
     Vector(usize), //vec of a type

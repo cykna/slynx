@@ -27,6 +27,7 @@ impl Parser {
                 span.end = curr.span.end;
                 break;
             };
+
             match self.peek_at(1)?.kind {
                 TokenKind::Colon => {
                     let Token {
@@ -36,6 +37,7 @@ impl Parser {
                     else {
                         unreachable!();
                     };
+                    self.expect(&TokenKind::Colon)?;
                     let val = self.parse_expression()?;
                     values.push(ElementValue::Assign {
                         prop_name: ident,
@@ -99,6 +101,10 @@ impl Parser {
             }),
             TokenKind::Identifier(i) => Ok(ASTExpression {
                 kind: ASTExpressionKind::Identifier(i),
+                span: current.span,
+            }),
+            TokenKind::String(s) => Ok(ASTExpression {
+                kind: ASTExpressionKind::StringLiteral(s),
                 span: current.span,
             }),
             TokenKind::LParen => {

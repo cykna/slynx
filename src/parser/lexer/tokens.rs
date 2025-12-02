@@ -32,6 +32,7 @@ pub enum TokenKind {
     Colon,
     Float(f32),
     Int(i32),
+    String(String),
     Identifier(String),
     MacroName(String),
     Component,
@@ -267,6 +268,12 @@ impl Token {
                 start,
                 end: start + 1,
             },
+        }
+    }
+    pub fn string(str: String, start: usize, end: usize) -> Self {
+        Self {
+            kind: TokenKind::String(str),
+            span: Span { end, start },
         }
     }
 }

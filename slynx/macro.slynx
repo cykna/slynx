@@ -1,8 +1,9 @@
 component H1 {
-    pub prop text: int = 5;
+    pub prop text: str = "Pedro comeu pastel";
 	js! {
-	    "out.element = document.createElement("h1");
-		out.element.textContent = param0;"
+	    "(out.element = document.createElement(\"h1\")).textContent = param0;"
     }
 }
-func main():Component -> H1 {};
+func main():Component -> H1 {
+	text: "Papel pedra tesora"
+};
