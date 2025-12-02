@@ -59,7 +59,7 @@ impl Index<StringHandle> for StringPool {
 impl Index<&StringHandle> for StringPool {
     type Output = str;
     fn index(&self, index: &StringHandle) -> &Self::Output {
-        unsafe { str::from_utf8_unchecked(&self.pool[index.index..index.len + index.index]) };
+        unsafe { str::from_utf8_unchecked(&self.pool[index.index..index.len + index.index]) }
     }
 }
 impl StringHandle {
