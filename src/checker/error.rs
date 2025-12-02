@@ -1,6 +1,6 @@
 use crate::{
-    ast::Span,
     hir::{HirId, types::HirType},
+    parser::ast::Span,
 };
 
 #[derive(Debug)]

@@ -1,21 +1,18 @@
-pub mod ast;
 pub mod checker;
 pub mod compiler;
 pub mod hir;
 pub mod intermediate;
+pub mod parser;
 use std::path::PathBuf;
-
-use clap::Parser;
-
-use lalrpop_util::lalrpop_mod;
 
 use crate::{
     checker::TypeChecker,
     compiler::Compiler,
     intermediate::IntermediateRepr,
+    parser::{Parser as SlynxParser, error::ParseError, lexer::Lexer},
     //flattener::{FlattenedHir, Flattener},
 };
-lalrpop_mod!(pub slynx, "/grammar/slynx.rs");
+use clap::Parser;
 
 #[derive(Debug, Parser)]
 struct Cli {
@@ -28,7 +25,7 @@ unsafe extern "C" {
     fn compile_code(hir: FlattenedHir);
 }*/
 
-fn main() {
+fn main() -> Result<(), Box<dyn std::error::Error>> {
     let cli = Cli::parse();
     let path = PathBuf::from(cli.target);
 
@@ -38,13 +35,25 @@ fn main() {
         .enumerate()
         .filter_map(|(idx, c)| if c == '\n' { Some(idx) } else { None })
         .collect::<Vec<usize>>();
-
-    let value = slynx::ProgramParser::new().parse(&file).unwrap();
-
-    let mut hir = match hir::SlynxHir::new(value) {
-        Ok(hir) => hir,
-        Err(e) => panic!("{e:#?}"),
+    let stream = Lexer::tokenize(&file);
+    let mut value = SlynxParser::new(stream);
+    let ast = match value.parse_declarations() {
+        Ok(val) => val,
+        Err(e) => match e {
+            ParseError::UnexpectedToken(ref tk) => {
+                let line = match lines.binary_search(&tk.span.start) {
+                    Ok(ok) => ok,
+                    Err(e) => e + 1,
+                };
+                eprintln!("At line {line} errored: {e}");
+                std::process::exit(1);
+            }
+            _ => panic!("{e:?}"),
+        },
     };
+
+    let mut hir = hir::SlynxHir::new();
+    hir.generate(ast)?;
     if let Err(e) = TypeChecker::check(&mut hir) {
         eprint!("Type Error: {:?}; ", e.kind);
         let line = match lines.binary_search(&e.span.start) {
@@ -60,4 +69,5 @@ fn main() {
     let mut compiler = Compiler::new();
     let out = compiler.compile(&intermediate);
     let _ = std::fs::write(path.with_extension("js"), out);
+    Ok(())
 }

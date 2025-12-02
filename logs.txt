@@ -1,0 +1,76 @@
+   Compiling slynx v0.1.0 (/home/caina/programming/slynx)
+error: expected one of `!`, `.`, `::`, `;`, `?`, `{`, `}`, or an operator, found `:`
+     --> /home/caina/programming/slynx/target/debug/build/slynx-43599ed2506b801a/out/grammar/slynx.rs:21852:11
+      |
+21852 |     <start:@L> <name:Identifier> LT GT <end:@R> => GenericIdentifier {
+      |           ^ expected one of 8 possible tokens
+
+warning: unused import: `MacroCallElement`
+ --> /home/caina/programming/slynx/target/debug/build/slynx-43599ed2506b801a/out/grammar/slynx.rs:6:41
+  |
+6 |     Span, MacroCallStmt, MacroCallDecl, MacroCallElement, MacroElementArgs
+  |                                         ^^^^^^^^^^^^^^^^
+  |
+  = note: `#[warn(unused_imports)]` (part of `#[warn(unused)]`) on by default
+
+warning: unused import: `std::borrow::Cow`
+ --> src/hir/declaration.rs:1:5
+  |
+1 | use std::borrow::Cow;
+  |     ^^^^^^^^^^^^^^^^
+
+warning: unreachable pattern
+   --> src/checker/mod.rs:407:13
+    |
+407 |             ref un => {
+    |             ^^^^^^ no value can reach this
+    |
+note: multiple earlier patterns match some of the same values
+   --> src/checker/mod.rs:407:13
+    |
+248 |             HirExpressionKind::Int(_) => HirType::Int,
+    |             ------------------------- matches some of the same values
+249 |             HirExpressionKind::Int8x4(ref mut a, ref mut b, ref mut c, ref mut d) => {
+    |             --------------------------------------------------------------------- matches some of the same values
+...
+292 |             HirExpressionKind::Uint8x4(ref mut a, ref mut b, ref mut c, ref mut d) => {
+    |             ---------------------------------------------------------------------- matches some of the same values
+...
+335 |             HirExpressionKind::Int16x2(ref mut a, ref mut b) => {
+    |             ------------------------------------------------ matches some of the same values
+...
+407 |             ref un => {
+    |             ^^^^^^ ...and 5 other patterns collectively make this unreachable
+    = note: `#[warn(unreachable_patterns)]` (part of `#[warn(unused)]`) on by default
+
+warning: unused variable: `children`
+   --> src/compiler/mod.rs:167:13
+    |
+167 |             children,
+    |             ^^^^^^^^ help: try ignoring the field: `children: _`
+    |
+    = note: `#[warn(unused_variables)]` (part of `#[warn(unused)]`) on by default
+
+warning: unused variable: `ir`
+   --> src/compiler/mod.rs:250:9
+    |
+250 |         ir: &IntermediateRepr,
+    |         ^^ help: if this is intentional, prefix it with an underscore: `_ir`
+
+warning: unused variable: `s`
+  --> src/hir/macros/js.rs:44:53
+   |
+44 |             crate::ast::MacroElementArgs::Statments(s) => vec![ElementDeffinition {
+   |                                                     ^ help: if this is intentional, prefix it with an underscore: `_s`
+
+warning: unused variable: `deffinition_index`
+  --> src/hir/macros/js.rs:38:9
+   |
+38 |         deffinition_index: usize,
+   |         ^^^^^^^^^^^^^^^^^ help: if this is intentional, prefix it with an underscore: `_deffinition_index`
+
+warning: `slynx` (lib) generated 7 warnings (2 duplicates)
+error: could not compile `slynx` (lib) due to 1 previous error; 7 warnings emitted
+warning: build failed, waiting for other jobs to finish...
+warning: `slynx` (lib test) generated 7 warnings (5 duplicates)
+error: could not compile `slynx` (lib test) due to 1 previous error; 7 warnings emitted

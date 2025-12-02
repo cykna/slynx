@@ -2,7 +2,6 @@ pub mod error;
 use std::{collections::HashMap, mem::discriminant};
 
 use crate::{
-    ast::Span,
     checker::error::{IncompatibleComponentReason, TypeError, TypeErrorKind},
     hir::{
         HirId, SlynxHir,
@@ -12,6 +11,7 @@ use crate::{
         },
         types::HirType,
     },
+    parser::ast::Span,
 };
 
 #[derive(Hash, PartialEq, Eq, Debug)]
@@ -57,6 +57,7 @@ impl TypeChecker {
                         unreachable!("Element declaration should have type component");
                     };
                     match prop {
+                        ElementValueDeclaration::Js(_) => {}
                         ElementValueDeclaration::Property {
                             index, value, span, ..
                         } => {
@@ -105,6 +106,7 @@ impl TypeChecker {
         }
     }
 
+    ///Tries to unify types `a` and `b` if possible
     fn unify(&mut self, a: &HirType, b: &HirType, span: &Span) -> Result<HirType, TypeError> {
         let a = self.resolve(a)?;
         let b = self.resolve(b)?;
@@ -212,6 +214,7 @@ impl TypeChecker {
         };
         for value in values {
             match value {
+                ElementValueDeclaration::Js(_) => {}
                 ElementValueDeclaration::Property {
                     index, value, span, ..
                 } => {
@@ -379,6 +382,7 @@ impl TypeChecker {
                 HirType::Uint16x2
             }
             HirExpressionKind::Float(_) => HirType::Float,
+            HirExpressionKind::StringLiteral(_) => HirType::Str,
             HirExpressionKind::Binary {
                 ref mut lhs,
                 ref mut rhs,
@@ -390,6 +394,7 @@ impl TypeChecker {
                 ty
             }
             HirExpressionKind::Identifier(_) => self.resolve(&expr.ty)?,
+
             HirExpressionKind::Element {
                 name,
                 ref mut values,
@@ -415,6 +420,9 @@ impl TypeChecker {
 
     fn default_expr(&mut self, expr: &mut HirExpression) -> Result<(), TypeError> {
         match expr.kind {
+            HirExpressionKind::StringLiteral(_) => {
+                expr.ty = self.unify(&expr.ty, &HirType::Str, &expr.span)?
+            }
             HirExpressionKind::Int(_) => {
                 expr.ty = self.unify(&expr.ty, &HirType::Int, &expr.span)?
             }
@@ -466,6 +474,7 @@ impl TypeChecker {
                                 props[*index].2 = self.unify(&props[*index].2, &ty, &span)?;
                             }
                         }
+                        ElementValueDeclaration::Js(_) => {} //since this shit is raw js, there's no way to know anything about it
                         ElementValueDeclaration::Child { name, values, span } => {
                             let ty = self
                                 .types

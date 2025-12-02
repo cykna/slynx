@@ -1,4 +1,4 @@
-use std::collections::HashMap;
+use std::{borrow::Cow, collections::HashMap};
 
 use crate::{
     hir::HirId,
@@ -22,6 +22,7 @@ pub enum IntermediateContextType {
     Element {
         properties: Vec<IntermediateProperty>,
         children: Vec<usize>,
+        js: Vec<Cow<'static, str>>,
     },
 }
 
@@ -59,6 +60,7 @@ impl IntermediateContext {
             ty: IntermediateContextType::Element {
                 properties: Vec::new(),
                 children: Vec::new(),
+                js: Vec::new(),
             },
         }
     }
@@ -104,6 +106,17 @@ impl IntermediateContext {
             Some(id)
         } else {
             None
+        }
+    }
+    ///Inserts the provided `js` code inside. Note that this won't change the way it's transpiled. On components, this will be copy-pasted directly, after the props and on functions, it will be in order of appearance
+    pub fn insert_js(&mut self, js: Cow<'static, str>) {
+        match &mut self.ty {
+            IntermediateContextType::Element { js: js_vec, .. } => {
+                js_vec.push(js);
+            }
+            IntermediateContextType::Function { instructions, .. } => {
+                instructions.push(IntermediateInstruction::Js(js));
+            }
         }
     }
 }

@@ -1,3 +1,5 @@
+use std::borrow::Cow;
+
 #[derive(Debug, Clone)]
 pub struct Span {
     pub start: usize,
@@ -16,7 +18,7 @@ pub struct TypedName {
 ///A Identifier that might contain a generic. Such as Component<int>
 pub struct GenericIdentifier {
     ///The generic this identifier contains.
-    pub generic: Option<Box<GenericIdentifier>>,
+    pub generic: Option<Vec<GenericIdentifier>>,
     ///The name of this identifier
     pub identifier: String,
     pub span: Span,
@@ -25,7 +27,16 @@ pub struct GenericIdentifier {
 impl std::fmt::Display for GenericIdentifier {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
         if let Some(ref generic) = self.generic {
-            write!(f, "{}<{}>", self.identifier, generic)
+            write!(
+                f,
+                "{}<{}>",
+                self.identifier,
+                generic
+                    .iter()
+                    .map(|g| g.to_string())
+                    .collect::<Vec<String>>()
+                    .join(", ")
+            )
         } else {
             write!(f, "{}", self.identifier)
         }
@@ -51,6 +62,11 @@ pub struct ElementDeffinition {
 }
 #[derive(Debug)]
 pub enum ElementDeffinitionKind {
+    RawJs(Cow<'static, str>),
+    MacroCall {
+        name: String,
+        args: MacroElementArgs,
+    },
     Property {
         name: String,
         modifier: PropertyModifier,
@@ -93,7 +109,35 @@ pub struct ASTStatment {
 }
 
 #[derive(Debug)]
+pub struct MacroCallDecl {
+    pub name: String,
+    pub args: Vec<ASTDeclaration>,
+}
+#[derive(Debug)]
+pub struct MacroCallStmt {
+    pub name: String,
+    pub args: Vec<ASTStatment>,
+}
+
+#[derive(Debug)]
+///Arguments for a macro when being called inside a element deffinition.
+///This is able to receive statments because it might be able to create functions with the
+///provided ones
+pub enum MacroElementArgs {
+    Empty,
+    Statments(Vec<ASTStatment>),
+    Deffinitions(Vec<ElementDeffinition>),
+}
+
+#[derive(Debug)]
+pub struct MacroCallElement {
+    pub name: String,
+    pub args: MacroElementArgs,
+}
+
+#[derive(Debug)]
 pub enum ASTStatmentKind {
+    MacroCall(MacroCallStmt),
     Var {
         name: String,
         ty: Option<GenericIdentifier>,
@@ -117,6 +161,8 @@ pub struct ASTExpression {
 pub enum ASTExpressionKind {
     Element(ElementExpression),
     IntLiteral(i32),
+    StringLiteral(String),
+    FloatLiteral(f32),
     Uint8x4Literal(
         Box<ASTExpression>,
         Box<ASTExpression>,
@@ -137,7 +183,6 @@ pub enum ASTExpressionKind {
         rhs: Box<ASTExpression>,
     },
     Identifier(String),
-    FloatLiteral(f32),
 }
 #[derive(Debug)]
 pub struct ASTDeclaration {
@@ -147,12 +192,13 @@ pub struct ASTDeclaration {
 
 #[derive(Debug)]
 pub enum ASTDeclarationKind {
+    MacroCall(MacroCallDecl),
     ElementDeclaration {
-        name: String,
+        name: GenericIdentifier,
         deffinitions: Vec<ElementDeffinition>,
     },
     FuncDeclaration {
-        name: String,
+        name: GenericIdentifier,
         args: Vec<TypedName>,
         return_type: GenericIdentifier,
         body: Vec<ASTStatment>,

@@ -1,6 +1,8 @@
+use std::borrow::Cow;
+
 use crate::{
-    ast::{Operator, Span},
     hir::{HirId, types::HirType},
+    parser::ast::{Operator, Span},
 };
 
 #[derive(Debug)]
@@ -39,6 +41,7 @@ pub enum ElementValueDeclaration {
         values: Vec<ElementValueDeclaration>,
         span: Span,
     },
+    Js(Cow<'static, str>),
 }
 
 #[derive(Debug)]
@@ -79,6 +82,7 @@ impl HirExpression {
 #[repr(C)]
 pub enum HirExpressionKind {
     Int(i32),
+    StringLiteral(String),
     Int8x4(
         Box<HirExpression>,
         Box<HirExpression>,

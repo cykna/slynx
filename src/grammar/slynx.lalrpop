@@ -1,7 +1,7 @@
 use crate::ast::{
     PropertyModifier, ASTDeclaration, ASTDeclarationKind, GenericIdentifier, ElementDeffinition, ElementDeffinitionKind,
     ASTExpression, ASTExpressionKind, Operator, ElementExpression, ElementValue, TypedName, ASTStatment, ASTStatmentKind,
-    Span
+    Span, MacroCallStmt, MacroCallDecl, MacroCallElement, MacroElementArgs
 };
 
 use std::str::FromStr;
@@ -10,7 +10,6 @@ grammar;
 
 FUNC: () = "func";
 COMPONENT: () = "component";
-INHERITS: () = "inherits";
 PUB: () = "pub";
 PROP: () = "prop";
 CHILDREN: () = "children";
@@ -39,19 +38,55 @@ FATARROW: () = "=>";
 NumLit: i32 = <s:r"[0-9]+"> => i32::from_str(s).unwrap();
 FloatLit: f32 = <s:r"[0-9]+\.[0-9]+"> => f32::from_str(s).unwrap();
 Identifier: String = r"[a-zA-Z_][a-zA-Z0-9_]*" => String::from(<>);
+MacroName: String = r"@[a-zA-Z_][a-zA-Z0-9_]+" => String::from(<>);
 
+
+
+pub Type: GenericIdentifier = {
+    <start:@L> <name:Identifier> <gener:(LT <Type> GT)> <end:@R> => GenericIdentifier {
+        identifier: name,
+        generic: Some(Box::new(gener)),
+        span: Span {
+            start,end
+        }
+    },
+    <start:@L> <name:Identifier> LT GT <end:@R> => GenericIdentifier {
+        identifier: name,
+        generic: None,
+        span: Span {
+            start,end
+        }
+    }
+}
 ExprOp: Operator = { // (3)
     PLUS => Operator::Add,
     SUB  => Operator::Sub,
 };
-
 FactorOp: Operator= {
     STAR => Operator::Star,
     SLASH => Operator::Slash
 };
 
 Expression:ASTExpression = {
-    <start:@L> <lhs:Expression> <op:ExprOp> <rhs:Factor> <end:@R>=> ASTExpression{
+    <start:@L> <expr:ElementExpr> <end:@R> => ASTExpression{
+        kind: ASTExpressionKind::Element(expr),
+        span: Span{end,start}
+    },
+    NonElementExpression
+}
+
+
+ElementExpr: ElementExpression = {
+    <start:@L> <id: Type> LBRACE <values:ElValue*> RBRACE <end:@R> => ElementExpression {
+        name: id,
+        values:values,
+        span: Span {end,start}
+    },
+    
+};
+
+NonElementExpression: ASTExpression = {
+    <start:@L> <lhs:NonElementExpression> <op:ExprOp> <rhs:Factor> <end:@R>=> ASTExpression{
         kind: ASTExpressionKind::Binary{lhs:Box::new(lhs), op, rhs: Box::new(rhs)},
         span:Span {start,end}
     },
@@ -66,30 +101,25 @@ Factor:ASTExpression = {
 }
 
 ElValue:ElementValue = {
-    <start:@L> <id: Identifier> COLON <expr: Expression> <end: @R>=> ElementValue::Assign{prop_name: id, rhs: expr, span: Span {end,start}},
+    <start:@L> <id: Identifier> COLON <expr: NonElementExpression> <end: @R> => ElementValue::Assign{prop_name: id, rhs: expr, span: Span {end,start}},
     <start: @L> <id: Type> LBRACE <values: ElValue*> RBRACE <end:@R> => ElementValue::Element(ElementExpression {name:id, values, span: Span{end,start}}),
 };
 
-ElementExpr: ElementExpression = <start:@L> <id: Type> LBRACE <values:ElValue*> RBRACE <end:@R> => ElementExpression {
-    name: id,
-    values:values,
-    span: Span {end,start}
-};
-
 Term: ASTExpression = {
+    #[precedence(level="0")]
     <start:@L> <primitive: Primitive> <end: @R> => ASTExpression {
         kind: primitive,
         span: Span {end,start}
     },
-    "(" <expr:Expression> ")" => expr
+    "(" <expr:NonElementExpression> ")" => expr
 };
+
 
 Primitive: ASTExpressionKind = {
     NumLit => ASTExpressionKind::IntLiteral(<>),
     FloatLit => ASTExpressionKind::FloatLiteral(<>),
     Identifier => ASTExpressionKind::Identifier(<>),
-    ElementExpr => ASTExpressionKind::Element(<>),
-    <unsigned:"u"?>LBRACE <first:Expression> COMMA <second:Expression> <rest:(COMMA Expression COMMA Expression)?> RBRACE => {
+    <unsigned:"u"?>LBRACE <first:NonElementExpression> COMMA <second:NonElementExpression> <rest:(COMMA NonElementExpression COMMA NonElementExpression)?> RBRACE => {
         if let Some((_,third, _, fourth)) = rest {
             if unsigned.is_some(){
                 ASTExpressionKind::Uint8x4Literal(Box::new(first),Box::new(second),Box::new(third),Box::new(fourth))
@@ -106,25 +136,17 @@ Primitive: ASTExpressionKind = {
     }
 };
 
-pub PropertyMod:PropertyModifier = {
+TypedName:TypedName = <start:@L> <name:Identifier> COLON <ty: Type> <end:@R> => TypedName {name, kind:ty, span:Span {start,end}};
+TypedNames: Vec<TypedName> = {(<TypedName> COMMA)*};
 
+pub PropertyMod:PropertyModifier = {
     PUB => PropertyModifier::Public,
     PUB LPAREN "children" RPAREN => PropertyModifier::ChildrenPublic,
     PUB LPAREN "parent" RPAREN => PropertyModifier::ParentPublic,
     => PropertyModifier::Private,
 }
 
-pub Type: GenericIdentifier = {    
-    <start:@L> <name:Identifier> <gener:(LT Type GT)?> <end:@R> => GenericIdentifier {
-        identifier: name,
-        generic: gener.map(|(_, generic, _)| Box::new(generic)),
-        span: Span {
-            start,end
-        }
-    }
-}
-
-ComponentDeffinition:ElementDeffinition = {
+ComponentDeffinition:ElementDeffinition = {   
     <start:@L> <modifier: PropertyMod> PROP CHILDREN SEMI <end:@R> => ElementDeffinition{
         kind:ElementDeffinitionKind::Property {
             modifier,
@@ -143,12 +165,12 @@ ComponentDeffinition:ElementDeffinition = {
         span: Span {start,end}
     },
     
-    <start:@L> <modifier: PropertyMod> PROP <id:Identifier> <gener:(COLON Type)?> <rhs: (EQ Expression)?> SEMI <end:@R> => ElementDeffinition{
+    <start:@L> <modifier: PropertyMod> PROP <id:Identifier> <gener:(COLON <Type>)?> <rhs: (EQ <NonElementExpression>)?> SEMI <end:@R> => ElementDeffinition{
         kind: ElementDeffinitionKind::Property {
             modifier: modifier,
             name: id,
-            ty: gener.map(|(_, ty)| ty),
-            rhs: rhs.map(|(_, expr)| expr),
+            ty: gener,
+            rhs: rhs,
         },
         span: Span{start,end}
     },
@@ -158,11 +180,33 @@ ComponentDeffinition:ElementDeffinition = {
     }
 };
 
-TypedName:TypedName = <start:@L> <name:Identifier> COLON <ty: Type> <end:@R> => TypedName {name, kind:ty, span:Span {start,end}};
-TypedNames: Vec<TypedName> = {(<TypedName> COMMA)*};
+MacroArg: MacroElementArgs = {
+    <initial:Statment> <rest:Statment*> => MacroElementArgs::Statments(vec![initial].into_iter().chain(rest.into_iter()).collect()),
+    <initial:ComponentDeffinition> <rest:ComponentDeffinition*> => MacroElementArgs::Deffinitions(vec![initial].into_iter().chain(rest.into_iter()).collect()),
+}
+
+MacroElementArgs: MacroElementArgs = {
+    LBRACE RBRACE => MacroElementArgs::Empty,
+    LBRACE <arg:MacroArg> RBRACE => arg,
+}
+
+ComponentMacroCall: ElementDeffinition = {
+    <start:@L> <name:MacroName> <args:MacroElementArgs> <end:@R> => ElementDeffinition {
+        kind:ElementDeffinitionKind::MacroCall{
+            name, args
+        },
+        span:Span{end,start}
+    }
+};
+
+ComponentDeffinitionWithMacro:ElementDeffinition = {
+    ComponentDeffinition,
+    ComponentMacroCall
+};
+
 
 pub ComponentDeclaration:ASTDeclaration = {
-    <start:@L> COMPONENT <id: Identifier> LBRACE <defs: ComponentDeffinition*> RBRACE <end: @R> => {
+    <start:@L> COMPONENT <id: Identifier> LBRACE <defs: ComponentDeffinitionWithMacro*> RBRACE <end: @R> => {
         ASTDeclaration {
             kind: ASTDeclarationKind::ElementDeclaration {
                 name: id,
@@ -174,7 +218,15 @@ pub ComponentDeclaration:ASTDeclaration = {
 };
 
 Statment:ASTStatment = {
-    <start:@L> VAR <name:Identifier> <tyopt: (COLON Type)?> EQ <rhs:Expression> <end:@R> => ASTStatment {
+    #[precedence(level="0")]
+    <start:@L> <name: MacroName> LBRACE <stmts:(<Statment> ";")*> RBRACE <end:@R> => ASTStatment {
+        kind:ASTStatmentKind::MacroCall(MacroCallStmt{
+            name, args:stmts
+        }),
+        span:Span{end,start}
+    },
+    
+    <start:@L> VAR <name:Identifier> <tyopt: (COLON Type)?> EQ <rhs:NonElementExpression> <end:@R> => ASTStatment {
         kind: ASTStatmentKind::Var {
             name,
             rhs,
@@ -183,7 +235,7 @@ Statment:ASTStatment = {
         span: Span {end,start}
     },
     
-    <start:@L> VAR MUT <name:Identifier> <tyopt: (COLON Type)?> EQ <rhs:Expression> <end:@R> => ASTStatment {
+    <start:@L> VAR MUT <name:Identifier> <tyopt: (COLON Type)?> EQ <rhs:NonElementExpression> <end:@R> => ASTStatment {
         kind:ASTStatmentKind::MutableVar {
             name,
             rhs,
@@ -191,14 +243,17 @@ Statment:ASTStatment = {
         },
         span: Span{end,start}
     },
-    <start:@L> <expr:Expression> <end:@R> => ASTStatment{
+    
+    <start:@L> <expr:NonElementExpression> <end:@R> => ASTStatment{
         kind:ASTStatmentKind::Expression(expr),
         span: Span{end,start}
-    }
+    },
+    
 };
 
+
 FunctionBody: Vec<ASTStatment> = {
-    <mut stmts:(<Statment> ";")*> <expr:Expression?> => {
+    <mut stmts:(<Statment> ";")*> <expr:NonElementExpression?> => {
         if let Some(expr) = expr {
             stmts.push(ASTStatment {
                 span: expr.span.clone(),
@@ -221,9 +276,18 @@ FunctionDeclaration:ASTDeclaration = {
         span: Span{end,start}
     }
 };
+
+MacroCallDeclaration:ASTDeclaration = <start:@L> <name:MacroName> LBRACE <stmts:TopLevelDeclaration*> RBRACE <end:@R> => ASTDeclaration {
+    kind:ASTDeclarationKind::MacroCall(MacroCallDecl{
+        name, args:stmts
+    }),
+    span:Span{end,start}
+};
+
 TopLevelDeclaration:ASTDeclaration = {
     FunctionDeclaration,
-    ComponentDeclaration
+    ComponentDeclaration,
+    MacroCallDeclaration
 };
 
 pub Program: Vec<ASTDeclaration> = <value:TopLevelDeclaration*> => value;

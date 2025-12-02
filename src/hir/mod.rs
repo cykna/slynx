@@ -1,23 +1,30 @@
 pub mod declaration;
 pub mod error;
+pub mod macros;
 mod scope;
 pub mod types;
-use std::{collections::HashMap, mem::discriminant, sync::atomic::AtomicU64};
+use std::{
+    collections::HashMap,
+    mem::discriminant,
+    sync::{Arc, atomic::AtomicU64},
+};
 
 use crate::{
-    ast::{
-        ASTDeclaration, ASTDeclarationKind, ASTExpression, ASTExpressionKind, ASTStatment,
-        ASTStatmentKind, ElementDeffinition, ElementDeffinitionKind, ElementValue,
-        GenericIdentifier, PropertyModifier, Span,
-    },
     hir::{
         declaration::{
             ElementValueDeclaration, HirDeclaration, HirDeclarationKind, HirExpression,
             HirExpressionKind, HirStatment, HirStatmentKind,
         },
         error::{HIRError, HIRErrorKind},
+        macros::{DeclarationMacro, ElementMacro, StatmentMacro},
         scope::HIRScope,
         types::{HirType, HirValue, HirValueKind},
+    },
+    parser::ast::Operator,
+    parser::ast::{
+        ASTDeclaration, ASTDeclarationKind, ASTExpression, ASTExpressionKind, ASTStatment,
+        ASTStatmentKind, ElementDeffinition, ElementDeffinitionKind, ElementValue,
+        GenericIdentifier, PropertyModifier, Span,
     },
 };
 
@@ -40,27 +47,119 @@ pub struct SlynxHir {
     types: HashMap<HirId, HirType>,
     ///The scopes of this HIR. On the final it's expected to have only one, which is the global one
     scopes: Vec<HIRScope>,
+    decl_macros: HashMap<&'static str, Arc<dyn DeclarationMacro>>,
+    stmt_macros: HashMap<&'static str, Arc<dyn StatmentMacro>>,
+    elmt_macros: HashMap<&'static str, Arc<dyn ElementMacro>>,
     pub declarations: Vec<HirDeclaration>,
 }
 
 impl SlynxHir {
-    pub fn new(ast: Vec<ASTDeclaration>) -> Result<Self, HIRError> {
-        let mut out = Self {
+    pub fn new() -> Self {
+        let out = Self {
             scopes: vec![HIRScope::new()],
             names: HashMap::new(),
             types: HashMap::new(),
             declarations: Vec::new(),
+            decl_macros: HashMap::new(),
+            stmt_macros: HashMap::new(),
+            elmt_macros: HashMap::new(),
         };
-
-        for ast in &ast {
-            out.hoist(ast)?;
-        }
-        for ast in ast {
-            out.resolve(ast)?;
-        }
-        Ok(out)
+        out
     }
 
+    ///Expands all the macro call declarations inside the given `ast`
+    fn expand_decls(&mut self, ast: &mut Vec<ASTDeclaration>) -> Result<(), HIRError> {
+        let mut idx = 0;
+        while idx < ast.len() {
+            if let Some(news) = self.expand_decl(idx, &ast[idx])? {
+                ast.remove(idx);
+                for (nidx, newast) in news.into_iter().enumerate() {
+                    ast.insert(idx + nidx, newast);
+                }
+            }
+
+            idx += 1;
+        }
+        Ok(())
+    }
+    ///Expands the element macros inside the given `ast`. Since it's a Declaration array, this will look into
+    ///the macro inside the declarations, if some is a macro call, then expands it
+    fn expand_elements(&mut self, ast: &mut Vec<ASTDeclaration>) -> Result<(), HIRError> {
+        for ast in ast {
+            match &mut ast.kind {
+                ASTDeclarationKind::ElementDeclaration { deffinitions, .. } => {
+                    let mut idx = 0;
+                    while idx < deffinitions.len() {
+                        if let Some(news) = self.expand_element(idx, &deffinitions[idx])? {
+                            deffinitions.remove(idx);
+
+                            for (nidx, newast) in news.into_iter().enumerate() {
+                                deffinitions.insert(idx + nidx, newast);
+                            }
+                        }
+                        idx += 1;
+                    }
+                }
+                _ => {}
+            }
+        }
+        Ok(())
+    }
+
+    ///Expands the statment macros inside the given `ast`. Since it's a Declaration array, this will look into
+    ///the statments inside the declarations, if some is a macro call, then expands it
+    fn expand_stmts(&mut self, ast: &mut Vec<ASTDeclaration>) -> Result<(), HIRError> {
+        for ast in ast {
+            match &mut ast.kind {
+                ASTDeclarationKind::MacroCall(..)
+                | ASTDeclarationKind::ElementDeclaration { .. } => {}
+                ASTDeclarationKind::FuncDeclaration { body, .. } => {
+                    let mut idx = 0;
+                    while idx < body.len() {
+                        if let Some(news) = self.expand_stmt(idx, &body[idx])? {
+                            body.remove(idx);
+                            for (nidx, newast) in news.into_iter().enumerate() {
+                                body.insert(idx + nidx, newast);
+                            }
+                        }
+                        idx += 1;
+                    }
+                }
+            }
+        }
+        Ok(())
+    }
+
+    ///Generates the declarations from the provided `ast`
+    pub fn generate(&mut self, mut ast: Vec<ASTDeclaration>) -> Result<(), HIRError> {
+        self.expand_decls(&mut ast)?;
+        self.expand_elements(&mut ast)?;
+        self.expand_stmts(&mut ast)?;
+
+        for ast in &ast {
+            self.hoist(ast)?;
+        }
+        for ast in ast {
+            self.resolve(ast)?;
+        }
+        Ok(())
+    }
+
+    #[inline]
+    ///Inserts a new Macro that can be executed on declaration toplevel.
+    pub fn insert_element_macro(&mut self, macr: Arc<dyn ElementMacro>) {
+        self.elmt_macros.insert(macr.name(), macr);
+    }
+    #[inline]
+    ///Inserts a new Macro that can be executed on declaration toplevel.
+    pub fn insert_declaration_macro(&mut self, macr: Arc<dyn DeclarationMacro>) {
+        self.decl_macros.insert(macr.name(), macr);
+    }
+    #[inline]
+    ///Inserts a new macro that can be executed on statment toplevel.
+    pub fn insert_statment_macro(&mut self, macr: Arc<dyn StatmentMacro>) {
+        self.stmt_macros.insert(macr.name(), macr);
+    }
     ///Retrieves information about the provided `name` going from the current scope to the outer ones, finishing on the global
     pub fn retrieve_information_of_scoped(
         &mut self,
@@ -179,7 +278,7 @@ impl SlynxHir {
     pub fn resolve_binary(
         &mut self,
         lhs: ASTExpression,
-        op: crate::ast::Operator,
+        op: Operator,
         rhs: ASTExpression,
         ty: Option<&HirType>,
     ) -> Result<HirExpression, HIRError> {
@@ -292,6 +391,12 @@ impl SlynxHir {
     ) -> Result<HirExpression, HIRError> {
         match expr.kind {
             ASTExpressionKind::Binary { lhs, op, rhs } => self.resolve_binary(*lhs, op, *rhs, ty),
+            ASTExpressionKind::StringLiteral(s) => Ok(HirExpression {
+                id: HirId::new(),
+                ty: HirType::Str,
+                kind: HirExpressionKind::StringLiteral(s),
+                span: expr.span,
+            }),
             ASTExpressionKind::Identifier(name) => {
                 let (id, _) = self.retrieve_information_of_scoped(&name, &expr.span)?;
                 Ok(HirExpression {
@@ -405,6 +510,7 @@ impl SlynxHir {
         let mut prop_idx = 0;
         for def in def {
             match def.kind {
+                ElementDeffinitionKind::RawJs(js) => out.push(ElementValueDeclaration::Js(js)),
                 ElementDeffinitionKind::Property {
                     modifier,
                     ty,
@@ -447,6 +553,7 @@ impl SlynxHir {
                         span: child.span,
                     })
                 }
+                _ => {}
             }
         }
         Ok(out)
@@ -455,6 +562,7 @@ impl SlynxHir {
     ///Hoist the provided `ast` declaration, with so no errors of undefined values because declared later may occurr
     fn hoist(&mut self, ast: &ASTDeclaration) -> Result<(), HIRError> {
         match &ast.kind {
+            ASTDeclarationKind::MacroCall(..) => {}
             ASTDeclarationKind::FuncDeclaration {
                 name,
                 args,
@@ -477,7 +585,7 @@ impl SlynxHir {
                 };
 
                 self.create_hirid_for(
-                    name.clone(),
+                    name.to_string(), //add suport for generic identifier
                     HirValue {
                         kind: HirValueKind::Function {
                             modifier: PropertyModifier::Private,
@@ -508,12 +616,13 @@ impl SlynxHir {
                                 ));
                             }
                             ElementDeffinitionKind::Child(_) => {}
+                            _ => {}
                         }
                     }
                     out
                 };
                 self.create_hirid_for(
-                    name.clone(),
+                    name.to_string(), //add support for generic identifier
                     HirValue {
                         kind: HirValueKind::Component {
                             modifier: PropertyModifier::Private,
@@ -528,13 +637,14 @@ impl SlynxHir {
     }
     fn resolve(&mut self, ast: ASTDeclaration) -> Result<(), HIRError> {
         match ast.kind {
+            ASTDeclarationKind::MacroCall(..) => {}
             ASTDeclarationKind::FuncDeclaration {
                 name,
                 args,
                 mut body,
                 ..
             } => {
-                let (id, func) = self.retrieve_information_of(&name, &ast.span)?;
+                let (id, func) = self.retrieve_information_of(&name.to_string(), &ast.span)?; //modify later to accept the generic identifier instead
 
                 self.enter_scope();
                 for arg in args {
@@ -567,7 +677,10 @@ impl SlynxHir {
                 };
 
                 self.declarations.push(HirDeclaration {
-                    kind: HirDeclarationKind::Function { statments, name },
+                    kind: HirDeclarationKind::Function {
+                        statments,
+                        name: name.to_string(),
+                    },
                     id,
                     ty: func,
                     span: ast.span,
@@ -577,7 +690,7 @@ impl SlynxHir {
             ASTDeclarationKind::ElementDeclaration { deffinitions, name } => {
                 self.enter_scope();
 
-                let (hir, ty) = self.retrieve_information_of(&name, &ast.span)?;
+                let (hir, ty) = self.retrieve_information_of(&name.to_string(), &ast.span)?; //modify later to accept the generic identifier instead
 
                 let defs = self.resolve_component_defs(deffinitions)?;
                 self.declarations.push(HirDeclaration {
@@ -590,5 +703,65 @@ impl SlynxHir {
             }
         }
         Ok(())
+    }
+    ///Expands, or atleast, tries to, the given AST if it's a macro call declaration
+    fn expand_decl(
+        &mut self,
+        idx: usize,
+        ast: &ASTDeclaration,
+    ) -> Result<Option<Vec<ASTDeclaration>>, HIRError> {
+        match &ast.kind {
+            ASTDeclarationKind::MacroCall(call_data) => {
+                let macr = self
+                    .decl_macros
+                    .get::<&str>(&call_data.name.as_ref())
+                    .ok_or(HIRError {
+                        kind: HIRErrorKind::NameNotRecognized(call_data.name.clone()),
+                        span: ast.span.clone(),
+                    })?;
+                Ok(Some(macr.execute(&call_data.args, idx)))
+            }
+            _ => Ok(None),
+        }
+    }
+    ///Expands, or atleast, tries to, the given AST if it's a macro call statment
+    fn expand_element(
+        &mut self,
+        idx: usize,
+        ast: &ElementDeffinition,
+    ) -> Result<Option<Vec<ElementDeffinition>>, HIRError> {
+        match &ast.kind {
+            ElementDeffinitionKind::MacroCall { name, args } => {
+                let macr = self
+                    .elmt_macros
+                    .get::<&str>(&name.as_ref())
+                    .ok_or(HIRError {
+                        kind: HIRErrorKind::NameNotRecognized(name.clone()),
+                        span: ast.span.clone(),
+                    })?;
+                Ok(Some(macr.execute(&args, idx)))
+            }
+            _ => Ok(None),
+        }
+    }
+    ///Expands, or atleast, tries to, the given AST if it's a macro call statment
+    fn expand_stmt(
+        &mut self,
+        idx: usize,
+        ast: &ASTStatment,
+    ) -> Result<Option<Vec<ASTStatment>>, HIRError> {
+        match &ast.kind {
+            ASTStatmentKind::MacroCall(call_data) => {
+                let macr = self
+                    .stmt_macros
+                    .get::<&str>(&call_data.name.as_ref())
+                    .ok_or(HIRError {
+                        kind: HIRErrorKind::NameNotRecognized(call_data.name.clone()),
+                        span: ast.span.clone(),
+                    })?;
+                Ok(Some(macr.execute(&call_data.args, idx)))
+            }
+            _ => Ok(None),
+        }
     }
 }

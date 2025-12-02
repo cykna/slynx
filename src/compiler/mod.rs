@@ -1,7 +1,6 @@
 use std::collections::HashMap;
 
 use crate::{
-    ast::Operator,
     hir::HirId,
     intermediate::{
         IntermediateRepr,
@@ -9,6 +8,7 @@ use crate::{
         expr::IntermediateExpr,
         node::IntermediateInstruction,
     },
+    parser::ast::Operator,
 };
 
 pub struct Compiler {
@@ -28,8 +28,8 @@ impl Compiler {
     }
 
     #[inline]
-    fn get_param(index: u32) -> char {
-        unsafe { char::from_u32_unchecked(65 + index) }
+    fn get_param(index: usize) -> String {
+        format!("param{index}")
     }
 
     fn get_prop_name(index: u32) -> String {
@@ -41,12 +41,22 @@ impl Compiler {
     }
 
     ///Generates the syntax for the function creation for the next component and registers it on the names map
-    fn next_component(&mut self, args_len: u32, id: HirId) -> String {
+    fn next_component(
+        &mut self,
+        ctx: &IntermediateContext,
+        props: &[IntermediateProperty],
+        id: HirId,
+        ir: &IntermediateRepr,
+    ) -> String {
         let component_name = self.next_component_name();
         let mut func = format!("function {}(", component_name);
         self.names.insert(id, component_name);
-        for i in 0..args_len {
-            func.push(Self::get_param(i));
+        for i in 0..props.len() {
+            func.push_str(&Self::get_param(i));
+            if let Some(default) = props[i].default_value {
+                let default = self.compile_expression(&ctx.exprs[default], ctx, ir);
+                func.push_str(&format!(" = {}", default));
+            }
             func.push(',');
         }
         func.pop();
@@ -73,14 +83,20 @@ impl Compiler {
         out
     }
 
-    fn compile_expression(&mut self, expr: &IntermediateExpr, ctx: &IntermediateContext) -> String {
+    fn compile_expression(
+        &mut self,
+        expr: &IntermediateExpr,
+        ctx: &IntermediateContext,
+        ir: &IntermediateRepr,
+    ) -> String {
         match expr {
+            IntermediateExpr::StringLiteral(handle) => format!("\"{}\"", &ir.strings[handle]),
             IntermediateExpr::Int(int) => int.to_string(),
             IntermediateExpr::Float(float) => float.to_string(),
 
             IntermediateExpr::Binary { lhs, rhs, operator } => {
-                let lhs = self.compile_expression(&ctx.exprs[*lhs as usize], ctx);
-                let rhs = self.compile_expression(&ctx.exprs[*rhs as usize], ctx);
+                let lhs = self.compile_expression(&ctx.exprs[*lhs as usize], ctx, ir);
+                let rhs = self.compile_expression(&ctx.exprs[*rhs as usize], ctx, ir);
                 format!(
                     "{lhs}{}{rhs}",
                     match operator {
@@ -104,7 +120,7 @@ impl Compiler {
                 value.push('(');
                 for prop in props {
                     if let Some(expr_idx) = prop {
-                        value.push_str(&self.compile_expression(&ctx.exprs[*expr_idx], ctx));
+                        value.push_str(&self.compile_expression(&ctx.exprs[*expr_idx], ctx, ir));
                     } else {
                         value.push_str("undefined");
                     }
@@ -114,7 +130,7 @@ impl Compiler {
                 if children.len() > 0 {
                     value.push('[');
                     for child in children {
-                        value.push_str(&self.compile_expression(&ctx.exprs[*child], ctx));
+                        value.push_str(&self.compile_expression(&ctx.exprs[*child], ctx, ir));
                         value.push(',');
                     }
                     value.pop();
@@ -135,20 +151,13 @@ impl Compiler {
         prop: &IntermediateProperty,
         index: u32,
         _: &IntermediateRepr,
-        ctx: &IntermediateContext,
+        _: &IntermediateContext,
     ) -> String {
         let prop_value = Self::get_prop_name(index);
         self.names.insert(prop.id, prop_value.clone());
-        let param_name = Self::get_param(index);
+        let param_name = Self::get_param(index as usize);
 
-        if let Some(prop) = prop.default_value {
-            format!(
-                "{prop_value}:{param_name}??{},",
-                self.compile_expression(&ctx.exprs[prop], ctx)
-            )
-        } else {
-            format!("{prop_value}:{param_name},")
-        }
+        format!("{prop_value}:{param_name},")
     }
 
     ///Compiles the given `child_expr_index`, asserting that, the expression on the provided parameter, is the index for an element.
@@ -159,14 +168,9 @@ impl Compiler {
         child_expr_index: usize,
         index: u32,
         ctx: &IntermediateContext,
-        _: &IntermediateRepr,
+        ir: &IntermediateRepr,
     ) -> String {
-        let IntermediateExpr::Element {
-            id,
-            props,
-            children,
-        } = &ctx.exprs[child_expr_index]
-        else {
+        let IntermediateExpr::Element { id, props, .. } = &ctx.exprs[child_expr_index] else {
             unreachable!("Index should map to a element expression");
         };
         let child = Self::get_child_name(index);
@@ -174,7 +178,7 @@ impl Compiler {
             let mut params = String::new();
             for prop in props {
                 if let Some(prop) = prop {
-                    let mut content = self.compile_expression(&ctx.exprs[*prop], ctx);
+                    let mut content = self.compile_expression(&ctx.exprs[*prop], ctx, ir);
                     content.push(',');
                     params.push_str(&content);
                 } else {
@@ -192,11 +196,12 @@ impl Compiler {
         let IntermediateContextType::Element {
             properties,
             children,
+            js,
         } = &ctx.ty
         else {
             unreachable!();
         };
-        let next = self.next_component(properties.len() as u32, ctx.id);
+        let next = self.next_component(ctx, properties, ctx.id, ir);
         let mut out = self.indented_string(&next);
         self.increase_indentation();
         {
@@ -207,9 +212,14 @@ impl Compiler {
             let compiled = self.compile_property(prop, index as u32, ir, ctx);
             out.push_str(&compiled);
         }
+
         out.pop();
         out.push_str("}\n");
 
+        for js in js.iter() {
+            out.push_str(&self.indented_string(&js));
+            out.push('\n');
+        }
         for (idx, child) in children.iter().enumerate() {
             let child = self.compile_child(*child, idx as u32, ctx, ir);
             let child = self.indented_string(&child);
@@ -228,16 +238,23 @@ impl Compiler {
         &mut self,
         instruction: &IntermediateInstruction,
         ctx: &IntermediateContext,
+        ir: &IntermediateRepr,
     ) -> String {
         match instruction {
             IntermediateInstruction::Alloc => unimplemented!("Allocs not implemented"),
             IntermediateInstruction::Move { .. } => {
                 unimplemented!("Moves not implemented")
             }
-            IntermediateInstruction::Read(idx) => self.compile_expression(&ctx.exprs[*idx], ctx),
-            IntermediateInstruction::Ret(idx) => {
-                format!("return {}", self.compile_expression(&ctx.exprs[*idx], ctx))
+            IntermediateInstruction::Read(idx) => {
+                self.compile_expression(&ctx.exprs[*idx], ctx, ir)
             }
+            IntermediateInstruction::Ret(idx) => {
+                format!(
+                    "return {}",
+                    self.compile_expression(&ctx.exprs[*idx], ctx, ir)
+                )
+            }
+            IntermediateInstruction::Js(js) => js.to_string(),
         }
     }
 
@@ -262,7 +279,7 @@ impl Compiler {
         let mut out = format!("function {name}({args}){{\n");
         self.increase_indentation();
         for instruction in instructions {
-            let instruction = self.compile_instruction(instruction, ctx);
+            let instruction = self.compile_instruction(instruction, ctx, ir);
             out.push_str(&self.indented_string(&instruction));
             out.push('\n');
         }
@@ -288,7 +305,6 @@ impl Compiler {
             };
             out.push_str(&content);
         }
-        println!("{out}");
         out
     }
 }

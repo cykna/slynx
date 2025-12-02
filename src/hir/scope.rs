@@ -1,12 +1,12 @@
 use std::collections::HashMap;
 
 use crate::{
-    ast::Span,
     hir::{
         HirId,
         error::{HIRError, HIRErrorKind},
         types::HirValue,
     },
+    parser::ast::Span,
 };
 
 #[derive(Debug)]

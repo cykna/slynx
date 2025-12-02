@@ -1,9 +1,10 @@
-use crate::{ast::Operator, hir::HirId};
+use crate::{hir::HirId, intermediate::string::StringHandle, parser::ast::Operator};
 
 #[derive(Debug, Clone)]
 pub enum IntermediateExpr {
     Int(i32),
     Float(f32),
+    StringLiteral(StringHandle),
     Binary {
         ///Inside the IntermediateRepr, the index of the lhs expression
         lhs: usize,
