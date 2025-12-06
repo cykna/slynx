@@ -34,26 +34,3 @@ pub enum HIRErrorKind {
 pub enum InvalidTypeReason {
     MissingGeneric,
 }
-
-impl std::fmt::Display for HIRError {
-    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
-        match &self.kind {
-            HIRErrorKind::IdNotRecognized(id) => write!(f, "Id not recognized: {:?}", id),
-            HIRErrorKind::NameNotRecognized(name) => write!(f, "Name not recognized: {:?}", name),
-            HIRErrorKind::TypeNotRecognized(ty) => write!(f, "Type not recognized: {:?}", ty),
-            HIRErrorKind::InvalidBinaryExpression { lhs, rhs } => {
-                write!(f, "Invalid binary expression: {:?} {:?}", lhs, rhs)
-            }
-            HIRErrorKind::PropertyNotVisible { prop_name } => {
-                write!(f, "Property not visible: {:?}", prop_name)
-            }
-            HIRErrorKind::InvalidChild { child } => write!(f, "Invalid child: {:?}", child),
-
-            HIRErrorKind::InvalidType { ty, reason } => {
-                write!(f, "Invalid type '{ty}', due to: {reason:?}",)
-            }
-        }
-    }
-}
-
-impl std::error::Error for HIRError {}

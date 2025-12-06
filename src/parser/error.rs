@@ -15,7 +15,7 @@ impl ParseError {
 impl std::fmt::Display for ParseError {
     fn fmt(&self, f: &mut std::fmt::Formatter) -> std::fmt::Result {
         match self {
-            ParseError::UnexpectedToken(token) => write!(f, "Unexpected token: {:?}", token),
+            ParseError::UnexpectedToken(token) => write!(f, "Unexpected token: {}", token),
             ParseError::UnexpectedEndOfInput => write!(f, "Unexpected end of input"),
         }
     }

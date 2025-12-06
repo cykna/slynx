@@ -2,7 +2,14 @@ use std::{collections::HashMap, path::PathBuf, sync::Arc};
 
 use color_eyre::{eyre::Result, owo_colors::OwoColorize};
 
-use crate::parser::lexer::{Lexer, error::LexerError};
+use crate::{
+    hir::SlynxHir,
+    parser::{
+        Parser,
+        error::ParseError,
+        lexer::{Lexer, error::LexerError},
+    },
+};
 
 #[derive(Debug)]
 ///The type of the error that was generated
@@ -35,17 +42,19 @@ impl std::fmt::Display for SlynxError {
             SlynxErrorType::Compilation => "Compilation Error",
             SlynxErrorType::Type => "Type Checking Error",
         };
+        let source = format!("{} | {}", self.line, self.source);
         let mut err = " ".repeat(self.column_end);
         err.replace_range(self.column_start - 1..self.column_end, "^");
+        let err = format!("  | {}", err);
         writeln!(
             f,
-            "{} at file {} on line: {}:{}: {}{}",
-            type_error.red(),
-            self.file.yellow(),
-            self.line.blue(),
-            self.column_start.blue(),
+            "{}: {} => {}:{}:{}{}",
+            type_error.green().bold(),
             self.message.red(),
-            format!("{}\n{err}", self.source,)
+            self.file.bold(),
+            self.line.blue().bold(),
+            self.column_start.blue().bold(),
+            format!("\n{source}\n{err}")
         )
     }
 }
@@ -118,7 +127,7 @@ impl SlynxContext {
                     }
                     column
                 },
-                &source[lines[e - 1]..lines[e]],
+                &source[lines[e - 1] + 1..lines[e]],
             ),
         };
 
@@ -143,6 +152,43 @@ impl SlynxContext {
                     .into());
                 }
             },
+        };
+        let decls = match Parser::new(stream).parse_declarations() {
+            Ok(v) => v,
+            Err(e) => {
+                return match e {
+                    ParseError::UnexpectedToken(ref token) => {
+                        let (line, column, src) =
+                            self.get_line_info(&self.entry_point, token.span.start);
+                        Err(SlynxError {
+                            line,
+                            ty: SlynxErrorType::Parser,
+                            column_start: column,
+                            column_end: column + (token.span.end - token.span.start),
+                            message: e.to_string(),
+                            file: self.entry_point.to_string_lossy().to_string(),
+                            source: src.to_string(),
+                        }
+                        .into())
+                    }
+                    ParseError::UnexpectedEndOfInput => {
+                        let (line, column, src) = self.get_line_info(
+                            &self.entry_point,
+                            self.lines.get(&self.entry_point).unwrap().len() - 1,
+                        );
+                        Err(SlynxError {
+                            line,
+                            ty: SlynxErrorType::Parser,
+                            column_start: column,
+                            column_end: column,
+                            message: e.to_string(),
+                            file: self.entry_point.to_string_lossy().to_string(),
+                            source: src.to_string(),
+                        }
+                        .into())
+                    }
+                };
+            }
         };
 
         Ok(())
