@@ -4,7 +4,9 @@ use color_eyre::{eyre::Result, owo_colors::OwoColorize};
 
 use crate::{
     checker::TypeChecker,
+    compiler::Compiler,
     hir::{SlynxHir, macros::js::JSMacro},
+    intermediate::IntermediateRepr,
     parser::{
         Parser,
         error::ParseError,
@@ -235,7 +237,11 @@ impl SlynxContext {
             }
             .into());
         };
+        let mut ir = IntermediateRepr::new();
+        ir.generate(hir.declarations);
 
+        let out = Compiler::new().compile(&ir);
+        std::fs::write(self.entry_point.with_extension("js"), out)?;
         Ok(())
     }
 }
