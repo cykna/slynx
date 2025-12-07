@@ -3,7 +3,8 @@ use std::{collections::HashMap, path::PathBuf, sync::Arc};
 use color_eyre::{eyre::Result, owo_colors::OwoColorize};
 
 use crate::{
-    hir::SlynxHir,
+    checker::TypeChecker,
+    hir::{SlynxHir, macros::js::JSMacro},
     parser::{
         Parser,
         error::ParseError,
@@ -43,8 +44,12 @@ impl std::fmt::Display for SlynxError {
             SlynxErrorType::Type => "Type Checking Error",
         };
         let source = format!("{} | {}", self.line, self.source);
-        let mut err = " ".repeat(self.column_end);
-        err.replace_range(self.column_start - 1..self.column_end, "^");
+        let mut err = " ".repeat((self.column_end * 2).min(self.source.len()));
+
+        err.replace_range(
+            self.column_start - 1..err.len(),
+            &"^".repeat(err.len() - (self.column_start - 1)),
+        );
         let err = format!("  | {}", err);
         writeln!(
             f,
@@ -134,6 +139,11 @@ impl SlynxContext {
         out
     }
 
+    ///The name of the file this context is parsing
+    pub fn file_name(&self) -> String {
+        self.entry_point.to_string_lossy().to_string()
+    }
+
     pub fn start_compilation(self) -> Result<()> {
         let stream = match Lexer::tokenize(self.get_entry_point_source()) {
             Ok(value) => value,
@@ -166,7 +176,7 @@ impl SlynxContext {
                             column_start: column,
                             column_end: column + (token.span.end - token.span.start),
                             message: e.to_string(),
-                            file: self.entry_point.to_string_lossy().to_string(),
+                            file: self.file_name(),
                             source: src.to_string(),
                         }
                         .into())
@@ -182,13 +192,48 @@ impl SlynxContext {
                             column_start: column,
                             column_end: column,
                             message: e.to_string(),
-                            file: self.entry_point.to_string_lossy().to_string(),
+                            file: self.file_name(),
                             source: src.to_string(),
                         }
                         .into())
                     }
                 };
             }
+        };
+        let mut hir = SlynxHir::new();
+
+        {
+            let jsmacro = Arc::new(JSMacro {});
+            hir.insert_element_macro(jsmacro.clone());
+            hir.insert_statment_macro(jsmacro);
+        }
+
+        if let Err(e) = hir.generate(decls) {
+            let (line, column, src) = self.get_line_info(&self.entry_point, e.span.start);
+            println!("{column} {}", e.span.end - e.span.start);
+            return Err(SlynxError {
+                line,
+                column_start: column,
+                column_end: column + (e.span.end - e.span.start),
+                ty: SlynxErrorType::Type,
+                message: e.to_string(),
+                file: self.entry_point.to_string_lossy().to_string(),
+                source: src.to_string(),
+            }
+            .into());
+        }
+        if let Err(e) = TypeChecker::check(&mut hir) {
+            let (line, column, src) = self.get_line_info(&self.entry_point, e.span.start);
+            return Err(SlynxError {
+                line,
+                column_start: column,
+                column_end: column + (e.span.end - e.span.start),
+                ty: SlynxErrorType::Type,
+                message: e.to_string(),
+                file: self.file_name(),
+                source: src.to_string(),
+            }
+            .into());
         };
 
         Ok(())

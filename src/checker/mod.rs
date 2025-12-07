@@ -56,6 +56,7 @@ impl TypeChecker {
                     let HirType::Component { props } = &mut decl.ty else {
                         unreachable!("Element declaration should have type component");
                     };
+
                     match prop {
                         ElementValueDeclaration::Js(_) => {}
                         ElementValueDeclaration::Property {

@@ -32,3 +32,24 @@ pub enum TypeErrorKind {
     },
     Unrecognized(HirId),
 }
+
+impl std::fmt::Display for TypeError {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        let out = match &self.kind {
+            TypeErrorKind::CannotCastType { expected, received } => {
+                format!("Could not cast type '{expected:?}' into '{received:?}'")
+            }
+            TypeErrorKind::CiclicType { ty } => {
+                format!("The type '{ty:?}' is cyclic and cannot exist without recursion")
+            }
+            TypeErrorKind::IncompatibleComponent { reason } => {
+                format!("The component is incompatible because of '{reason:?}'")
+            }
+            TypeErrorKind::IncompatibleTypes { lhs, rhs } => format!(
+                "Incompatible types. Was expecting to receive type '{lhs:?}' instead got type '{rhs:?}'"
+            ),
+            TypeErrorKind::Unrecognized(id) => format!("Tem que fazer"),
+        };
+        write!(f, "{out}")
+    }
+}

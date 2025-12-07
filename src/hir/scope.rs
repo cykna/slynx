@@ -36,9 +36,14 @@ impl HIRScope {
         self.values.insert(id, value);
     }
 
-    pub fn retrieve_value(&self, id: HirId, span: &Span) -> Result<&HirValue, HIRError> {
+    pub fn retrieve_value(
+        &self,
+        id: HirId,
+        name: &str,
+        span: &Span,
+    ) -> Result<&HirValue, HIRError> {
         self.values.get(&id).ok_or(HIRError {
-            kind: HIRErrorKind::IdNotRecognized(id),
+            kind: HIRErrorKind::NameNotRecognized(name.to_string()),
             span: span.clone(),
         })
     }

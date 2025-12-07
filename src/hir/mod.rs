@@ -175,7 +175,7 @@ impl SlynxHir {
                 idx -= 1;
                 continue;
             };
-            let Ok(info) = scope.retrieve_value(*id, span) else {
+            let Ok(info) = scope.retrieve_value(*id, name, span) else {
                 idx -= 1;
                 continue;
             };
@@ -306,7 +306,7 @@ impl SlynxHir {
             span,
         })
     }
-    ///Resolves the provided values on a element. The `ty`is the type of the component we are resolving it
+    ///Resolves the provided values on a element expression. The `ty`is the type of the component we are resolving it
     fn resolve_element_values(
         &mut self,
         values: Vec<ElementValue>,
@@ -518,7 +518,8 @@ impl SlynxHir {
                     name,
                 } => {
                     let ty = if let Some(ty) = ty {
-                        self.retrieve_type_of_name(&ty, &ty.span)?
+                        let ty = self.retrieve_type_of_name(&ty, &ty.span)?;
+                        ty
                     } else {
                         HirType::Infer
                     };
@@ -737,7 +738,10 @@ impl SlynxHir {
                     .get::<&str>(&name.as_ref())
                     .ok_or(HIRError {
                         kind: HIRErrorKind::NameNotRecognized(name.clone()),
-                        span: ast.span.clone(),
+                        span: Span {
+                            start: ast.span.start,
+                            end: ast.span.start + name.len(),
+                        },
                     })?;
                 Ok(Some(macr.execute(&args, idx)))
             }
