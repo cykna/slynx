@@ -8,13 +8,12 @@ use super::Parser;
 impl Parser {
     ///Parses a type.
     pub fn parse_type(&mut self) -> Result<GenericIdentifier, ParseError> {
-        let tk = self.eat()?;
-        let (ident, mut span) = match tk {
-            Token {
-                kind: TokenKind::Identifier(ident),
-                span,
-            } => (ident, span),
-            _ => return Err(ParseError::UnexpectedToken(tk)),
+        let Token {
+            kind: TokenKind::Identifier(ident),
+            mut span,
+        } = self.expect(&TokenKind::Identifier("".to_string()))?
+        else {
+            unreachable!()
         };
         if let Token {
             kind: TokenKind::Lt,

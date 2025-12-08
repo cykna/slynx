@@ -27,10 +27,14 @@ impl Parser {
                     } else if modifier == "child" {
                         PropertyModifier::ChildrenPublic
                     } else {
-                        return Err(ParseError::UnexpectedToken(Token {
-                            kind: TokenKind::Identifier(modifier),
-                            span,
-                        }));
+                        return Err(ParseError::UnexpectedToken(
+                            Token {
+                                kind: TokenKind::Identifier(modifier),
+                                span,
+                            },
+                            "child' or 'parent' to determine who will be able to access it"
+                                .to_string(),
+                        ));
                     };
                     self.expect(&TokenKind::RParen)?;
                     modifier
@@ -105,9 +109,9 @@ impl Parser {
                             name: ident,
                             modifier,
                             ty: Some(GenericIdentifier {
-                                identifier: "Vec".to_string(),
+                                identifier: "Vector".to_string(),
                                 generic: Some(vec![GenericIdentifier {
-                                    identifier: "Element".to_string(),
+                                    identifier: "Component".to_string(),
                                     generic: None,
                                     span: Span {
                                         end: end.end,
@@ -158,7 +162,12 @@ impl Parser {
                                 span.end = self.expect(&TokenKind::SemiColon)?.span.end;
                                 Some(expr)
                             }
-                            _ => return Err(ParseError::UnexpectedToken(curr)),
+                            _ => {
+                                return Err(ParseError::UnexpectedToken(
+                                    curr,
+                                    "Expecing ';' to determine this property initialization is required by it's parent or '=' to give it a default value".to_string(),
+                                ));
+                            }
                         };
                         Ok(ElementDeffinition {
                             kind: ElementDeffinitionKind::Property {
@@ -184,7 +193,12 @@ impl Parser {
                             span,
                         })
                     }
-                    _ => return Err(ParseError::UnexpectedToken(self.eat()?)),
+                    _ => {
+                        return Err(ParseError::UnexpectedToken(
+                            self.eat()?,
+                            "'=' or ':' to define the type of the property or a ';' to keep it to be initialized by it's parent".to_string(),
+                        ));
+                    }
                 }
             }
             TokenKind::MacroName(_) => {
@@ -232,7 +246,12 @@ impl Parser {
                     })
                 }
             }
-            _ => return Err(ParseError::UnexpectedToken(self.eat()?)),
+            _ => {
+                return Err(ParseError::UnexpectedToken(
+                    self.eat()?,
+                    "'prop' a macro name or an identifier".to_string(),
+                ));
+            }
         }
     }
     ///Parses a component declaration. This initializes on the 'component' keyword

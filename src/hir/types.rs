@@ -23,7 +23,7 @@ pub enum HirType {
         ///The reference to the type this type maps to
         rf: HirId,
         ///If its got a generic
-        generics: Option<Box<HirType>>,
+        generics: Vec<HirType>,
     },
 
     Function {

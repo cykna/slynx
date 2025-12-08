@@ -1,8 +1,14 @@
+pub mod error;
 use std::{collections::VecDeque, ops::Index};
+
+use color_eyre::eyre::Result;
 
 use crate::parser::{
     ast::Span,
-    lexer::tokens::{Token, TokenKind},
+    lexer::{
+        error::LexerError,
+        tokens::{Token, TokenKind},
+    },
 };
 
 pub mod tokens;
@@ -29,7 +35,7 @@ impl Index<usize> for TokenStream {
 pub struct Lexer;
 
 impl Lexer {
-    pub fn tokenize(source: &str) -> TokenStream {
+    pub fn tokenize(source: &str) -> Result<TokenStream, LexerError> {
         let mut out = VecDeque::new();
         let mut lines = Vec::new();
         let chars = source.chars().collect::<Vec<_>>();
@@ -186,14 +192,20 @@ impl Lexer {
                         }
                     }
                 }
-                c => unimplemented!("char {c} not implemented"),
+                c => {
+                    return Err(LexerError::UnrecognizedChar {
+                        char: c,
+                        index: idx,
+                    }
+                    .into());
+                }
             };
             out.push_back(tk);
             idx += 1;
         }
-        TokenStream {
+        Ok(TokenStream {
             stream: out,
             new_lines: lines,
-        }
+        })
     }
 }

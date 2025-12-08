@@ -8,6 +8,7 @@ lalrpop = "0.22.2"
 
 [dependencies]
 clap = { version = "4.5.52", features = ["derive"] }
+color-eyre = "0.6.5"
 lalrpop = "0.22.2"
 lalrpop-util = "0.22.2"
 

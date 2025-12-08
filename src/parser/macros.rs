@@ -27,7 +27,10 @@ impl Parser {
                 },
             })
         } else {
-            Err(ParseError::UnexpectedToken(initial))
+            Err(ParseError::UnexpectedToken(
+                initial,
+                "Expecintg '(' or '{'".to_string(),
+            ))
         }
     }
 }

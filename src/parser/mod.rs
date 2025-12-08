@@ -47,7 +47,14 @@ impl Parser {
         if std::mem::discriminant(&token.kind) == std::mem::discriminant(kind) {
             Ok(token)
         } else {
-            Err(ParseError::UnexpectedToken(token))
+            let kind = match kind {
+                TokenKind::Identifier(_) => "a name".to_string(),
+                TokenKind::Int(_) => "an integer literal".to_string(),
+                TokenKind::Float(_) => "a float literal".to_string(),
+                TokenKind::String(_) => "a string literal".to_string(),
+                _ => format!("'{}'", kind.to_string()),
+            };
+            Err(ParseError::UnexpectedToken(token, kind))
         }
     }
 
@@ -79,7 +86,12 @@ impl Parser {
                     };
                     out.push(self.parse_func(span)?)
                 }
-                _ => return Err(ParseError::UnexpectedToken(self.eat()?)),
+                _ => {
+                    return Err(ParseError::UnexpectedToken(
+                        self.eat()?,
+                        "Either a macro name(a name terminated by '!' such as 'js!'), 'Component' or 'Func'".to_string(),
+                    ));
+                }
             }
         }
         Ok(out)

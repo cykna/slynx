@@ -6,6 +6,45 @@ pub struct Token {
     pub span: Span,
 }
 
+impl std::fmt::Display for TokenKind {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        let result = match self {
+            Self::LParen => "(".to_string(),
+            Self::RParen => ")".to_string(),
+            Self::LBrace => "{".to_string(),
+            Self::RBrace => "}".to_string(),
+            Self::SemiColon => ";".to_string(),
+            Self::Lt => "<".to_string(),
+            Self::LtEq => "<=".to_string(),
+            Self::Gt => ">".to_string(),
+            Self::GtEq => ">=".to_string(),
+            Self::Eq => "=".to_string(),
+            Self::EqEq => "==".to_string(),
+            Self::Plus => "+".to_string(),
+            Self::PlusEq => "+=".to_string(),
+            Self::Sub => "-".to_string(),
+            Self::SubEq => "-=".to_string(),
+            Self::Star => "*".to_string(),
+            Self::StarEq => "*=".to_string(),
+            Self::Slash => "/".to_string(),
+            Self::SlashEq => "/=".to_string(),
+            Self::Arrow => "->".to_string(),
+            Self::Comma => ",".to_string(),
+            Self::Colon => ":".to_string(),
+            Self::Component => "component".to_string(),
+            Self::Func => "func".to_string(),
+            Self::Pub => "pub".to_string(),
+            Self::Prop => "prop".to_string(),
+            Self::Float(value) => value.to_string(),
+            Self::Int(value) => value.to_string(),
+            Self::String(value) => value.to_string(),
+            Self::Identifier(value) => value.to_string(),
+            Self::MacroName(value) => value.to_string(),
+        };
+        write!(f, "{}", result)
+    }
+}
+
 #[derive(Debug, PartialEq)]
 pub enum TokenKind {
     LParen,
@@ -39,6 +78,12 @@ pub enum TokenKind {
     Func,
     Pub,
     Prop,
+}
+
+impl std::fmt::Display for Token {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        write!(f, "'{}'", self.kind)
+    }
 }
 
 impl Token {

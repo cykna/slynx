@@ -1,0 +1,17 @@
+#[derive(Debug)]
+pub enum LexerError {
+    UnrecognizedChar { char: char, index: usize },
+}
+
+impl std::fmt::Display for LexerError {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        match self {
+            Self::UnrecognizedChar { char, .. } => {
+                write!(
+                    f,
+                    "The char '{char}' is not recognized by the lexer. Check for the language syntax to know what chars are accepted"
+                )
+            }
+        }
+    }
+}

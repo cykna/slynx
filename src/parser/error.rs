@@ -1,21 +1,20 @@
-use crate::parser::lexer::tokens::Token;
+use crate::parser::lexer::tokens::{Token, TokenKind};
 
 #[derive(Debug)]
 pub enum ParseError {
-    UnexpectedToken(Token),
+    UnexpectedToken(Token, String),
     UnexpectedEndOfInput,
-}
-
-impl ParseError {
-    pub fn new(token: Token) -> Self {
-        ParseError::UnexpectedToken(token)
-    }
 }
 
 impl std::fmt::Display for ParseError {
     fn fmt(&self, f: &mut std::fmt::Formatter) -> std::fmt::Result {
         match self {
-            ParseError::UnexpectedToken(token) => write!(f, "Unexpected token: {:?}", token),
+            ParseError::UnexpectedToken(token, expected_ty) => {
+                write!(
+                    f,
+                    "Unexpected token: {token}. Instead, was expecing {expected_ty}",
+                )
+            }
             ParseError::UnexpectedEndOfInput => write!(f, "Unexpected end of input"),
         }
     }

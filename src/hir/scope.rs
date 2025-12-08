@@ -27,18 +27,37 @@ impl HIRScope {
         }
     }
 
-    pub fn insert_named_value(&mut self, id: HirId, name: String, value: HirValue) {
+    pub fn insert_named_value(
+        &mut self,
+        id: HirId,
+        name: String,
+        value: HirValue,
+        span: &Span,
+    ) -> Result<(), HIRError> {
         self.values.insert(id, value);
-        self.names.insert(name, id);
+        if let Some(_) = self.names.get(&name) {
+            Err(HIRError {
+                kind: HIRErrorKind::NameAlreadyDefined(name),
+                span: span.clone(),
+            })
+        } else {
+            self.names.insert(name.clone(), id);
+            Ok(())
+        }
     }
 
     pub fn insert_value(&mut self, id: HirId, value: HirValue) {
         self.values.insert(id, value);
     }
 
-    pub fn retrieve_value(&self, id: HirId, span: &Span) -> Result<&HirValue, HIRError> {
+    pub fn retrieve_value(
+        &self,
+        id: HirId,
+        name: &str,
+        span: &Span,
+    ) -> Result<&HirValue, HIRError> {
         self.values.get(&id).ok_or(HIRError {
-            kind: HIRErrorKind::IdNotRecognized(id),
+            kind: HIRErrorKind::NameNotRecognized(name.to_string()),
             span: span.clone(),
         })
     }

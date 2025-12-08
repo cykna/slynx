@@ -175,7 +175,7 @@ impl SlynxHir {
                 idx -= 1;
                 continue;
             };
-            let Ok(info) = scope.retrieve_value(*id, span) else {
+            let Ok(info) = scope.retrieve_value(*id, name, span) else {
                 idx -= 1;
                 continue;
             };
@@ -267,12 +267,19 @@ impl SlynxHir {
     }
 
     ///Creates an hir id for the provided `value` and `name` on the current scope
-    fn create_hirid_for(&mut self, name: String, value: HirValue, ty: HirType) -> HirId {
+    fn create_hirid_for(
+        &mut self,
+        name: String,
+        value: HirValue,
+        ty: HirType,
+        span: &Span,
+    ) -> Result<HirId, HIRError> {
         let id = HirId::new();
         self.names.insert(name.clone(), id);
-        self.last_scope().insert_named_value(id, name, value);
+        self.last_scope()
+            .insert_named_value(id, name, value, span)?;
         self.types.insert(id, ty);
-        id
+        Ok(id)
     }
 
     pub fn resolve_binary(
@@ -306,7 +313,7 @@ impl SlynxHir {
             span,
         })
     }
-    ///Resolves the provided values on a element. The `ty`is the type of the component we are resolving it
+    ///Resolves the provided values on a element expression. The `ty`is the type of the component we are resolving it
     fn resolve_element_values(
         &mut self,
         values: Vec<ElementValue>,
@@ -404,7 +411,7 @@ impl SlynxHir {
                     id: HirId::new(),
                     ty: HirType::Reference {
                         rf: id,
-                        generics: None,
+                        generics: Vec::new(),
                     },
                     span: expr.span,
                 })
@@ -507,6 +514,7 @@ impl SlynxHir {
         def: Vec<ElementDeffinition>,
     ) -> Result<Vec<ElementValueDeclaration>, HIRError> {
         let mut out = Vec::with_capacity(def.len());
+
         let mut prop_idx = 0;
         for def in def {
             match def.kind {
@@ -518,11 +526,13 @@ impl SlynxHir {
                     name,
                 } => {
                     let ty = if let Some(ty) = ty {
-                        self.retrieve_type_of_name(&ty, &ty.span)?
+                        let ty = self.retrieve_type_of_name(&ty, &ty.span)?;
+                        ty
                     } else {
                         HirType::Infer
                     };
                     let id = HirId::new();
+
                     out.push(ElementValueDeclaration::Property {
                         id,
                         index: prop_idx,
@@ -531,8 +541,9 @@ impl SlynxHir {
                         } else {
                             None
                         },
-                        span: def.span,
+                        span: def.span.clone(),
                     });
+
                     self.last_scope().insert_named_value(
                         id,
                         name,
@@ -540,7 +551,8 @@ impl SlynxHir {
                             ty,
                             kind: HirValueKind::Property { modifier },
                         },
-                    );
+                        &def.span,
+                    )?;
                     prop_idx += 1;
                 }
                 ElementDeffinitionKind::Child(child) => {
@@ -593,11 +605,10 @@ impl SlynxHir {
                         ty: func_ty.clone(),
                     },
                     func_ty,
-                );
+                    &ast.span,
+                )?;
             }
-            ASTDeclarationKind::ElementDeclaration {
-                name, deffinitions, ..
-            } => {
+            ASTDeclarationKind::ElementDeclaration { name, deffinitions } => {
                 let props = {
                     let mut out = Vec::with_capacity(deffinitions.len());
                     for def in deffinitions {
@@ -630,7 +641,8 @@ impl SlynxHir {
                         ty: HirType::GenericComponent,
                     },
                     HirType::Component { props },
-                );
+                    &ast.span,
+                )?;
             }
         }
         Ok(())
@@ -657,7 +669,8 @@ impl SlynxHir {
                             kind: HirValueKind::Variable,
                             ty,
                         },
-                    )
+                        &arg.span,
+                    )?;
                 }
                 let statments = if let Some(last) = body.pop() {
                     let mut statments = Vec::with_capacity(body.len());
@@ -737,7 +750,10 @@ impl SlynxHir {
                     .get::<&str>(&name.as_ref())
                     .ok_or(HIRError {
                         kind: HIRErrorKind::NameNotRecognized(name.clone()),
-                        span: ast.span.clone(),
+                        span: Span {
+                            start: ast.span.start,
+                            end: ast.span.start + name.len(),
+                        },
                     })?;
                 Ok(Some(macr.execute(&args, idx)))
             }
