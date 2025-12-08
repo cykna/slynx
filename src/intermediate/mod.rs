@@ -122,7 +122,9 @@ impl IntermediateRepr {
                 let _ = self.get_type_id(&return_type);
                 unimplemented!("Not implemented for functions")
             }
-            HirType::Infer => unreachable!("All infer types should be known during compile time"),
+            HirType::Infer | HirType::Generic(_) => {
+                unreachable!("All infer types and generics should be known during compile time")
+            }
         }
     }
 

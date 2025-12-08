@@ -6,8 +6,18 @@ use crate::{
     parser::ast::{GenericIdentifier, PropertyModifier},
 };
 
+#[derive(Debug)]
+///The type of some deffinition
+pub enum TypeDeffinition {
+    Component {
+        generics: Vec<GenericIdentifier>,
+        props: Vec<(PropertyModifier, String, HirType)>,
+    },
+}
+
 #[derive(Debug, Clone)]
 pub enum HirType {
+    Generic(usize),
     Vector {
         ty: Box<HirType>,
     },
@@ -49,6 +59,7 @@ pub enum HirType {
     Str,
 
     GenericComponent,
+
     ///A type specific for components
     Component {
         props: Vec<(PropertyModifier, String, HirType)>,

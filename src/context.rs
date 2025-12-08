@@ -127,17 +127,21 @@ impl SlynxContext {
                 index - lines[v],
                 &source[lines[index - lines[v]]..lines[v + 1]],
             ),
-            Err(e) => (
-                e + 1,
-                {
+            Err(e) => {
+                let column = {
                     let mut column = index.saturating_sub(lines[e.saturating_sub(1)]);
                     if column == 0 {
                         column = index + 1;
                     }
                     column
-                },
-                &source[lines[e - 1] + 1..lines[e]],
-            ),
+                };
+                let source = if e == 0 {
+                    &source[0..column]
+                } else {
+                    &source[lines[e - 1] + 1..lines[e]]
+                };
+                (e + 1, column, source)
+            }
         };
 
         out

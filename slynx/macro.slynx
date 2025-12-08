@@ -1,9 +1,15 @@
+component Generica<T> {
+    pub prop value: T;
+}
+
 component H1 {
     pub prop text: str = "Pedro comeu pastel";
-	js! {
+    js! {
 	    "(out.element = document.createElement(\"h1\")).textContent = param0;"
     }
 }
-func main():Component -> H1 {
-	text: "Papel pedra tesora"
-};
+func main():Generica<int>{
+    H1 {
+	    text: "Papel pedra tesora"
+    }
+}

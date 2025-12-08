@@ -1,0 +1,20 @@
+import HttpMethod, Client from slynx/http;
+import Stdout from slynx/core;
+
+component ButtonList<A:const (str, HttpMethod)...> where A::len > 0 {
+
+	var mut client = Client::new();
+	async func click(url:str, method:HttpMethod) {
+		var value = await client.write(method, url);
+		Stdout::print("{}", value);
+	}
+
+	for (value, method) in A {
+		Button {
+			click: .. -> click("base_url" .. value, method).await,
+			class: "class-name"
+		}
+	}
+}
+
+func main(): Component -> ButtonList<("thing1", GET),("thing2", GET),("thing3", PATCH)> {};

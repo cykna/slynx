@@ -56,6 +56,7 @@ impl TypeChecker {
 
     ///Resolves recursively the names of the types. If A -> B, B -> int; then we assume that A -> int
     fn resolve(&self, ty: &HirType) -> Result<HirType, TypeError> {
+        println!("{:?}", ty);
         match ty {
             HirType::Reference { rf, .. } => {
                 if let Some(ty) = self.types.get(rf) {
