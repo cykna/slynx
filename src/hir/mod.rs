@@ -404,7 +404,7 @@ impl SlynxHir {
                 kind: HirExpressionKind::StringLiteral(s),
                 span: expr.span,
             }),
-            ASTExpressionKind::Identifier(name) => {
+            ASTExpressionKind::Identifier(ref name) => {
                 let (id, _) = self.retrieve_information_of_scoped(&name, &expr.span)?;
                 Ok(HirExpression {
                     kind: HirExpressionKind::Identifier(id),

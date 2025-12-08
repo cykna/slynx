@@ -52,7 +52,9 @@ impl Compiler {
         let mut func = format!("function {}(", component_name);
         self.names.insert(id, component_name);
         for i in 0..props.len() {
-            func.push_str(&Self::get_param(i));
+            let name = Self::get_param(i);
+            func.push_str(&name);
+            self.names.insert(props[i].id, name);
             if let Some(default) = props[i].default_value {
                 let default = self.compile_expression(&ctx.exprs[default], ctx, ir);
                 func.push_str(&format!(" = {}", default));
@@ -154,8 +156,8 @@ impl Compiler {
         _: &IntermediateContext,
     ) -> String {
         let prop_value = Self::get_prop_name(index);
-        self.names.insert(prop.id, prop_value.clone());
-        let param_name = Self::get_param(index as usize);
+
+        let param_name = self.names.get(&prop.id).unwrap();
 
         format!("{prop_value}:{param_name},")
     }
