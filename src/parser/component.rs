@@ -262,6 +262,7 @@ impl Parser {
         while self.peek()?.kind != TokenKind::RBrace {
             defs.push(self.parse_element_deffinition()?);
         }
+
         let Token { span: end, .. } = self.expect(&TokenKind::RBrace)?;
         span.end = end.end;
         Ok(ASTDeclaration {

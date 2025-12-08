@@ -9,7 +9,7 @@ mod statment;
 mod types;
 
 use crate::parser::{
-    ast::{ASTDeclaration, ASTDeclarationKind, MacroCallDecl, Span},
+    ast::ASTDeclaration,
     error::ParseError,
     lexer::{
         TokenStream,
@@ -60,6 +60,7 @@ impl Parser {
 
     pub fn parse_declarations(&mut self) -> Result<Vec<ASTDeclaration>, ParseError> {
         let mut out = Vec::new();
+
         while let Ok(token) = self.peek() {
             match &token.kind {
                 TokenKind::MacroName(_) => {
