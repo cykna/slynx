@@ -116,7 +116,12 @@ impl SlynxContext {
 
     ///Based on the provided `index`, which is the index of a char on the source code of `path`, returns the line where it's located on the file of the provided `path`.
     ///This will return its line and the column and the line containing the error
-    pub fn get_line_info(&self, path: &Arc<PathBuf>, index: usize) -> (usize, usize, &str) {
+    pub fn get_line_info(
+        &self,
+        path: &Arc<PathBuf>,
+        start: usize,
+        end: usize,
+    ) -> (usize, usize, &str) {
         let lines = self
             .lines
             .get(path)
@@ -125,24 +130,20 @@ impl SlynxContext {
             .files
             .get(path)
             .expect("Path should be provided on the context");
-        let out = match lines.binary_search(&index) {
-            Ok(v) => (
-                v,
-                index - lines[v],
-                &source[lines[index - lines[v]]..lines[v + 1]],
-            ),
+        let out = match lines.binary_search(&start) {
+            Ok(v) => (v, start - lines[v], &source[start..end]),
             Err(e) => {
                 let column = {
-                    let mut column = index.saturating_sub(lines[e.saturating_sub(1)]);
+                    let mut column = start.saturating_sub(lines[e.saturating_sub(1)]);
                     if column == 0 {
-                        column = index + 1;
+                        column = start + 1;
                     }
                     column
                 };
                 let source = if e == 0 {
-                    &source[0..column]
+                    &source[0..end]
                 } else {
-                    &source[lines[e - 1] - 1..lines[e - 1]]
+                    &source[start..end]
                 };
                 (e + 1, column, source)
             }
@@ -161,7 +162,7 @@ impl SlynxContext {
             Ok(value) => value,
             Err(e) => match e {
                 LexerError::UnrecognizedChar { index, .. } => {
-                    let (line, column, src) = self.get_line_info(&self.entry_point, index);
+                    let (line, column, src) = self.get_line_info(&self.entry_point, index, index);
                     return Err(SlynxError {
                         line,
                         ty: SlynxErrorType::Lexer,
@@ -181,7 +182,7 @@ impl SlynxContext {
                 return match e {
                     ParseError::UnexpectedToken(ref token, _) => {
                         let (line, column, src) =
-                            self.get_line_info(&self.entry_point, token.span.start);
+                            self.get_line_info(&self.entry_point, token.span.start, token.span.end);
                         Err(SlynxError {
                             line,
                             ty: SlynxErrorType::Parser,
@@ -202,7 +203,7 @@ impl SlynxContext {
                             .cloned()
                             .unwrap_or(0);
                         let (line, column, src) =
-                            self.get_line_info(&self.entry_point, last_line - 1);
+                            self.get_line_info(&self.entry_point, last_line - 1, last_line - 1);
 
                         Err(SlynxError {
                             line,
@@ -227,7 +228,8 @@ impl SlynxContext {
         }
 
         if let Err(e) = hir.generate(decls) {
-            let (line, column, src) = self.get_line_info(&self.entry_point, e.span.start);
+            let (line, column, src) =
+                self.get_line_info(&self.entry_point, e.span.start, e.span.end);
             return Err(SlynxError {
                 line,
                 column_start: column,
@@ -240,7 +242,9 @@ impl SlynxContext {
             .into());
         }
         if let Err(e) = TypeChecker::check(&mut hir) {
-            let (line, column, src) = self.get_line_info(&self.entry_point, e.span.start);
+            let (line, column, src) =
+                self.get_line_info(&self.entry_point, e.span.start, e.span.end);
+            println!("{src:?}");
             return Err(SlynxError {
                 line,
                 column_start: column,
