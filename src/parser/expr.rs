@@ -54,6 +54,7 @@ impl Parser {
                 }
             }
         }
+
         self.expect(&TokenKind::RBrace)?;
         Ok(ElementExpression { name, values, span })
     }

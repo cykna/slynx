@@ -56,9 +56,8 @@ impl TypeChecker {
 
     ///Resolves recursively the names of the types. If A -> B, B -> int; then we assume that A -> int
     fn resolve(&self, ty: &HirType) -> Result<HirType, TypeError> {
-        println!("{:?}", ty);
         match ty {
-            HirType::Reference { rf, .. } => {
+            HirType::VarReference(rf) => {
                 if let Some(ty) = self.types.get(rf) {
                     let resolved = self.resolve(ty)?;
                     Ok(resolved)
@@ -66,6 +65,10 @@ impl TypeChecker {
                     Ok(ty.clone())
                 }
             }
+            HirType::Reference { rf, generics } => Ok(HirType::Reference {
+                rf: *rf,
+                generics: generics.clone(),
+            }),
             HirType::Component { props } => {
                 let resolved_props = {
                     let mut tys = Vec::with_capacity(props.len());
@@ -90,9 +93,10 @@ impl TypeChecker {
         match (&a, &b) {
             (out, HirType::Infer) | (HirType::Infer, out) => Ok(out.clone()),
             (aty, bty) if discriminant(aty) == discriminant(bty) => Ok(a),
-            (HirType::Reference { rf, .. }, b) | (b, HirType::Reference { rf, .. }) => {
+            (HirType::VarReference(rf), b) | (b, HirType::VarReference(rf)) => {
                 self.unify_with_ref(*rf, b, span)
             }
+
             (HirType::Component { props: aprops }, HirType::Component { props: bprops }) => {
                 if aprops.len() != bprops.len() {
                     return Err(TypeError {
@@ -116,6 +120,39 @@ impl TypeChecker {
             }
             (t @ HirType::Component { .. }, HirType::GenericComponent)
             | (HirType::GenericComponent, t @ HirType::Component { .. }) => Ok(t.clone()),
+            (t @ HirType::Reference { rf, generics }, HirType::GenericComponent { .. })
+            | (HirType::GenericComponent, t @ HirType::Reference { rf, generics }) => {
+                let referenced_type = self.types.get(rf).ok_or(TypeError {
+                    kind: TypeErrorKind::Unrecognized(*rf),
+                    span: span.clone(),
+                })?;
+                if let HirType::Component { props } = referenced_type {
+                    let gen_count = generics.len();
+                    let generic_count = props
+                        .iter()
+                        .filter(|prop| matches!(prop.2, HirType::Generic(_)))
+                        .count();
+                    if gen_count != generic_count {
+                        Err(TypeError {
+                            kind: TypeErrorKind::IncompatibleTypes {
+                                lhs: referenced_type.clone(),
+                                rhs: t.clone(),
+                            },
+                            span: span.clone(),
+                        })
+                    } else {
+                        Ok(t.clone())
+                    }
+                } else {
+                    Err(TypeError {
+                        kind: TypeErrorKind::IncompatibleTypes {
+                            lhs: referenced_type.clone(),
+                            rhs: HirType::GenericComponent,
+                        },
+                        span: span.clone(),
+                    })
+                }
+            }
             (a, b) => {
                 return Err(TypeError {
                     kind: TypeErrorKind::IncompatibleTypes {
@@ -134,14 +171,11 @@ impl TypeChecker {
         ty: &HirType,
         span: &Span,
     ) -> Result<HirType, TypeError> {
-        let resolved_ref = self.resolve(&HirType::Reference {
-            rf,
-            generics: Vec::new(),
-        })?;
-        if !matches!(resolved_ref, HirType::Reference { .. }) {
+        let resolved_ref = self.resolve(&HirType::VarReference(rf))?;
+        if !matches!(resolved_ref, HirType::VarReference(_)) {
             return self.unify(&resolved_ref, ty, span);
         }
-        if let HirType::Reference { rf: refe, .. } = ty
+        if let HirType::VarReference(refe) = ty
             && rf == *refe
         {
             return Ok(HirType::Reference {
@@ -156,10 +190,7 @@ impl TypeChecker {
             });
         }
         self.substitute(rf, ty.clone());
-        Ok(HirType::Reference {
-            rf: rf,
-            generics: Vec::new(),
-        })
+        Ok(HirType::VarReference(rf))
     }
 
     ///Checks if the provided `ty` is recursive
@@ -220,12 +251,16 @@ impl TypeChecker {
                 ref name,
                 ref mut values,
             } => {
-                let HirType::Component { ref mut props } = expr.ty.clone() else {
-                    unreachable!("Element expression should be of type element");
+                let HirType::Reference { rf, .. } = expr.ty.clone() else {
+                    unreachable!("Element expression should be of type reference");
                 };
-                expr.ty = HirType::Reference {
-                    rf: *name,
-                    generics: Vec::new(),
+                let HirType::Component { ref mut props } =
+                    self.types.get_mut(&rf).cloned().ok_or(TypeError {
+                        kind: TypeErrorKind::Unrecognized(rf),
+                        span: expr.span.clone(),
+                    })?
+                else {
+                    unreachable!("Reference type of an element should be a component");
                 };
                 for val in values {
                     match val {

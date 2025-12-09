@@ -13,7 +13,7 @@ impl TypeChecker {
     pub fn check_decl(&mut self, decl: &mut HirDeclaration) -> Result<(), TypeError> {
         self.types.insert(decl.id, decl.ty.clone());
         match decl.kind {
-            HirDeclarationKind::Function { .. } => {}
+            HirDeclarationKind::Function { ref statments, .. } => {}
             HirDeclarationKind::ElementDeclaration { ref mut props } => {
                 for prop in props {
                     let HirType::Component { props } = &mut decl.ty else {

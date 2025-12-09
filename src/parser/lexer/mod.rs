@@ -203,6 +203,13 @@ impl Lexer {
             out.push_back(tk);
             idx += 1;
         }
+        out.push_back(Token {
+            kind: TokenKind::EOF,
+            span: Span {
+                start: idx,
+                end: idx,
+            },
+        });
         Ok(TokenStream {
             stream: out,
             new_lines: lines,

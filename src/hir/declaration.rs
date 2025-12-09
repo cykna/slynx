@@ -5,7 +5,7 @@ use crate::{
     parser::ast::{Operator, Span},
 };
 
-#[derive(Debug)]
+#[derive(Debug, Clone)]
 #[repr(C)]
 pub struct HirDeclaration {
     pub kind: HirDeclarationKind,
@@ -14,7 +14,7 @@ pub struct HirDeclaration {
     pub span: Span,
 }
 
-#[derive(Debug)]
+#[derive(Debug, Clone)]
 #[repr(C)]
 pub enum HirDeclarationKind {
     Function {
@@ -26,7 +26,7 @@ pub enum HirDeclarationKind {
     },
 }
 
-#[derive(Debug)]
+#[derive(Debug, Clone)]
 #[repr(C)]
 pub enum ElementValueDeclaration {
     Property {
@@ -44,21 +44,21 @@ pub enum ElementValueDeclaration {
     Js(Cow<'static, str>),
 }
 
-#[derive(Debug)]
+#[derive(Debug, Clone)]
 #[repr(C)]
 pub struct HirStatment {
     pub kind: HirStatmentKind,
     pub span: Span,
 }
 
-#[derive(Debug)]
+#[derive(Debug, Clone)]
 #[repr(C)]
 pub enum HirStatmentKind {
     Expression { expr: HirExpression },
     Return { expr: HirExpression },
 }
 
-#[derive(Debug)]
+#[derive(Debug, Clone)]
 #[repr(C)]
 pub struct HirExpression {
     pub id: HirId,
@@ -78,7 +78,7 @@ impl HirExpression {
     }
 }
 
-#[derive(Debug)]
+#[derive(Debug, Clone)]
 #[repr(C)]
 pub enum HirExpressionKind {
     Int(i32),

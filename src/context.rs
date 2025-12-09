@@ -47,14 +47,18 @@ impl std::fmt::Display for SlynxError {
             SlynxErrorType::Compilation => "Compilation Error",
             SlynxErrorType::Type => "Type Checking Error",
         };
-        let source = format!("{} | {}", self.line, self.source);
-        let mut err = " ".repeat((self.column_end * 2).min(self.source.len()));
 
-        err.replace_range(
-            self.column_start - 1..err.len(),
-            &"^".repeat(err.len() - (self.column_start - 1)),
-        );
-        let err = format!("  | {}", err);
+        let err_space = " ".repeat(self.line.ilog10() as usize + 1);
+        let source = format!("{} | {}", self.line, self.source);
+        let mut err = " ".repeat(self.source.len());
+        let to_replace = &"^".repeat(err.len().saturating_sub(self.column_start - 1));
+        if to_replace.len() > 0 {
+            err.replace_range(
+                self.column_start - 1..err.len().max(self.column_start),
+                to_replace,
+            );
+        }
+        let err = format!("{err_space} | {}", err);
         writeln!(
             f,
             "{}: {} => {}:{}:{}{}",
@@ -138,7 +142,7 @@ impl SlynxContext {
                 let source = if e == 0 {
                     &source[0..column]
                 } else {
-                    &source[lines[e - 1] + 1..lines[e]]
+                    &source[lines[e - 1] - 1..lines[e - 1]]
                 };
                 (e + 1, column, source)
             }
@@ -249,7 +253,7 @@ impl SlynxContext {
             .into());
         };
         let mut ir = IntermediateRepr::new();
-        ir.generate(hir.declarations);
+        ir.generate(hir);
 
         let out = Compiler::new().compile(&ir);
         std::fs::write(self.entry_point.with_extension("js"), out)?;

@@ -412,10 +412,7 @@ impl SlynxHir {
                 Ok(HirExpression {
                     kind: HirExpressionKind::Identifier(id),
                     id: HirId::new(),
-                    ty: HirType::Reference {
-                        rf: id,
-                        generics: Vec::new(),
-                    },
+                    ty: HirType::VarReference(id),
                     span: expr.span,
                 })
             }
@@ -490,7 +487,16 @@ impl SlynxHir {
                         values: self.resolve_element_values(element.values, &ty)?,
                     },
                     id: HirId::new(),
-                    ty,
+                    ty: HirType::Reference {
+                        rf: id,
+                        generics: element
+                            .name
+                            .generic
+                            .unwrap_or(Vec::new())
+                            .into_iter()
+                            .map(|g| self.retrieve_type_of_name(&g, &g.span))
+                            .collect::<Result<Vec<_>, _>>()?,
+                    },
                     span: expr.span,
                 })
             }

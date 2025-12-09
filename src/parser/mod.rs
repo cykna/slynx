@@ -28,7 +28,11 @@ impl Parser {
     }
 
     pub fn eat(&mut self) -> Result<Token, ParseError> {
-        self.stream.next().ok_or(ParseError::UnexpectedEndOfInput)
+        if let Some(token) = self.stream.next() {
+            Ok(token)
+        } else {
+            Err(ParseError::UnexpectedEndOfInput)
+        }
     }
 
     pub fn peek_at(&self, idx: usize) -> Result<&Token, ParseError> {
@@ -61,7 +65,9 @@ impl Parser {
     pub fn parse_declarations(&mut self) -> Result<Vec<ASTDeclaration>, ParseError> {
         let mut out = Vec::new();
 
-        while let Ok(token) = self.peek() {
+        while let Ok(token) = self.peek()
+            && token.kind != TokenKind::EOF
+        {
             match &token.kind {
                 TokenKind::MacroName(_) => {
                     let Token {

@@ -35,6 +35,8 @@ pub enum HirType {
         ///If its got a generic
         generics: Vec<HirType>,
     },
+    ///A reference to something which value is stored. A const, a property, a variable, anything
+    VarReference(HirId),
 
     Function {
         args: Vec<HirType>,

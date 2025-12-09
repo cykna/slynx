@@ -1,5 +1,6 @@
 pub mod context;
 pub mod expr;
+pub mod monomorphizer;
 pub mod node;
 pub mod string;
 pub mod types;
@@ -7,7 +8,7 @@ use std::collections::HashMap;
 
 use crate::{
     hir::{
-        HirId,
+        HirId, SlynxHir,
         declaration::{
             ElementValueDeclaration, HirDeclaration, HirDeclarationKind, HirExpression,
             HirExpressionKind, HirStatment, HirStatmentKind,
@@ -17,6 +18,7 @@ use crate::{
     intermediate::{
         context::{IntermediateContext, IntermediateContextType, IntermediateProperty},
         expr::IntermediateExpr,
+        monomorphizer::Monomorphizer,
         string::StringPool,
         types::IntermediateType,
     },
@@ -105,6 +107,11 @@ impl IntermediateRepr {
                     .expect("Type reference not defined");
                 *index
             }
+            HirType::VarReference(rf) => *self
+                .types_mapping
+                .get(&rf)
+                .expect("Type reference not defined"),
+
             HirType::Vector { ty } => {
                 let ty = self.get_type_id(&ty);
 
@@ -270,7 +277,9 @@ impl IntermediateRepr {
         cidx
     }
 
-    pub fn generate(&mut self, decls: Vec<HirDeclaration>) {
+    pub fn generate(&mut self, hir: SlynxHir) {
+        let mut decls = Monomorphizer::new().monomorphize(hir);
+        println!("{decls:#?}");
         for decl in decls {
             match decl.kind {
                 HirDeclarationKind::Function { statments, name } => {
