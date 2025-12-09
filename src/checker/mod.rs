@@ -87,12 +87,12 @@ impl TypeChecker {
 
     ///Tries to unify types `a` and `b` if possible
     fn unify(&mut self, a: &HirType, b: &HirType, span: &Span) -> Result<HirType, TypeError> {
-        let a = self.resolve(a)?;
-        let b = self.resolve(b)?;
+        let resolved_a = self.resolve(a)?;
+        let resolved_b = self.resolve(b)?;
 
-        match (&a, &b) {
+        match (&resolved_a, &resolved_b) {
             (out, HirType::Infer) | (HirType::Infer, out) => Ok(out.clone()),
-            (aty, bty) if discriminant(aty) == discriminant(bty) => Ok(a),
+            (aty, bty) if discriminant(aty) == discriminant(bty) => Ok(resolved_a),
             (HirType::VarReference(rf), b) | (b, HirType::VarReference(rf)) => {
                 self.unify_with_ref(*rf, b, span)
             }
@@ -120,6 +120,7 @@ impl TypeChecker {
             }
             (t @ HirType::Component { .. }, HirType::GenericComponent)
             | (HirType::GenericComponent, t @ HirType::Component { .. }) => Ok(t.clone()),
+
             (t @ HirType::Reference { rf, generics }, HirType::GenericComponent { .. })
             | (HirType::GenericComponent, t @ HirType::Reference { rf, generics }) => {
                 let referenced_type = self.types.get(rf).ok_or(TypeError {
@@ -251,9 +252,10 @@ impl TypeChecker {
                 ref name,
                 ref mut values,
             } => {
-                let HirType::Reference { rf, .. } = expr.ty.clone() else {
+                let HirType::Reference { rf, generics } = expr.ty.clone() else {
                     unreachable!("Element expression should be of type reference");
                 };
+
                 let HirType::Component { ref mut props } =
                     self.types.get_mut(&rf).cloned().ok_or(TypeError {
                         kind: TypeErrorKind::Unrecognized(rf),
@@ -262,6 +264,7 @@ impl TypeChecker {
                 else {
                     unreachable!("Reference type of an element should be a component");
                 };
+
                 for val in values {
                     match val {
                         ElementValueDeclaration::Property {
@@ -269,7 +272,15 @@ impl TypeChecker {
                         } => {
                             if let Some(value) = value {
                                 let ty = self.get_type_of_expr(value, span)?;
-                                props[*index].2 = self.unify(&props[*index].2, &ty, &span)?;
+                                match props[*index].2 {
+                                    HirType::Generic(idx) => {
+                                        self.unify(&generics[idx], &ty, &span)?;
+                                    }
+                                    _ => {
+                                        props[*index].2 =
+                                            self.unify(&props[*index].2, &ty, &span)?
+                                    }
+                                }
                             }
                         }
                         ElementValueDeclaration::Js(_) => {} //since this shit is raw js, there's no way to know anything about it
@@ -300,6 +311,7 @@ impl TypeChecker {
             HirStatmentKind::Expression { ref mut expr } => self.default_expr(expr)?,
             HirStatmentKind::Return { ref mut expr } => {
                 self.default_expr(expr)?;
+
                 let unify = self.unify(&expr.ty, &expected, &statment.span)?;
                 expr.ty = unify;
             }

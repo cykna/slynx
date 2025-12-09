@@ -92,7 +92,7 @@ impl Monomorphizer {
                 monomorphized_decls.push(monomorphized_decl);
             }
         }
-        self.elements.extend_from_slice(&monomorphized_decls);
+        self.elements.append(&mut monomorphized_decls);
         self.elements
     }
 }

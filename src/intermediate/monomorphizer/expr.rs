@@ -41,6 +41,7 @@ impl Monomorphizer {
                     .get(rf)
                     .cloned()
                     .expect("Type of eleemnt reference should be known to be monomorphized");
+
                 let props = if let HirDeclarationKind::ElementDeclaration { props } = element.kind {
                     let mut out = Vec::with_capacity(props.len());
                     for prop in props {
