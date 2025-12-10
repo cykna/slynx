@@ -118,6 +118,32 @@ impl TypeChecker {
                     props: unified_props,
                 })
             }
+            (t @ HirType::Component { props }, HirType::Reference { rf, .. })
+            | (HirType::Reference { rf, .. }, t @ HirType::Component { props }) => {
+                let ty = self.types.get(rf).cloned().ok_or(TypeError {
+                    kind: TypeErrorKind::Unrecognized(*rf),
+                    span: span.clone(),
+                })?;
+                if std::mem::discriminant(t) == std::mem::discriminant(&ty) {
+                    let HirType::Component {
+                        props: ref ref_props,
+                    } = ty
+                    else {
+                        unreachable!()
+                    };
+                    for (tprop, refprop) in props.iter().zip(ref_props) {
+                        self.unify(&tprop.2, &refprop.2, span)?;
+                    }
+                    return Ok(ty.clone());
+                }
+                Err(TypeError {
+                    kind: TypeErrorKind::IncompatibleTypes {
+                        lhs: ty.clone(),
+                        rhs: t.clone(),
+                    },
+                    span: span.clone(),
+                })
+            }
             (t @ HirType::Component { .. }, HirType::GenericComponent)
             | (HirType::GenericComponent, t @ HirType::Component { .. }) => Ok(t.clone()),
 
