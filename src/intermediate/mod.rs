@@ -1,5 +1,6 @@
 pub mod context;
 pub mod expr;
+mod implementation;
 pub mod monomorphizer;
 pub mod node;
 pub mod string;
@@ -22,19 +23,15 @@ use crate::{
         string::StringPool,
         types::IntermediateType,
     },
+    parser::ast::Operator,
 };
 
 ///Struct used to represent the intermediate representation of Slynx. WIll be used when being compiled. This contains the monomorfization of types
 ///and flat values of everything in the source code. It can be understood as the context itself of the IR
 pub struct IntermediateRepr {
     pub contexts: Vec<IntermediateContext>,
-    types: Vec<IntermediateType>,
-    ///Vector of indices of types Vec<T> and T. This is used to find a vec<T> by T, if it doesn't exist, then creates a new one on types and here
-    ///In case, this is (VECTOR_INDEX, TYPE_INDEX). So something like Vec<Vec<Uint16x2>> is, for example (5,4) (4,3), 3 == Uint16x2, 4 == Vec<Uint16x2>, 5 == Vec<4> == Vec<Vec<UInt16x2>>
-    pub vecs: Vec<(usize, usize)>,
-    pub func_mapping: HashMap<HirId, usize>,
-    pub component_mapping: HashMap<HirId, usize>,
-    pub types_mapping: HashMap<HirId, usize>,
+    component_mapping: HashMap<HirId, usize>,
+    types: HashMap<HirId, IntermediateType>,
     pub strings: StringPool,
 }
 
@@ -42,21 +39,8 @@ impl IntermediateRepr {
     pub fn new() -> Self {
         Self {
             contexts: Vec::new(),
-            types_mapping: HashMap::new(),
-            func_mapping: HashMap::new(),
+            types: HashMap::new(),
             component_mapping: HashMap::new(),
-            types: vec![
-                IntermediateType::Void,
-                IntermediateType::Int,
-                IntermediateType::Float,
-                IntermediateType::UWords,
-                IntermediateType::Words,
-                IntermediateType::UBytes,
-                IntermediateType::Bytes,
-                IntermediateType::Component,
-                IntermediateType::Str,
-            ],
-            vecs: Vec::new(),
             strings: StringPool::new(),
         }
     }
@@ -64,75 +48,6 @@ impl IntermediateRepr {
     fn active_context(&mut self) -> &mut IntermediateContext {
         let len = self.contexts.len();
         &mut self.contexts[len - 1]
-    }
-
-    ///Creates a new vector with the monomorfized `ty` and returns it's new index
-    fn create_vec_type(&mut self, ty: usize) -> usize {
-        let idx = self.types.len();
-        self.types.push(IntermediateType::Vector(ty));
-        idx
-    }
-
-    ///Based on the monomorfized type. Returns the index of the vector that its got. For example,
-    ///Vec<Uint16x2>. This will search for some vector with type `Uint16x2`. If it doesn't find returns None, else, it will return its index(id)
-    fn retrieve_vec_index(&self, monomorfized_type: usize) -> Option<usize> {
-        for vec in self.vecs.iter() {
-            if vec.1 == monomorfized_type {
-                return Some(vec.0);
-            }
-        }
-        None
-    }
-
-    fn get_type_from_id(&self, id: &HirId) -> usize {
-        *self.types_mapping.get(id).unwrap()
-    }
-
-    ///Returns the
-    fn get_type_id(&mut self, ty: &HirType) -> usize {
-        match ty {
-            HirType::Void => 0,
-            HirType::Int => 1,
-            HirType::Float => 2,
-            HirType::Uint16x2 => 3,
-            HirType::Int16x2 => 4,
-            HirType::Uint8x4 => 5,
-            HirType::Int8x4 => 6,
-            HirType::GenericComponent | HirType::Component { .. } => 7,
-            HirType::Str => 8,
-            HirType::Reference { rf, .. } => {
-                let index = self
-                    .types_mapping
-                    .get(&rf)
-                    .expect("Type reference not defined");
-                *index
-            }
-            HirType::VarReference(rf) => *self
-                .types_mapping
-                .get(&rf)
-                .expect("Type reference not defined"),
-
-            HirType::Vector { ty } => {
-                let ty = self.get_type_id(&ty);
-
-                if let Some(v) = self.retrieve_vec_index(ty) {
-                    v
-                } else {
-                    self.create_vec_type(ty)
-                }
-            }
-            HirType::Function { args, return_type } => {
-                let _ = args
-                    .iter()
-                    .map(|arg| self.get_type_id(arg))
-                    .collect::<Vec<_>>();
-                let _ = self.get_type_id(&return_type);
-                unimplemented!("Not implemented for functions")
-            }
-            HirType::Infer | HirType::Generic(_) => {
-                unreachable!("All infer types and generics should be known during compile time")
-            }
-        }
     }
 
     ///Generates a new expression and returns it's id on the current context
@@ -165,15 +80,45 @@ impl IntermediateRepr {
             HirExpressionKind::Binary { lhs, op, rhs } => {
                 let lhs = self.generate_expr(*lhs);
                 let rhs = self.generate_expr(*rhs);
-                self.active_context().insert_expr(IntermediateExpr::Binary {
-                    lhs,
-                    rhs,
-                    operator: op,
-                })
+                match expr.ty {
+                    HirType::Float => match op {
+                        Operator::Add => self
+                            .active_context()
+                            .insert_expr(IntermediateExpr::FloatAdd(lhs, rhs)),
+                        Operator::Sub => self
+                            .active_context()
+                            .insert_expr(IntermediateExpr::FloatSub(lhs, rhs)),
+                        Operator::Star => self
+                            .active_context()
+                            .insert_expr(IntermediateExpr::FloatMul(lhs, rhs)),
+                        Operator::Slash => self
+                            .active_context()
+                            .insert_expr(IntermediateExpr::FloatDiv(lhs, rhs)),
+                    },
+                    HirType::Int => match op {
+                        Operator::Add => self
+                            .active_context()
+                            .insert_expr(IntermediateExpr::IntAdd(lhs, rhs)),
+                        Operator::Sub => self
+                            .active_context()
+                            .insert_expr(IntermediateExpr::IntSub(lhs, rhs)),
+                        Operator::Star => self
+                            .active_context()
+                            .insert_expr(IntermediateExpr::IntMul(lhs, rhs)),
+                        Operator::Slash => self
+                            .active_context()
+                            .insert_expr(IntermediateExpr::IntDiv(lhs, rhs)),
+                    },
+                    ty => {
+                        unreachable!(
+                            "binary operation cannot happen where resultant type id {ty:?}"
+                        )
+                    }
+                }
             }
             HirExpressionKind::Identifier(name) => self
                 .active_context()
-                .insert_expr(IntermediateExpr::Identifier(name)),
+                .insert_expr(IntermediateExpr::Read(name)),
             HirExpressionKind::Element { name, values, .. } => {
                 let eidx = self.generate_child(name, values);
                 if matches!(
@@ -257,13 +202,13 @@ impl IntermediateRepr {
     ///Creates a new function with the provided `name` `id` and `statments` and returns its id
     pub fn generate_function(
         &mut self,
-        args_len: usize,
+        args: Vec<IntermediateType>,
         statments: Vec<HirStatment>,
         name: String,
         id: HirId,
     ) -> usize {
         let cidx = self.contexts.len();
-        let ctx = IntermediateContext::new_function(id, name, args_len);
+        let ctx = IntermediateContext::new_function(id, name, args.len());
         self.contexts.push(ctx);
         for statment in statments {
             match statment.kind {
@@ -281,32 +226,31 @@ impl IntermediateRepr {
     }
 
     pub fn generate(&mut self, hir: SlynxHir) {
-        let mut decls = Monomorphizer::new().monomorphize(hir);
-        println!("{decls:#?}");
+        let decls = Monomorphizer::new().monomorphize(hir);
+
         for decl in decls {
             match decl.kind {
                 HirDeclarationKind::Function { statments, name } => {
-                    let HirType::Function { args, return_type } = &decl.ty else {
+                    let HirType::Function { args, .. } = &decl.ty else {
                         unreachable!("Type of function decl should be function")
                     };
-                    let args_len = args.len();
-                    let args = args.iter().map(|arg| self.get_type_id(arg)).collect();
-                    let ret = self.get_type_id(return_type);
-                    self.types.push(IntermediateType::Function(args, ret));
-                    self.generate_function(args_len, statments, name, decl.id);
+                    let args = args
+                        .into_iter()
+                        .map(|arg| self.retrieve_intermediate_type(arg))
+                        .collect();
+                    let ty = self.retrieve_intermediate_type(&decl.ty);
+                    self.types.insert(decl.id, ty);
+                    self.generate_function(args, statments, name, decl.id);
                 }
                 HirDeclarationKind::ElementDeclaration { props } => {
-                    let mut tys: Vec<usize> = Vec::new();
                     let HirType::Component { props: ref decl_ty } = decl.ty else {
                         unreachable!("Type of element decl should be component");
                     };
                     for (_, _, ty) in decl_ty {
-                        let typ = self.get_type_id(ty);
-                        tys.push(typ);
+                        println!("{ty:?}");
                     }
 
                     self.generate_element(decl.id, props);
-                    self.types.push(IntermediateType::Complex(tys));
                 }
             }
         }

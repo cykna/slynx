@@ -1,3 +1,5 @@
+use crate::hir::HirId;
+
 #[derive(Debug, Clone)]
 pub enum IntermediateType {
     Void,
@@ -10,9 +12,9 @@ pub enum IntermediateType {
     Component,
     Str,
     ///Index inside the intermediate repr
-    Complex(Vec<usize>),
-    Vector(usize), //vec of a type
-    Reference(usize),
+    Complex(Vec<IntermediateType>),
+    Vector(Box<IntermediateType>), //vec of a type
+    Reference(HirId),
     ///A function. The first value is the args, and the second one is the return type
-    Function(Vec<usize>, usize),
+    Function(Vec<IntermediateType>, Box<IntermediateType>),
 }
