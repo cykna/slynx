@@ -96,22 +96,144 @@ impl Compiler {
             IntermediateExpr::Int(int) => int.to_string(),
             IntermediateExpr::Float(float) => float.to_string(),
 
-            IntermediateExpr::Binary { lhs, rhs, operator } => {
-                let lhs = self.compile_expression(&ctx.exprs[*lhs as usize], ctx, ir);
-                let rhs = self.compile_expression(&ctx.exprs[*rhs as usize], ctx, ir);
-                format!(
-                    "{lhs}{}{rhs}",
-                    match operator {
-                        Operator::Add => '+',
-                        Operator::Sub => '-',
-                        Operator::Star => '*',
-                        Operator::Slash => '/',
-                    }
-                )
+            IntermediateExpr::IntAdd(a, b) => {
+                let a = self.compile_expression(&ctx.exprs[*a as usize], ctx, ir);
+                let b = self.compile_expression(&ctx.exprs[*b as usize], ctx, ir);
+                format!("({a} + {b}) | 0")
             }
-            IntermediateExpr::Identifier(expr) => {
+            IntermediateExpr::IntSub(a, b) => {
+                let a = self.compile_expression(&ctx.exprs[*a as usize], ctx, ir);
+                let b = self.compile_expression(&ctx.exprs[*b as usize], ctx, ir);
+                format!("({a} - {b}) | 0")
+            }
+            IntermediateExpr::IntMul(a, b) => {
+                let a = self.compile_expression(&ctx.exprs[*a as usize], ctx, ir);
+                let b = self.compile_expression(&ctx.exprs[*b as usize], ctx, ir);
+                format!("({a} * {b}) | 0")
+            }
+            IntermediateExpr::IntDiv(a, b) => {
+                let a = self.compile_expression(&ctx.exprs[*a as usize], ctx, ir);
+                let b = self.compile_expression(&ctx.exprs[*b as usize], ctx, ir);
+
+                format!("({a} / {b}) | 0")
+            }
+            IntermediateExpr::IntMod(a, b) => {
+                let a = self.compile_expression(&ctx.exprs[*a as usize], ctx, ir);
+                let b = self.compile_expression(&ctx.exprs[*b as usize], ctx, ir);
+
+                format!("({a} % {b}) | 0")
+            }
+            IntermediateExpr::IntNeg(a) => {
+                let a = self.compile_expression(&ctx.exprs[*a as usize], ctx, ir);
+                format!("-{a}")
+            }
+            IntermediateExpr::IntRsh(a, b) => {
+                let a = self.compile_expression(&ctx.exprs[*a as usize], ctx, ir);
+                let b = self.compile_expression(&ctx.exprs[*b as usize], ctx, ir);
+
+                format!("({a} >> {b})")
+            }
+            IntermediateExpr::IntLsh(a, b) => {
+                let a = self.compile_expression(&ctx.exprs[*a as usize], ctx, ir);
+                let b = self.compile_expression(&ctx.exprs[*b as usize], ctx, ir);
+
+                format!("({a} << {b})")
+            }
+            IntermediateExpr::IntNot(a) => {
+                let a = self.compile_expression(&ctx.exprs[*a as usize], ctx, ir);
+                format!("~{a}")
+            }
+            IntermediateExpr::IntAnd(a, b) => {
+                let a = self.compile_expression(&ctx.exprs[*a as usize], ctx, ir);
+                let b = self.compile_expression(&ctx.exprs[*b as usize], ctx, ir);
+
+                format!("({a} & {b})")
+            }
+            IntermediateExpr::IntOr(a, b) => {
+                let a = self.compile_expression(&ctx.exprs[*a as usize], ctx, ir);
+                let b = self.compile_expression(&ctx.exprs[*b as usize], ctx, ir);
+
+                format!("({a} | {b})")
+            }
+            IntermediateExpr::IntXor(a, b) => {
+                let a = self.compile_expression(&ctx.exprs[*a as usize], ctx, ir);
+                let b = self.compile_expression(&ctx.exprs[*b as usize], ctx, ir);
+
+                format!("({a} ^ {b})")
+            }
+            IntermediateExpr::Read(expr) => {
                 let name = self.names.get(&expr).unwrap();
                 name.to_string()
+            }
+            IntermediateExpr::FloatNeg(a) => {
+                let a = self.compile_expression(&ctx.exprs[*a as usize], ctx, ir);
+                format!("-{a}")
+            }
+            IntermediateExpr::FloatAdd(a, b) => {
+                let a = self.compile_expression(&ctx.exprs[*a as usize], ctx, ir);
+                let b = self.compile_expression(&ctx.exprs[*b as usize], ctx, ir);
+
+                format!("({a} + {b})")
+            }
+            IntermediateExpr::FloatSub(a, b) => {
+                let a = self.compile_expression(&ctx.exprs[*a as usize], ctx, ir);
+                let b = self.compile_expression(&ctx.exprs[*b as usize], ctx, ir);
+
+                format!("({a} - {b})")
+            }
+            IntermediateExpr::FloatMul(a, b) => {
+                let a = self.compile_expression(&ctx.exprs[*a as usize], ctx, ir);
+                let b = self.compile_expression(&ctx.exprs[*b as usize], ctx, ir);
+
+                format!("({a} * {b})")
+            }
+            IntermediateExpr::FloatDiv(a, b) => {
+                let a = self.compile_expression(&ctx.exprs[*a as usize], ctx, ir);
+                let b = self.compile_expression(&ctx.exprs[*b as usize], ctx, ir);
+
+                format!("({a} / {b})")
+            }
+            IntermediateExpr::FloatMod(a, b) => {
+                let a = self.compile_expression(&ctx.exprs[*a as usize], ctx, ir);
+                let b = self.compile_expression(&ctx.exprs[*b as usize], ctx, ir);
+
+                format!("({a} % {b})")
+            }
+            IntermediateExpr::CmpEq(a, b) => {
+                let a = self.compile_expression(&ctx.exprs[*a as usize], ctx, ir);
+                let b = self.compile_expression(&ctx.exprs[*b as usize], ctx, ir);
+
+                format!("({a} === {b})")
+            }
+            IntermediateExpr::CmpNe(a, b) => {
+                let a = self.compile_expression(&ctx.exprs[*a as usize], ctx, ir);
+                let b = self.compile_expression(&ctx.exprs[*b as usize], ctx, ir);
+
+                format!("({a} !== {b})")
+            }
+            IntermediateExpr::CmpLt(a, b) => {
+                let a = self.compile_expression(&ctx.exprs[*a as usize], ctx, ir);
+                let b = self.compile_expression(&ctx.exprs[*b as usize], ctx, ir);
+
+                format!("({a} < {b})")
+            }
+            IntermediateExpr::CmpLe(a, b) => {
+                let a = self.compile_expression(&ctx.exprs[*a as usize], ctx, ir);
+                let b = self.compile_expression(&ctx.exprs[*b as usize], ctx, ir);
+
+                format!("({a} <= {b})")
+            }
+            IntermediateExpr::CmpGt(a, b) => {
+                let a = self.compile_expression(&ctx.exprs[*a as usize], ctx, ir);
+                let b = self.compile_expression(&ctx.exprs[*b as usize], ctx, ir);
+
+                format!("({a} > {b})")
+            }
+            IntermediateExpr::CmpGe(a, b) => {
+                let a = self.compile_expression(&ctx.exprs[*a as usize], ctx, ir);
+                let b = self.compile_expression(&ctx.exprs[*b as usize], ctx, ir);
+
+                format!("({a} >= {b})")
             }
             IntermediateExpr::Element {
                 id,
