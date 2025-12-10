@@ -124,12 +124,12 @@ impl Parser {
     pub fn parse_multiplicative(&mut self) -> Result<ASTExpression, ParseError> {
         let mut lhs = self.parse_primary()?;
         while let Ok(curr) = self.peek()
-            && matches!(curr.kind, TokenKind::Plus | TokenKind::Sub)
+            && matches!(curr.kind, TokenKind::Star | TokenKind::Slash)
         {
-            let op = if let TokenKind::Plus = self.eat()?.kind {
-                Operator::Add
+            let op = if let TokenKind::Star = self.eat()?.kind {
+                Operator::Star
             } else {
-                Operator::Sub
+                Operator::Slash
             };
             let rhs = self.parse_primary()?;
             lhs = ASTExpression {
