@@ -5,6 +5,7 @@ pub mod macros;
 mod scope;
 pub mod types;
 use std::{
+    arch::x86_64::_MM_MANTISSA_SIGN_ENUM,
     collections::HashMap,
     mem::discriminant,
     sync::{Arc, atomic::AtomicU64},
@@ -231,17 +232,26 @@ impl SlynxHir {
     }
     ///Retrieves the type of the provided `name` but in the global scope
     pub fn retrieve_type_of_name(
-        &mut self,
+        &self,
         name: &GenericIdentifier,
         span: &Span,
     ) -> Result<HirType, HIRError> {
         match HirType::new(name) {
             Ok(value) => Ok(value),
             Err(_) => {
-                if let Some(name_id) = self.names.get(&name.identifier)
-                    && let Some(ty) = self.types.get(name_id)
-                {
-                    Ok(ty.clone())
+                if let Some(name_id) = self.names.get(&name.identifier) {
+                    let generics = if let Some(ref generics) = name.generic {
+                        generics
+                            .into_iter()
+                            .map(|name| self.retrieve_type_of_name(&name, span))
+                            .collect::<Result<_, _>>()?
+                    } else {
+                        Vec::new()
+                    };
+                    Ok(HirType::Reference {
+                        rf: *name_id,
+                        generics,
+                    })
                 } else {
                     Err(HIRError {
                         kind: HIRErrorKind::NameNotRecognized(name.identifier.clone()),
@@ -322,10 +332,13 @@ impl SlynxHir {
         ty: &HirType,
     ) -> Result<Vec<ElementValueDeclaration>, HIRError> {
         let mut out = Vec::with_capacity(values.len());
-        let HirType::Component { props } = ty else {
-            unreachable!("The type should be a component instead");
+        let HirType::Reference { rf, .. } = ty else {
+            unreachable!("The type of 'element value' should be a reference");
         };
 
+        let Some(HirType::Component { props }) = self.types.get(rf).cloned() else {
+            unreachable!("Reference of element should be a component type");
+        };
         let accepting_children = props
             .iter()
             .find(|prop| {
@@ -373,13 +386,10 @@ impl SlynxHir {
                 }
                 ElementValue::Element(element) => {
                     if accepting_children {
-                        let (name, ty) = self.retrieve_information_of(
-                            &element.name.identifier,
-                            &element.name.span,
-                        )?;
+                        let ty = self.retrieve_type_of_name(&element.name, &element.name.span)?;
                         ElementValueDeclaration::Child {
-                            name,
                             values: self.resolve_element_values(element.values, &ty)?,
+                            name: ty,
                             span: element.span,
                         }
                     } else {
@@ -478,13 +488,17 @@ impl SlynxHir {
             }
             ASTExpressionKind::FloatLiteral(float) => Ok(HirExpression::float(float, expr.span)),
             ASTExpressionKind::Element(element) => {
-                let (id, ty) =
-                    self.retrieve_information_of(&element.name.identifier, &element.span)?;
+                let ty = self.retrieve_type_of_name(&element.name, &element.span)?;
+                let (id, ty) = if let HirType::Reference { rf, .. } = ty {
+                    (rf.clone(), ty)
+                } else {
+                    self.retrieve_information_of(&element.name.identifier, &element.span)?
+                };
 
                 Ok(HirExpression {
                     kind: HirExpressionKind::Element {
-                        name: id,
                         values: self.resolve_element_values(element.values, &ty)?,
+                        name: ty,
                     },
                     id: HirId::new(),
                     ty: HirType::Reference {

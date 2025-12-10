@@ -168,14 +168,17 @@ impl TypeChecker {
             HirExpressionKind::Identifier(_) => self.resolve(&expr.ty)?,
 
             HirExpressionKind::Element {
-                name,
+                ref name,
                 ref mut values,
             } => {
+                let HirType::Reference { rf, .. } = name else {
+                    unreachable!("Type of child should be a reference")
+                };
                 let parent = self
                     .types
-                    .get_mut(&name)
+                    .get_mut(rf)
                     .ok_or(TypeError {
-                        kind: TypeErrorKind::Unrecognized(name),
+                        kind: TypeErrorKind::Unrecognized(*rf),
                         span: span.clone(),
                     })?
                     .clone();

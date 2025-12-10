@@ -106,7 +106,10 @@ impl Monomorphizer {
                 };
                 expr.ty = monomorphized.ty.clone();
                 self.elements.push(monomorphized);
-                *name = new_id;
+                *name = HirType::Reference {
+                    rf: new_id,
+                    generics: Vec::new(),
+                };
             }
         }
     }

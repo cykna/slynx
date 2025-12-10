@@ -35,7 +35,9 @@ impl TypeChecker {
                                 self.types.insert(*id, props[index].2.clone());
                             }
                         }
-                        ElementValueDeclaration::Child { .. } => {}
+                        ElementValueDeclaration::Child { name, values, span } => {
+                            println!("{name:?} {values:#?}");
+                        }
                     }
                 }
             }
@@ -65,11 +67,14 @@ impl TypeChecker {
                     }
                 }
                 ElementValueDeclaration::Child { name, values, span } => {
+                    let HirType::Reference { rf, .. } = name else {
+                        unreachable!("Type of child should be a reference");
+                    };
                     let ty = self
                         .types
-                        .get(name)
+                        .get(rf)
                         .ok_or(TypeError {
-                            kind: TypeErrorKind::Unrecognized(*name),
+                            kind: TypeErrorKind::Unrecognized(*rf),
                             span: span.clone(),
                         })?
                         .clone();

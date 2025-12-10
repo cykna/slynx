@@ -131,7 +131,7 @@ impl SlynxContext {
             .get(path)
             .expect("Path should be provided on the context");
         let out = match lines.binary_search(&start) {
-            Ok(v) => (v, start - lines[v], &source[start..end]),
+            Ok(v) => (v, start - lines[v], &source[start..=end]),
             Err(e) => {
                 let column = {
                     let mut column = start.saturating_sub(lines[e.saturating_sub(1)]);
@@ -141,9 +141,9 @@ impl SlynxContext {
                     column
                 };
                 let source = if e == 0 {
-                    &source[0..end]
+                    &source[0..=end]
                 } else {
-                    &source[start..end]
+                    &source[start..=end]
                 };
                 (e + 1, column, source)
             }

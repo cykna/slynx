@@ -10,8 +10,8 @@ use crate::{
     hir::{
         HirId, SlynxHir,
         declaration::{
-            ElementValueDeclaration, HirDeclaration, HirDeclarationKind, HirExpression,
-            HirExpressionKind, HirStatment, HirStatmentKind,
+            ElementValueDeclaration, HirDeclarationKind, HirExpression, HirExpressionKind,
+            HirStatment, HirStatmentKind,
         },
         types::HirType,
     },
@@ -187,7 +187,10 @@ impl IntermediateRepr {
         }
     }
     ///Creates a new child on the current context and returns the element expression and the child id
-    fn generate_child(&mut self, name: HirId, values: Vec<ElementValueDeclaration>) -> usize {
+    fn generate_child(&mut self, name: HirType, values: Vec<ElementValueDeclaration>) -> usize {
+        let HirType::Reference { rf, .. } = name else {
+            unreachable!();
+        };
         let mut props = Vec::new();
         let mut children = Vec::new();
         for value in values {
@@ -216,7 +219,7 @@ impl IntermediateRepr {
         let eidx = self
             .active_context()
             .insert_expr(IntermediateExpr::Element {
-                id: name,
+                id: rf,
                 props,
                 children,
             });

@@ -71,9 +71,20 @@ impl SlynxHir {
                 ElementDeffinitionKind::Child(child) => {
                     let (id, ty) =
                         self.retrieve_information_of(&child.name.identifier, &child.span)?;
+                    let generic_types = if let Some(concretes) = child.name.generic {
+                        concretes
+                            .iter()
+                            .map(|concrete| self.retrieve_type_of_name(concrete, &child.span))
+                            .collect::<Result<_, _>>()?
+                    } else {
+                        Vec::new()
+                    };
                     let values = self.resolve_element_values(child.values, &ty)?;
                     out.push(ElementValueDeclaration::Child {
-                        name: id,
+                        name: HirType::Reference {
+                            rf: id,
+                            generics: generic_types,
+                        },
                         values,
                         span: child.span,
                     })

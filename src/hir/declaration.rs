@@ -37,7 +37,7 @@ pub enum ElementValueDeclaration {
         span: Span,
     },
     Child {
-        name: HirId,
+        name: HirType,
         values: Vec<ElementValueDeclaration>,
         span: Span,
     },
@@ -105,8 +105,8 @@ pub enum HirExpressionKind {
     },
     Identifier(HirId),
     Element {
-        name: HirId,
         ///reference to a type
+        name: HirType,
         values: Vec<ElementValueDeclaration>,
     },
 }

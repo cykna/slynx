@@ -285,11 +285,14 @@ impl TypeChecker {
                         }
                         ElementValueDeclaration::Js(_) => {} //since this shit is raw js, there's no way to know anything about it
                         ElementValueDeclaration::Child { name, values, span } => {
+                            let HirType::Reference { rf, generics } = name else {
+                                unreachable!("Type of child should be a reference")
+                            };
                             let ty = self
                                 .types
-                                .get(name)
+                                .get(rf)
                                 .ok_or(TypeError {
-                                    kind: TypeErrorKind::Unrecognized(*name),
+                                    kind: TypeErrorKind::Unrecognized(*rf),
                                     span: span.clone(),
                                 })?
                                 .clone();
