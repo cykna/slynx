@@ -39,6 +39,7 @@ pub enum TokenKind {
     Func,
     Pub,
     Prop,
+    Object,
 }
 
 impl Token {
