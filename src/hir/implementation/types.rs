@@ -9,7 +9,6 @@ use crate::{
 
 impl SlynxHir {
     ///Creates an hir id for the provided `value` and `name` on the current scope
-
     pub fn create_hirid_for(&mut self, name: String, ty: HirType) -> HirId {
         let id = HirId::new();
         self.names.insert(name.clone(), id);
