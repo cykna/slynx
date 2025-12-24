@@ -1,4 +1,3 @@
-
 mod implementation;
 pub mod declaration;
 pub mod error;
@@ -20,7 +19,7 @@ use crate::{
         error::{HIRError, HIRErrorKind},
         macros::{DeclarationMacro, ElementMacro, StatmentMacro},
         scope::HIRScope,
-        types::{HirType, HirValueKind},
+        types::{HirType},
     },
     parser::ast::{
         ASTDeclaration, ASTDeclarationKind,ASTStatment,
@@ -293,37 +292,15 @@ impl SlynxHir {
     ///Hoist the provided `ast` declaration, with so no errors of undefined values because declared later may occurr
     fn hoist(&mut self, ast: &ASTDeclaration) -> Result<(), HIRError> {
         match &ast.kind {
-            ASTDeclarationKind::ObjectDeclaration { name, fields } => {
-                
-            }
             ASTDeclarationKind::MacroCall(..) => {}
+            ASTDeclarationKind::ObjectDeclaration { name, fields } => self.hoist_object(name, fields)?, 
+            
             ASTDeclarationKind::FuncDeclaration {
                 name,
                 args,
                 return_type,
                 ..
-            } => {
-                let args = {
-                    let mut vec = Vec::with_capacity(args.len());
-                    for arg in args {
-                        let ty = self.retrieve_type_of_name(&arg.kind, &arg.span)?;
-                        vec.push(ty);
-                    }
-                    vec
-                };
-                let func_ty = HirType::Function {
-                    args,
-                    return_type: Box::new(
-                        self.retrieve_type_of_name(&return_type, &return_type.span)?,
-                    ),
-                };
-
-                self.create_hirid_for(
-                    name.to_string(), //add suport for generic identifier
-                    
-                    func_ty,
-                );
-            }
+            } => self.hoist_function(name,args, return_type)?,
             ASTDeclarationKind::ElementDeclaration {
                 name, deffinitions, ..
             } => {
@@ -361,7 +338,7 @@ impl SlynxHir {
     fn resolve(&mut self, ast: ASTDeclaration) -> Result<(), HIRError> {
         match ast.kind {
             ASTDeclarationKind::MacroCall(..) => {}
-            ASTDeclarationKind::ObjectDeclaration { name, fields } => {}
+            ASTDeclarationKind::ObjectDeclaration { name, fields } => self.resolve_object(name, fields)?,
             ASTDeclarationKind::FuncDeclaration {
                 name,
                 args,
