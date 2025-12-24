@@ -104,6 +104,10 @@ pub enum HirExpressionKind {
         ///reference to a type
         values: Vec<ElementValueDeclaration>,
     },
+    Object {
+        name: HirId,
+        fields: Vec<HirExpression>
+    }
 }
 impl HirExpression {
     ///Creates a int expression that must be infered.
