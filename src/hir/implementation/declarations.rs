@@ -129,7 +129,6 @@ impl SlynxHir {
                         },
                         span: def.span,
                     });
-
                     self.last_scope().insert_name(id, name);
                     prop_idx += 1;
                 }

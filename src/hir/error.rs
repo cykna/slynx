@@ -59,6 +59,9 @@ impl std::fmt::Display for HIRError {
             HIRErrorKind::NameAlreadyDefined(name) => {
                 format!("The name '{name}' was already defined before. Use a different name")
             }
+            HIRErrorKind::MissingProperty { prop_name } => {
+                format!("Property named as '{prop_name}' is required but wasn't provided")
+            }
         };
         write!(f, "{out}")
     }
