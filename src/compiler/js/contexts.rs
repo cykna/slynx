@@ -9,9 +9,9 @@ use crate::{
 impl WebCompiler {
     pub fn hoist_ctx(&mut self, ctx: &IntermediateContext) {
         match ctx.ty {
-            IntermediateContextType::Element { ref properties, .. } => {}
+            IntermediateContextType::Element { .. } => {}
             IntermediateContextType::Function {
-                ref args, ref ret, ..
+                ..
             } => {}
         }
     }
@@ -22,9 +22,6 @@ impl WebCompiler {
                 self.compile_component(ctx.id, &properties, ctx, ir);
             }
             IntermediateContextType::Function {
-                instructions,
-                args,
-                ret,
                 ..
             } => {}
         }

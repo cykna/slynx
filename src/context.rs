@@ -4,7 +4,7 @@ use color_eyre::{eyre::Result, owo_colors::OwoColorize};
 
 use crate::{
     checker::TypeChecker,
-    compiler::Compiler,
+    compiler::slynx_compiler::SlynxCompiler,
     hir::{SlynxHir, macros::js::JSMacro},
     intermediate::IntermediateRepr,
     parser::{
@@ -148,7 +148,7 @@ impl SlynxContext {
         self.entry_point.to_string_lossy().to_string()
     }
 
-    pub fn start_compilation(self) -> Result<()> {
+    pub fn start_compilation<S:SlynxCompiler>(self, compiler: S) -> Result<()> {
         let stream = match Lexer::tokenize(self.get_entry_point_source()) {
             Ok(value) => value,
             Err(e) => match e {
@@ -241,7 +241,7 @@ impl SlynxContext {
         let mut ir = IntermediateRepr::new();
         ir.generate(hir.declarations);
 
-        let out = Compiler::new().compile(&ir);
+        let out = compiler.compile(ir);
         std::fs::write(self.entry_point.with_extension("js"), out)?;
         Ok(())
     }

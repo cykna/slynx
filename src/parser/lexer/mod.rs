@@ -1,7 +1,7 @@
 pub mod error;
 use std::{collections::VecDeque, ops::Index};
 
-use color_eyre::eyre::Result;
+
 
 use crate::parser::{
     ast::Span,

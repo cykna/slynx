@@ -2,7 +2,7 @@ use crate::{
     hir::{
         HirId, SlynxHir,
         error::{HIRError, HIRErrorKind},
-        types::{HirType, HirValue},
+        types::HirType,
     },
     parser::ast::{GenericIdentifier, Span},
 };

@@ -1,7 +1,6 @@
 pub mod declaration;
 pub mod error;
 mod implementation;
-mod implementation;
 pub mod macros;
 mod scope;
 pub mod types;
@@ -327,7 +326,7 @@ impl SlynxHir {
                 self.create_hirid_for(
                     name.to_string(), //add support for generic identifier
                     HirType::Component { props },
-                )?;
+                );
             }
         }
         Ok(())

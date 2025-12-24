@@ -48,7 +48,7 @@ impl std::fmt::Display for TypeError {
             TypeErrorKind::IncompatibleTypes { lhs, rhs } => format!(
                 "Incompatible types. Was expecting to receive type '{lhs:?}' instead got type '{rhs:?}'"
             ),
-            TypeErrorKind::Unrecognized(id) => format!("Tem que fazer"),
+            TypeErrorKind::Unrecognized(_) => format!("Tem que fazer"),
         };
         write!(f, "{out}")
     }
