@@ -78,6 +78,7 @@ pub enum TokenKind {
     Func,
     Pub,
     Prop,
+    Object,
 }
 
 impl std::fmt::Display for Token {

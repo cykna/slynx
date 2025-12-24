@@ -1,0 +1,10 @@
+object Pessoa{
+    name: str
+}
+
+component Sla {}
+
+func main(): Component {
+    Pessoa(name:"123");
+    Sla{}
+}

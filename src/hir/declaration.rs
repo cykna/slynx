@@ -1,9 +1,17 @@
-use std::borrow::Cow;
-
 use crate::{
     hir::{HirId, types::HirType},
     parser::ast::{Operator, Span},
 };
+
+#[derive(Debug)]
+pub enum SpecializedElement {
+    Text {
+        text: Box<HirExpression>,
+    },
+    Div {
+        children: Vec<ElementValueDeclaration>,
+    },
+}
 
 #[derive(Debug)]
 #[repr(C)]
@@ -41,7 +49,7 @@ pub enum ElementValueDeclaration {
         values: Vec<ElementValueDeclaration>,
         span: Span,
     },
-    Js(Cow<'static, str>),
+    Specialized(SpecializedElement),
 }
 
 #[derive(Debug)]
@@ -83,20 +91,6 @@ impl HirExpression {
 pub enum HirExpressionKind {
     Int(i32),
     StringLiteral(String),
-    Int8x4(
-        Box<HirExpression>,
-        Box<HirExpression>,
-        Box<HirExpression>,
-        Box<HirExpression>,
-    ),
-    Uint8x4(
-        Box<HirExpression>,
-        Box<HirExpression>,
-        Box<HirExpression>,
-        Box<HirExpression>,
-    ),
-    Int16x2(Box<HirExpression>, Box<HirExpression>),
-    Uint16x2(Box<HirExpression>, Box<HirExpression>),
     Float(f32),
     Binary {
         lhs: Box<HirExpression>,
@@ -104,6 +98,7 @@ pub enum HirExpressionKind {
         rhs: Box<HirExpression>,
     },
     Identifier(HirId),
+    Specialized(SpecializedElement),
     Element {
         name: HirId,
         ///reference to a type

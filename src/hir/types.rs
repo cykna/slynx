@@ -8,6 +8,10 @@ use crate::{
 
 #[derive(Debug, Clone)]
 pub enum HirType {
+    Struct {
+        fields: Vec<HirType>,
+    },
+
     Vector {
         ty: Box<HirType>,
     },
@@ -35,15 +39,6 @@ pub enum HirType {
     ///A type used for ints. There's no Uint because js is gay. The difference between this to floats is that this is limited to be 32bits
     ///and it's optimized to use alot of byte operation to make things faster
     Int,
-    ///A type used for 2 int16 in a single one
-    Int16x2,
-    ///A type used for 8 int8 in a signel one
-    Int8x4,
-
-    ///A type used for 2 int16 in a single one
-    Uint16x2,
-    ///A type used for 8 int8 in a signel one
-    Uint8x4,
 
     ///Equivalent type of `string` in js
     Str,
@@ -68,10 +63,6 @@ impl HirType {
             "int" => Ok(Self::Int),
             "float" => Ok(Self::Float),
             "str" => Ok(Self::Str),
-            "uint16x2" => Ok(Self::Uint16x2),
-            "uint8x4" => Ok(Self::Uint8x4),
-            "int16x2" => Ok(Self::Int16x2),
-            "int8x4" => Ok(Self::Int8x4),
             "Vector" => {
                 let generic_ty = gener.generic.as_ref().ok_or(HIRError {
                     kind: HIRErrorKind::InvalidType {
@@ -99,11 +90,4 @@ pub enum HirValueKind {
     Property { modifier: PropertyModifier },
     Function { modifier: PropertyModifier },
     Component { modifier: PropertyModifier },
-}
-
-///The representation of a compile or runtime value on the slynx. This can be either a variable, a property or a function
-#[derive(Debug)]
-pub struct HirValue {
-    pub kind: HirValueKind,
-    pub ty: HirType,
 }

@@ -172,6 +172,7 @@ impl Lexer {
                         idx -= 1;
                         let span = Span { start, end: idx };
                         match buffer.as_str() {
+                            "object"=> Token { kind: TokenKind::Object, span },
                             "component" => Token {
                                 kind: TokenKind::Component,
                                 span,

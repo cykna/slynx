@@ -1,3 +1,4 @@
+pub mod objects;
 pub mod ast;
 mod component;
 pub mod error;
@@ -9,7 +10,7 @@ mod statment;
 mod types;
 
 use crate::parser::{
-    ast::{ASTDeclaration, ASTDeclarationKind, MacroCallDecl, Span},
+    ast::{ASTDeclaration},
     error::ParseError,
     lexer::{
         TokenStream,
@@ -71,6 +72,10 @@ impl Parser {
                         unreachable!();
                     };
                     out.push(self.parse_macro(name, span)?)
+                }
+                TokenKind::Object => {
+                    let Token {span, ..} = self.eat()?;
+                    out.push(self.parse_object(span)?);
                 }
                 TokenKind::Component => {
                     let Token { span, .. } = self.eat()?;
