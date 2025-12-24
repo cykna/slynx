@@ -91,6 +91,9 @@ impl IntermediateRepr {
                 }
                 sidx
             }
+            _ => {
+                0
+            }
         }
     }
     ///Creates a new child on the current context and returns the component expression and the child id

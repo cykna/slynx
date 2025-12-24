@@ -22,6 +22,9 @@ pub enum HIRErrorKind {
     MissingProperty {
         prop_names: Vec<String>,
     },
+    PropertyNotRecognized {
+        prop_names: Vec<String>
+    },
     PropertyNotVisible {
         prop_name: String,
     },
@@ -61,6 +64,10 @@ impl std::fmt::Display for HIRError {
             HIRErrorKind::MissingProperty { prop_names } => {
                 let names = prop_names.into_iter().map(|v| format!("'{v}'")).collect::<Vec<String>>().join(", ");
                 format!("Property(ies) named as {names} is required but wasn't provided")
+            }
+            HIRErrorKind::PropertyNotRecognized{ prop_names } => {
+                let names = prop_names.into_iter().map(|v| format!("'{v}'")).collect::<Vec<String>>().join(", ");
+                format!("Property(ies) named as {names} are not recognized for this object")
             }
         };
         write!(f, "{out}")
