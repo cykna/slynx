@@ -1,4 +1,4 @@
-use crate::{hir::declaration::HirExpression, parser::{
+use crate::{parser::{
     Parser,
     ast::{
         ASTExpression, ASTExpressionKind, ElementExpression, ElementValue, GenericIdentifier, NamedExpr, Operator, Span
@@ -81,6 +81,12 @@ impl Parser {
         while self.peek()?.kind != TokenKind::RParen {
             let named_expr = self.parse_named_expr()?;
             fields.push(named_expr);
+            if let TokenKind::RParen = self.peek()?.kind {
+                break;
+            }else {
+                self.expect(&TokenKind::Comma)?;
+            }
+            
         }
         let Token {span: end, ..} = self.expect(&TokenKind::RParen)?;
         Ok(ASTExpression {
