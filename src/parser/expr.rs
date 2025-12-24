@@ -81,15 +81,11 @@ impl Parser {
         while self.peek()?.kind != TokenKind::RParen {
             let named_expr = self.parse_named_expr()?;
             fields.push(named_expr);
-<<<<<<< HEAD
             if let TokenKind::RParen = self.peek()?.kind {
                 break;
             }else {
                 self.expect(&TokenKind::Comma)?;
-            }
-            
-=======
->>>>>>> 96a86f0 (feat: added support for parsing object expressions)
+            }            
         }
         let Token {span: end, ..} = self.expect(&TokenKind::RParen)?;
         Ok(ASTExpression {
@@ -109,40 +105,22 @@ impl Parser {
             TokenKind::Lt => {
                 let ty = self.parse_type()?;
                 if let TokenKind::LBrace = self.peek()?.kind {
-<<<<<<< HEAD
-                    let element = self.parse_element_expr_with_name(ty)?;
+                    let element = self.parse_component_expr_with_name(ty)?;
                     Ok(Some(ASTExpression {
                         span: element.span.clone(),
                         kind: ASTExpressionKind::Component(element),
-=======
-                    let component = self.parse_component_expr_with_name(ty)?;
-                    Ok(Some(ASTExpression {
-                        span: component.span.clone(),
-                        kind: ASTExpressionKind::Component(component),
->>>>>>> 96a86f0 (feat: added support for parsing object expressions)
                     }))
                 } else {
                     Err(ParseError::UnexpectedToken(self.eat()?, "'{'".to_string()))
                 }
-<<<<<<< HEAD
             }
             TokenKind::LBrace => {
-                let element = self.parse_element_expr()?;
+                let element = self.parse_component_expr()?;
                 Ok(Some(ASTExpression {
                     span: element.span.clone(),
                     kind: ASTExpressionKind::Component(element),
                 }))
             }
-=======
-            }
-            TokenKind::LBrace => {
-                let component = self.parse_component_expr()?;
-                Ok(Some(ASTExpression {
-                    span: component.span.clone(),
-                    kind: ASTExpressionKind::Component(component),
-                }))
-            }
->>>>>>> 96a86f0 (feat: added support for parsing object expressions)
             TokenKind::LParen => {
                 
                 match (&self.peek_at(2)?.kind, &self.peek_at(3)?.kind) { //check if its name(a,b) or name(a:b), or name(.a:b)
