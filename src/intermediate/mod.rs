@@ -8,7 +8,7 @@ use std::collections::HashMap;
 use crate::{
     hir::{
         HirId,
-        declaration::{
+        deffinitions::{
             ElementValueDeclaration, HirDeclaration, HirDeclarationKind, HirExpression,
             HirExpressionKind, HirStatment, HirStatmentKind, SpecializedElement,
         },
@@ -90,6 +90,9 @@ impl IntermediateRepr {
                     self.active_context().insert_child(sidx);
                 }
                 sidx
+            }
+            _ => {
+                0
             }
         }
     }

@@ -1,4 +1,4 @@
-use crate::{hir::{SlynxHir, declaration::{HirStatment, HirStatmentKind}, error::HIRError}, parser::ast::{ASTStatment, ASTStatmentKind}};
+use crate::{hir::{SlynxHir, deffinitions::{HirStatment, HirStatmentKind}, error::HIRError}, parser::ast::{ASTStatment, ASTStatmentKind}};
 
 impl SlynxHir {
     
