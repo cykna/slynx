@@ -1,7 +1,7 @@
 use crate::{
     hir::{
         HirId, SlynxHir,
-        declaration::{ElementValueDeclaration, SpecializedElement},
+        deffinitions::{ElementValueDeclaration, SpecializedElement},
         error::{HIRError, HIRErrorKind},
         types::HirType,
     },
@@ -17,24 +17,28 @@ impl SlynxHir {
         name: GenericIdentifier,
         fields: Vec<ObjectField>,
     ) -> Result<(), HIRError> {
-        let fields = {
+        let mut fields = {
             let mut out = Vec::with_capacity(fields.len());
-            for field in fields {
+            for field in fields {  
                 out.push(self.retrieve_type_of_name(&field.name.kind, &field.name.span)?);
             }
             out
         };
-        self.create_hirid_for(name.to_string(), HirType::Struct { fields });
+        let HirType::Struct { fields:ty_field }= self.retrieve_ref_to_type(&name.identifier, &name.span)? else {
+            unreachable!("WTF. Type of object should be a Struct ty");
+        };
+        ty_field.append(&mut fields);
         Ok(())
     }
 
     pub fn hoist_object(
         &mut self,
         name: &GenericIdentifier,
-        _: &Vec<ObjectField>,
+        obj_fields: &Vec<ObjectField>,
     ) -> Result<(), HIRError> {
-        self.create_hirid_for(name.to_string(), HirType::Struct { fields: Vec::new() });
-
+        let def_fields = obj_fields.iter().map(|f| f.name.name.clone()).collect();
+        let id = self.create_hirid_for(name.to_string(), HirType::Struct { fields: Vec::new() });
+        self.objects_deffinitions.insert(id, def_fields);
         Ok(())
     }
 
@@ -97,7 +101,7 @@ impl SlynxHir {
         } else {
             Err(HIRError {
                 kind: HIRErrorKind::MissingProperty {
-                    prop_name: String::from("text"),
+                    prop_names: vec![String::from("text")],
                 },
                 span: span.clone(),
             })
