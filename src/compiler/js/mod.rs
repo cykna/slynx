@@ -44,6 +44,12 @@ impl WebCompiler {
         self.names.insert(id, create_ident(&name));
         self.names.get(&id).cloned().unwrap()
     }
+    
+    ///Maps the provided `id` to the provided `name` and returns it's indent
+    pub fn map_name(&mut self, id: HirId, name:&str) -> Ident {
+        self.names.insert(id, create_ident(&name));
+        self.names.get(&id).cloned().unwrap()
+    }
 }
 
 impl SlynxCompiler for WebCompiler {
@@ -55,7 +61,6 @@ impl SlynxCompiler for WebCompiler {
         ir: &IntermediateRepr,
     ) {
         for inst in instructions {
-            println!("{inst:?}");
             match inst {
                 IntermediateInstruction::Ret(id) => {
                     self.compile_expression(&ctx.exprs[*id], ctx, ir);

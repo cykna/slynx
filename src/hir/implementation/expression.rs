@@ -32,7 +32,7 @@ impl SlynxHir {
                     id: HirId::new(),
                     ty: HirType::Reference {
                         rf: id,
-                        generics: None,
+                        generics: Vec::new()
                     },
                     span: expr.span,
                 })

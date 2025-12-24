@@ -10,7 +10,7 @@ use std::path::PathBuf;
 use clap::Parser;
 use color_eyre::eyre::Result;
 
-use crate::context::SlynxContext;
+use crate::{compiler::js::WebCompiler, context::SlynxContext};
 
 #[derive(Debug, Parser)]
 struct Cli {
@@ -22,6 +22,6 @@ fn main() -> Result<()> {
     let cli = Cli::parse();
     let path = PathBuf::from(cli.target);
     let ctx = SlynxContext::new(path.into())?;
-    ctx.start_compilation()?;
+    ctx.start_compilation(WebCompiler::new())?;
     Ok(())
 }
