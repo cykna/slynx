@@ -1,6 +1,7 @@
 pub mod declaration;
 pub mod error;
 mod implementation;
+mod implementation;
 pub mod macros;
 mod scope;
 pub mod types;
@@ -286,7 +287,6 @@ impl SlynxHir {
     ///Hoist the provided `ast` declaration, with so no errors of undefined values because declared later may occurr
     fn hoist(&mut self, ast: &ASTDeclaration) -> Result<(), HIRError> {
         match &ast.kind {
-            ASTDeclarationKind::ObjectDeclaration { name, fields } => {}
             ASTDeclarationKind::MacroCall(..) => {}
             ASTDeclarationKind::ObjectDeclaration { name, fields } => {
                 self.hoist_object(name, fields)?
