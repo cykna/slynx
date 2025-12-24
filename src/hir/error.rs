@@ -1,5 +1,5 @@
 use crate::{
-    hir::{HirId, declaration::HirExpression},
+    hir::declaration::HirExpression,
     parser::ast::{ElementExpression, Span},
 };
 
@@ -13,7 +13,7 @@ pub struct HIRError {
 pub enum HIRErrorKind {
     TypeNotRecognized(String),
     NameNotRecognized(String),
-    IdNotRecognized(HirId),
+    NameAlreadyDefined(String),
     InvalidBinaryExpression {
         lhs: HirExpression,
         rhs: HirExpression,
@@ -33,34 +33,46 @@ pub enum HIRErrorKind {
     },
 }
 
+impl std::fmt::Display for HIRError {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        let out = match &self.kind {
+            HIRErrorKind::NameNotRecognized(name) => {
+                format!(
+                    "The name '{name}' is not recognized. Check if it exists or you wrote some typo"
+                )
+            }
+            HIRErrorKind::TypeNotRecognized(name) => {
+                format!("Type with name '{name}' is was not defined previously")
+            }
+            HIRErrorKind::InvalidBinaryExpression { .. } => {
+                format!("Invalid binary expression")
+            }
+            HIRErrorKind::PropertyNotVisible { prop_name } => {
+                format!("Property with name '{prop_name}' is not visible")
+            }
+            HIRErrorKind::InvalidChild { .. } => {
+                format!("Invalid child. Component is not expecting children")
+            }
+            HIRErrorKind::InvalidType { ty, reason } => {
+                format!("Invalid type '{ty}' because it's {reason}")
+            }
+            HIRErrorKind::NameAlreadyDefined(name) => {
+                format!("The name '{name}' was already defined before. Use a different name")
+            }
+        };
+        write!(f, "{out}")
+    }
+}
+
 #[derive(Debug)]
 pub enum InvalidTypeReason {
     MissingGeneric,
 }
 
-impl std::fmt::Display for HIRError {
+impl std::fmt::Display for InvalidTypeReason {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
-        match &self.kind {
-            HIRErrorKind::IdNotRecognized(id) => write!(f, "Id not recognized: {:?}", id),
-            HIRErrorKind::NameNotRecognized(name) => write!(f, "Name not recognized: {:?}", name),
-            HIRErrorKind::TypeNotRecognized(ty) => write!(f, "Type not recognized: {:?}", ty),
-            HIRErrorKind::MissingProperty { prop_name } => write!(
-                f,
-                "Property '{prop_name}' is obligatory but wasn't provided"
-            ),
-            HIRErrorKind::InvalidBinaryExpression { lhs, rhs } => {
-                write!(f, "Invalid binary expression: {:?} {:?}", lhs, rhs)
-            }
-            HIRErrorKind::PropertyNotVisible { prop_name } => {
-                write!(f, "Property not visible: {:?}", prop_name)
-            }
-            HIRErrorKind::InvalidChild { child } => write!(f, "Invalid child: {:?}", child),
-
-            HIRErrorKind::InvalidType { ty, reason } => {
-                write!(f, "Invalid type '{ty}', due to: {reason:?}",)
-            }
+        match self {
+            InvalidTypeReason::MissingGeneric => write!(f, "missing generic type"),
         }
     }
 }
-
-impl std::error::Error for HIRError {}

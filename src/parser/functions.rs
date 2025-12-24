@@ -72,6 +72,10 @@ impl Parser {
                 let mut body = Vec::new();
                 while !matches!(self.peek()?.kind, TokenKind::RBrace) {
                     body.push(self.parse_statment()?);
+                    if self.peek()?.kind == TokenKind::RBrace {
+                        continue;
+                    }
+                    self.expect(&TokenKind::SemiColon)?;
                 }
                 let end = self.expect(&TokenKind::RBrace)?.span.end;
                 Ok(ASTDeclaration {
@@ -87,7 +91,12 @@ impl Parser {
                     },
                 })
             }
-            _ => return Err(ParseError::UnexpectedToken(current)),
+            _ => {
+                return Err(ParseError::UnexpectedToken(
+                    current,
+                    "'->' or '{'".to_string(),
+                ));
+            }
         }
     }
 }

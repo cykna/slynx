@@ -330,7 +330,8 @@ impl SlynxHir {
                 self.create_hirid_for(
                     name.to_string(), //add support for generic identifier
                     HirType::Component { props },
-                );
+                    &ast.span,
+                )?;
             }
         }
         Ok(())
@@ -433,7 +434,10 @@ impl SlynxHir {
                     .get::<&str>(&name.as_ref())
                     .ok_or(HIRError {
                         kind: HIRErrorKind::NameNotRecognized(name.clone()),
-                        span: ast.span.clone(),
+                        span: Span {
+                            start: ast.span.start,
+                            end: ast.span.start + name.len(),
+                        },
                     })?;
                 Ok(Some(macr.execute(&args, idx)))
             }

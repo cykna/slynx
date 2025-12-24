@@ -4,7 +4,7 @@ use crate::{
     checker::TypeChecker,
     compiler::Compiler,
     hir::{SlynxHir, macros::js::JSMacro},
-    intermediate::{IntermediateRepr, expr::IntermediateExpr},
+    intermediate::IntermediateRepr,
 };
 
 pub mod checker;
@@ -16,7 +16,7 @@ pub mod intermediate;
 
 pub fn compile_code(path: PathBuf) -> i32 {
     let code = std::fs::read_to_string(&path).unwrap();
-    let tokens = parser::lexer::Lexer::tokenize(&code);
+    let tokens = parser::lexer::Lexer::tokenize(&code).unwrap();
     let mut ast = parser::Parser::new(tokens);
     let decls = ast.parse_declarations().unwrap();
     let mut hir = SlynxHir::new();

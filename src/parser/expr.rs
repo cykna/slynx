@@ -76,7 +76,7 @@ impl Parser {
                             kind: ASTExpressionKind::Element(element),
                         })
                     } else {
-                        Err(ParseError::UnexpectedToken(self.eat()?))
+                        Err(ParseError::UnexpectedToken(self.eat()?, "'{'".to_string()))
                     };
                 } else if matches!(current_kind, TokenKind::LBrace) {
                     let element = self.parse_element_expr()?;
@@ -113,7 +113,10 @@ impl Parser {
                 Ok(expr)
             }
 
-            _ => Err(ParseError::UnexpectedToken(current)),
+            _ => Err(ParseError::UnexpectedToken(
+                current,
+                "an expression".to_string(),
+            )),
         }
     }
 
