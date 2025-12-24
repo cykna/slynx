@@ -16,6 +16,7 @@ impl Parser {
                 visibility: VisibilityModifier::Public,
                 name,
             });
+            
             if self.peek()?.kind == TokenKind::RBrace {
                 break;
             } else {
