@@ -2,13 +2,14 @@ use std::{borrow::Cow, collections::HashMap};
 
 use crate::{
     hir::HirId,
-    intermediate::{expr::IntermediateExpr, node::IntermediateInstruction},
+    intermediate::{expr::IntermediateExpr, node::IntermediateInstruction, types::IntermediateType},
 };
 
 #[derive(Debug)]
 ///A Intermediate property used to bind an id to it's default value on the current context
 pub struct IntermediateProperty {
-    pub id: HirId,
+    pub id: HirId, 
+    pub ty: IntermediateType,
     pub default_value: Option<usize>,
 }
 
@@ -17,7 +18,8 @@ pub enum IntermediateContextType {
     Function {
         name: String,
         instructions: Vec<IntermediateInstruction>,
-        param_len: usize,
+        args: Vec<IntermediateType>,
+        ret: IntermediateType
     },
     Element {
         properties: Vec<IntermediateProperty>,
@@ -38,7 +40,7 @@ pub struct IntermediateContext {
 }
 
 impl IntermediateContext {
-    pub fn new_function(id: HirId, name: String, args_len: usize) -> Self {
+    pub fn new_function(id: HirId, name: String, args: Vec<IntermediateType>, ret:IntermediateType) -> Self {
         Self {
             id,
             exprs: Vec::new(),
@@ -47,7 +49,8 @@ impl IntermediateContext {
             ty: IntermediateContextType::Function {
                 instructions: Vec::new(),
                 name,
-                param_len: args_len,
+                args,
+                ret 
             },
         }
     }

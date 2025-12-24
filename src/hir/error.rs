@@ -18,6 +18,9 @@ pub enum HIRErrorKind {
         lhs: HirExpression,
         rhs: HirExpression,
     },
+    MissingProperty {
+        prop_name: String,
+    },
     PropertyNotVisible {
         prop_name: String,
     },
@@ -41,6 +44,10 @@ impl std::fmt::Display for HIRError {
             HIRErrorKind::IdNotRecognized(id) => write!(f, "Id not recognized: {:?}", id),
             HIRErrorKind::NameNotRecognized(name) => write!(f, "Name not recognized: {:?}", name),
             HIRErrorKind::TypeNotRecognized(ty) => write!(f, "Type not recognized: {:?}", ty),
+            HIRErrorKind::MissingProperty { prop_name } => write!(
+                f,
+                "Property '{prop_name}' is obligatory but wasn't provided"
+            ),
             HIRErrorKind::InvalidBinaryExpression { lhs, rhs } => {
                 write!(f, "Invalid binary expression: {:?} {:?}", lhs, rhs)
             }

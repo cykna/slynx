@@ -7,7 +7,7 @@ use crate::{
         HirId, SlynxHir,
         declaration::{
             ElementValueDeclaration, HirDeclaration, HirDeclarationKind, HirExpression,
-            HirExpressionKind, HirStatment, HirStatmentKind,
+            HirExpressionKind, HirStatment, HirStatmentKind, SpecializedElement,
         },
         types::HirType,
     },
@@ -57,7 +57,6 @@ impl TypeChecker {
                         unreachable!("Element declaration should have type component");
                     };
                     match prop {
-                        ElementValueDeclaration::Js(_) => {}
                         ElementValueDeclaration::Property {
                             index, value, span, ..
                         } => {
@@ -67,7 +66,8 @@ impl TypeChecker {
                                 props[index].2 = self.unify(&props[index].2, &ty, span)?;
                             }
                         }
-                        ElementValueDeclaration::Child { .. } => {}
+                        ElementValueDeclaration::Child { .. }
+                        | ElementValueDeclaration::Specialized(_) => {}
                     }
                 }
             }
@@ -202,6 +202,10 @@ impl TypeChecker {
         }
     }
 
+    fn resolve_specialized(&mut self, _: &mut SpecializedElement) -> Result<(), TypeError> {
+        Ok(())
+    }
+
     fn resolve_element_values(
         &mut self,
         values: &mut Vec<ElementValueDeclaration>,
@@ -214,7 +218,9 @@ impl TypeChecker {
         };
         for value in values {
             match value {
-                ElementValueDeclaration::Js(_) => {}
+                ElementValueDeclaration::Specialized(spec) => {
+                    self.resolve_specialized(spec);
+                }
                 ElementValueDeclaration::Property {
                     index, value, span, ..
                 } => {
@@ -249,138 +255,6 @@ impl TypeChecker {
 
         let calc = match expr.kind {
             HirExpressionKind::Int(_) => HirType::Int,
-            HirExpressionKind::Int8x4(ref mut a, ref mut b, ref mut c, ref mut d) => {
-                let a = self.get_type_of_expr(a, span)?;
-                if !matches!(a, HirType::Int) {
-                    return Err(TypeError {
-                        kind: TypeErrorKind::IncompatibleTypes {
-                            lhs: a,
-                            rhs: HirType::Int,
-                        },
-                        span: span.clone(),
-                    });
-                }
-                let b = self.get_type_of_expr(b, span)?;
-                if !matches!(b, HirType::Int) {
-                    return Err(TypeError {
-                        kind: TypeErrorKind::IncompatibleTypes {
-                            lhs: b,
-                            rhs: HirType::Int,
-                        },
-                        span: span.clone(),
-                    });
-                }
-                let c = self.get_type_of_expr(c, span)?;
-                if !matches!(c, HirType::Int) {
-                    return Err(TypeError {
-                        kind: TypeErrorKind::IncompatibleTypes {
-                            lhs: c,
-                            rhs: HirType::Int,
-                        },
-                        span: span.clone(),
-                    });
-                }
-                let d = self.get_type_of_expr(d, span)?;
-                if !matches!(d, HirType::Int) {
-                    return Err(TypeError {
-                        kind: TypeErrorKind::IncompatibleTypes {
-                            lhs: d,
-                            rhs: HirType::Int,
-                        },
-                        span: span.clone(),
-                    });
-                }
-                HirType::Int8x4
-            }
-            HirExpressionKind::Uint8x4(ref mut a, ref mut b, ref mut c, ref mut d) => {
-                let a = self.get_type_of_expr(a, span)?;
-                if !matches!(a, HirType::Int) {
-                    return Err(TypeError {
-                        kind: TypeErrorKind::IncompatibleTypes {
-                            lhs: a,
-                            rhs: HirType::Int,
-                        },
-                        span: span.clone(),
-                    });
-                }
-                let b = self.get_type_of_expr(b, span)?;
-                if !matches!(b, HirType::Int) {
-                    return Err(TypeError {
-                        kind: TypeErrorKind::IncompatibleTypes {
-                            lhs: b,
-                            rhs: HirType::Int,
-                        },
-                        span: span.clone(),
-                    });
-                }
-                let c = self.get_type_of_expr(c, span)?;
-                if !matches!(c, HirType::Int) {
-                    return Err(TypeError {
-                        kind: TypeErrorKind::IncompatibleTypes {
-                            lhs: c,
-                            rhs: HirType::Int,
-                        },
-                        span: span.clone(),
-                    });
-                }
-                let d = self.get_type_of_expr(d, span)?;
-                if !matches!(d, HirType::Int) {
-                    return Err(TypeError {
-                        kind: TypeErrorKind::IncompatibleTypes {
-                            lhs: d,
-                            rhs: HirType::Int,
-                        },
-                        span: span.clone(),
-                    });
-                }
-                HirType::Uint8x4
-            }
-            HirExpressionKind::Int16x2(ref mut a, ref mut b) => {
-                let a = self.get_type_of_expr(a, span)?;
-                if !matches!(a, HirType::Int) {
-                    return Err(TypeError {
-                        kind: TypeErrorKind::IncompatibleTypes {
-                            lhs: a,
-                            rhs: HirType::Int,
-                        },
-                        span: span.clone(),
-                    });
-                }
-                let b = self.get_type_of_expr(b, span)?;
-                if !matches!(b, HirType::Int) {
-                    return Err(TypeError {
-                        kind: TypeErrorKind::IncompatibleTypes {
-                            lhs: b,
-                            rhs: HirType::Int,
-                        },
-                        span: span.clone(),
-                    });
-                }
-                HirType::Int16x2
-            }
-            HirExpressionKind::Uint16x2(ref mut a, ref mut b) => {
-                let a = self.get_type_of_expr(a, &a.span.clone())?;
-                if !matches!(a, HirType::Int) {
-                    return Err(TypeError {
-                        kind: TypeErrorKind::IncompatibleTypes {
-                            lhs: a,
-                            rhs: HirType::Int,
-                        },
-                        span: span.clone(),
-                    });
-                }
-                let b = self.get_type_of_expr(b, &b.span.clone())?;
-                if !matches!(b, HirType::Int) {
-                    return Err(TypeError {
-                        kind: TypeErrorKind::IncompatibleTypes {
-                            lhs: b,
-                            rhs: HirType::Int,
-                        },
-                        span: span.clone(),
-                    });
-                }
-                HirType::Uint16x2
-            }
             HirExpressionKind::Float(_) => HirType::Float,
             HirExpressionKind::StringLiteral(_) => HirType::Str,
             HirExpressionKind::Binary {
@@ -426,18 +300,6 @@ impl TypeChecker {
             HirExpressionKind::Int(_) => {
                 expr.ty = self.unify(&expr.ty, &HirType::Int, &expr.span)?
             }
-            HirExpressionKind::Uint8x4(..) => {
-                expr.ty = self.unify(&expr.ty, &HirType::Uint8x4, &expr.span)?
-            }
-            HirExpressionKind::Uint16x2(..) => {
-                expr.ty = self.unify(&expr.ty, &HirType::Uint16x2, &expr.span)?
-            }
-            HirExpressionKind::Int8x4(..) => {
-                expr.ty = self.unify(&expr.ty, &HirType::Int8x4, &expr.span)?
-            }
-            HirExpressionKind::Int16x2(..) => {
-                expr.ty = self.unify(&expr.ty, &HirType::Int16x2, &expr.span)?
-            }
             HirExpressionKind::Float(_) => {
                 expr.ty = self.unify(&expr.ty, &HirType::Float, &expr.span)?
             }
@@ -452,6 +314,9 @@ impl TypeChecker {
             }
             HirExpressionKind::Identifier(_) => {
                 expr.ty = self.resolve(&expr.ty)?;
+            }
+            HirExpressionKind::Specialized(_) => {
+                expr.ty = self.unify(&expr.ty, &HirType::GenericComponent, &expr.span)?
             }
             HirExpressionKind::Element {
                 ref name,
@@ -474,7 +339,7 @@ impl TypeChecker {
                                 props[*index].2 = self.unify(&props[*index].2, &ty, &span)?;
                             }
                         }
-                        ElementValueDeclaration::Js(_) => {} //since this shit is raw js, there's no way to know anything about it
+                        ElementValueDeclaration::Specialized(_) => {}
                         ElementValueDeclaration::Child { name, values, span } => {
                             let ty = self
                                 .types

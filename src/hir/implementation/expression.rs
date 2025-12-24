@@ -1,6 +1,14 @@
 use std::mem::discriminant;
 
-use crate::{hir::{HirId, SlynxHir, declaration::{HirExpression, HirExpressionKind}, error::HIRError, types::HirType}, parser::ast::{ASTExpression, ASTExpressionKind, Operator, Span}};
+use crate::{
+    hir::{
+        HirId, SlynxHir,
+        declaration::{HirExpression, HirExpressionKind},
+        error::HIRError,
+        types::HirType,
+    },
+    parser::ast::{ASTExpression, ASTExpressionKind, Operator, Span},
+};
 
 impl SlynxHir {
     ///Ty only serves to tell the type of the expression if it's needed to infer and check if it doesnt correspond
@@ -35,60 +43,7 @@ impl SlynxHir {
                 id: HirId::new(),
                 span: expr.span,
             }),
-            ASTExpressionKind::Int16x2Literal(a, b) => {
-                let a = self.resolve_expr(*a, Some(&HirType::Int))?;
-                let b = self.resolve_expr(*b, Some(&HirType::Int))?;
-                Ok(HirExpression {
-                    id: HirId::new(),
-                    ty: HirType::Int16x2,
-                    kind: HirExpressionKind::Int16x2(Box::new(a), Box::new(b)),
-                    span: expr.span,
-                })
-            }
-            ASTExpressionKind::Uint16x2Literal(a, b) => {
-                let a = self.resolve_expr(*a, Some(&HirType::Int))?;
-                let b = self.resolve_expr(*b, Some(&HirType::Int))?;
-                Ok(HirExpression {
-                    id: HirId::new(),
-                    ty: HirType::Uint16x2,
-                    kind: HirExpressionKind::Uint16x2(Box::new(a), Box::new(b)),
-                    span: expr.span,
-                })
-            }
-            ASTExpressionKind::Int8x4Literal(a, b, c, d) => {
-                let a = self.resolve_expr(*a, Some(&HirType::Int))?;
-                let b = self.resolve_expr(*b, Some(&HirType::Int))?;
-                let c = self.resolve_expr(*c, Some(&HirType::Int))?;
-                let d = self.resolve_expr(*d, Some(&HirType::Int))?;
-                Ok(HirExpression {
-                    id: HirId::new(),
-                    ty: HirType::Int8x4,
-                    kind: HirExpressionKind::Int8x4(
-                        Box::new(a),
-                        Box::new(b),
-                        Box::new(c),
-                        Box::new(d),
-                    ),
-                    span: expr.span,
-                })
-            }
-            ASTExpressionKind::Uint8x4Literal(a, b, c, d) => {
-                let a = self.resolve_expr(*a, Some(&HirType::Int))?;
-                let b = self.resolve_expr(*b, Some(&HirType::Int))?;
-                let c = self.resolve_expr(*c, Some(&HirType::Int))?;
-                let d = self.resolve_expr(*d, Some(&HirType::Int))?;
-                Ok(HirExpression {
-                    id: HirId::new(),
-                    ty: HirType::Uint8x4,
-                    kind: HirExpressionKind::Uint8x4(
-                        Box::new(a),
-                        Box::new(b),
-                        Box::new(c),
-                        Box::new(d),
-                    ),
-                    span: expr.span,
-                })
-            }
+
             ASTExpressionKind::FloatLiteral(float) => Ok(HirExpression::float(float, expr.span)),
             ASTExpressionKind::Element(element) => {
                 let (id, ty) =
