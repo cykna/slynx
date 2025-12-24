@@ -20,7 +20,7 @@ pub enum HIRErrorKind {
         rhs: Box<HirExpression>,
     },
     MissingProperty {
-        prop_name: String,
+        prop_names: Vec<String>,
     },
     PropertyNotVisible {
         prop_name: String,
@@ -58,8 +58,9 @@ impl std::fmt::Display for HIRError {
             HIRErrorKind::NameAlreadyDefined(name) => {
                 format!("The name '{name}' was already defined before. Use a different name")
             }
-            HIRErrorKind::MissingProperty { prop_name } => {
-                format!("Property named as '{prop_name}' is required but wasn't provided")
+            HIRErrorKind::MissingProperty { prop_names } => {
+                let names = prop_names.into_iter().map(|v| format!("'{v}'")).collect::<Vec<String>>().join(", ");
+                format!("Property(ies) named as {names} is required but wasn't provided")
             }
         };
         write!(f, "{out}")
