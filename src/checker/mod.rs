@@ -107,9 +107,20 @@ impl TypeChecker {
                     props: resolved_props,
                 })
             }
-
+            
             _ => Ok(ty.clone()),
         }
+    }
+    
+    #[inline]
+    fn get_type_of_name(&self, name:&HirId, span: &Span) -> Result<HirType, TypeError> {
+        self
+            .types
+            .get(&name)
+            .ok_or(TypeError {
+                kind: TypeErrorKind::Unrecognized(*name),
+                span: span.clone(),
+            }).cloned()
     }
 
     #[inline]
@@ -296,6 +307,10 @@ impl TypeChecker {
         }
         Ok(target)
     }
+    
+    fn resolve_object_types(&mut self, ty: HirType, fields: &Vec<HirExpression>) -> Result<HirType, TypeError> {
+        Ok(ty)
+    }
 
     fn resolve_object_types(
         &mut self,
@@ -333,30 +348,16 @@ impl TypeChecker {
                 self.unify(&lhs_ty, &rhs_ty, span)?
             }
             HirExpressionKind::Identifier(_) => self.resolve(&expr.ty)?,
-            HirExpressionKind::Object {
-                name,
-                ref mut fields,
-            } => {
+            HirExpressionKind::Object { name, ref fields } => {
                 let obj = self.get_type_of_name(&name, span)?;
-                self.resolve_object_types(obj, fields)?;
-                HirType::Reference {
-                    rf: name,
-                    generics: Vec::new(),
-                }
+                self.resolve_object_types(obj,fields)?
             }
-            HirExpressionKind::Component {
+            HirExpressionKind::Element {
                 name,
                 ref mut values,
             } => {
-                let parent = self
-                    .types
-                    .get_mut(&name)
-                    .ok_or(TypeError {
-                        kind: TypeErrorKind::Unrecognized(name),
-                        span: span.clone(),
-                    })?
-                    .clone();
-                self.resolve_component_members(values, parent)?
+                let parent = self.get_type_of_name(&name, span)?;
+                self.resolve_element_values(values, parent)?
             }
             ref un => {
                 unimplemented!("{un:?}")
@@ -393,7 +394,10 @@ impl TypeChecker {
             HirExpressionKind::Specialized(_) => {
                 expr.ty = self.unify(&expr.ty, &HirType::GenericComponent, &expr.span)?
             }
-            HirExpressionKind::Component {
+            HirExpressionKind::Object { .. } => {
+                expr.ty = self.resolve(&expr.ty)?;
+            }
+            HirExpressionKind::Element {
                 ref name,
                 ref mut values,
             } => {
