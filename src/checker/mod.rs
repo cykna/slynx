@@ -100,9 +100,20 @@ impl TypeChecker {
                     props: resolved_props,
                 })
             }
-
+            
             _ => Ok(ty.clone()),
         }
+    }
+    
+    #[inline]
+    fn get_type_of_name(&self, name:&HirId, span: &Span) -> Result<HirType, TypeError> {
+        self
+            .types
+            .get(&name)
+            .ok_or(TypeError {
+                kind: TypeErrorKind::Unrecognized(*name),
+                span: span.clone(),
+            }).cloned()
     }
 
     #[inline]
@@ -270,6 +281,10 @@ impl TypeChecker {
         }
         Ok(target)
     }
+    
+    fn resolve_object_types(&mut self, ty: HirType, fields: &Vec<HirExpression>) -> Result<HirType, TypeError> {
+        Ok(ty)
+    }
 
     fn resolve_object_types(
         &mut self,
@@ -356,7 +371,10 @@ impl TypeChecker {
             HirExpressionKind::Specialized(_) => {
                 expr.ty = self.unify(&expr.ty, &HirType::GenericComponent, &expr.span)?
             }
-            HirExpressionKind::Component {
+            HirExpressionKind::Object { .. } => {
+                expr.ty = self.resolve(&expr.ty)?;
+            }
+            HirExpressionKind::Element {
                 ref name,
                 ref mut values,
             } => {
