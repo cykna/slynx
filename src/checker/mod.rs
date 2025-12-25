@@ -5,7 +5,7 @@ use crate::{
     checker::error::{IncompatibleComponentReason, TypeError, TypeErrorKind},
     hir::{
         HirId, SlynxHir,
-        declaration::{
+        deffinitions::{
             ElementValueDeclaration, HirDeclaration, HirDeclarationKind, HirExpression,
             HirExpressionKind, HirStatment, HirStatmentKind, SpecializedElement,
         },
@@ -103,8 +103,20 @@ impl TypeChecker {
                     props: resolved_props,
                 })
             }
+            
             _ => Ok(ty.clone()),
         }
+    }
+    
+    #[inline]
+    fn get_type_of_name(&self, name:&HirId, span: &Span) -> Result<HirType, TypeError> {
+        self
+            .types
+            .get(&name)
+            .ok_or(TypeError {
+                kind: TypeErrorKind::Unrecognized(*name),
+                span: span.clone(),
+            }).cloned()
     }
 
     ///Tries to unify types `a` and `b` if possible
@@ -114,7 +126,6 @@ impl TypeChecker {
 
         match (&a, &b) {
             (out, HirType::Infer) | (HirType::Infer, out) => Ok(out.clone()),
-            (aty, bty) if discriminant(aty) == discriminant(bty) => Ok(a),
             (HirType::Reference { rf, .. }, b) | (b, HirType::Reference { rf, .. }) => {
                 self.unify_with_ref(*rf, b, span)
             }
@@ -248,6 +259,10 @@ impl TypeChecker {
         }
         Ok(target)
     }
+    
+    fn resolve_object_types(&mut self, ty: HirType, fields: &Vec<HirExpression>) -> Result<HirType, TypeError> {
+        Ok(ty)
+    }
 
     ///Retrieves the type of the provided `expr`. Returns infer if it could not be inferred.
     fn get_type_of_expr(
@@ -272,19 +287,15 @@ impl TypeChecker {
                 ty
             }
             HirExpressionKind::Identifier(_) => self.resolve(&expr.ty)?,
-
+            HirExpressionKind::Object { name, ref fields } => {
+                let obj = self.get_type_of_name(&name, span)?;
+                self.resolve_object_types(obj,fields)?
+            }
             HirExpressionKind::Element {
                 name,
                 ref mut values,
             } => {
-                let parent = self
-                    .types
-                    .get_mut(&name)
-                    .ok_or(TypeError {
-                        kind: TypeErrorKind::Unrecognized(name),
-                        span: span.clone(),
-                    })?
-                    .clone();
+                let parent = self.get_type_of_name(&name, span)?;
                 self.resolve_element_values(values, parent)?
             }
             ref un => {
@@ -321,6 +332,9 @@ impl TypeChecker {
             }
             HirExpressionKind::Specialized(_) => {
                 expr.ty = self.unify(&expr.ty, &HirType::GenericComponent, &expr.span)?
+            }
+            HirExpressionKind::Object { .. } => {
+                expr.ty = self.resolve(&expr.ty)?;
             }
             HirExpressionKind::Element {
                 ref name,

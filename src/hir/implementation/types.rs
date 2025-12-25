@@ -70,4 +70,17 @@ impl SlynxHir {
             })
         }
     }
+    
+    pub fn retrieve_ref_to_type(&mut self, name:&str, span: &Span) -> Result<&mut HirType, HIRError> {
+        if let Some(name_id) = self.names.get(name)
+            && let Some(ty) = self.types.get_mut(name_id)
+        {
+            Ok(ty)
+        } else {
+            Err(HIRError {
+                kind: HIRErrorKind::NameNotRecognized(name.to_string()),
+                span: span.clone(),
+            })
+        }
+    }
 }
