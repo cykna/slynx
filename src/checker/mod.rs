@@ -100,8 +100,20 @@ impl TypeChecker {
                     props: resolved_props,
                 })
             }
+            
             _ => Ok(ty.clone()),
         }
+    }
+    
+    #[inline]
+    fn get_type_of_name(&self, name:&HirId, span: &Span) -> Result<HirType, TypeError> {
+        self
+            .types
+            .get(&name)
+            .ok_or(TypeError {
+                kind: TypeErrorKind::Unrecognized(*name),
+                span: span.clone(),
+            }).cloned()
     }
 
     ///Tries to unify types `a` and `b` if possible
@@ -111,7 +123,6 @@ impl TypeChecker {
 
         match (&a, &b) {
             (out, HirType::Infer) | (HirType::Infer, out) => Ok(out.clone()),
-            (aty, bty) if discriminant(aty) == discriminant(bty) => Ok(a),
             (HirType::Reference { rf, .. }, b) | (b, HirType::Reference { rf, .. }) => {
                 self.unify_with_ref(*rf, b, span)
             }
@@ -242,6 +253,10 @@ impl TypeChecker {
             }
         }
         Ok(target)
+    }
+    
+    fn resolve_object_types(&mut self, ty: HirType, fields: &Vec<HirExpression>) -> Result<HirType, TypeError> {
+        Ok(ty)
     }
 
     ///Retrieves the type of the provided `expr`. Returns infer if it could not be inferred.
