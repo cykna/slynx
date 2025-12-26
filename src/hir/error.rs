@@ -35,6 +35,9 @@ pub enum HIRErrorKind {
         ty: String,
         reason: InvalidTypeReason,
     },
+    RecursiveType {
+        ty: String,
+    }
 }
 
 impl std::fmt::Display for HIRError {
@@ -68,6 +71,9 @@ impl std::fmt::Display for HIRError {
             HIRErrorKind::PropertyNotRecognized{ prop_names } => {
                 let names = prop_names.into_iter().map(|v| format!("'{v}'")).collect::<Vec<String>>().join(", ");
                 format!("Property(ies) named as {names} are not recognized for this object")
+            }
+            HIRErrorKind::RecursiveType { ty } => {
+                format!("The type named as '{ty}' is recursive at this point")
             }
         };
         write!(f, "{out}")

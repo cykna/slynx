@@ -25,6 +25,7 @@ pub struct HirDeclaration {
 #[derive(Debug)]
 #[repr(C)]
 pub enum HirDeclarationKind {
+    Object, //just to define this is an object, the actual deffinition of it will be on its type.
     Function {
         statments: Vec<HirStatment>,
         name: String,
@@ -106,8 +107,8 @@ pub enum HirExpressionKind {
     },
     Object {
         name: HirId,
-        fields: Vec<HirExpression>
-    }
+        fields: Vec<HirExpression>,
+    },
 }
 impl HirExpression {
     ///Creates a int expression that must be infered.

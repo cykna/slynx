@@ -240,7 +240,7 @@ impl SlynxHir {
     fn resolve(&mut self, ast: ASTDeclaration) -> Result<(), HIRError> {
         match ast.kind {
             ASTDeclarationKind::ObjectDeclaration { name, fields } => {
-                self.resolve_object(name, fields)?
+                self.resolve_object(name, fields, ast.span)?
             }
             ASTDeclarationKind::FuncDeclaration {
                 name,

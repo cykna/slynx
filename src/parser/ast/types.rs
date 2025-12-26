@@ -8,7 +8,7 @@ pub struct TypedName {
     pub span: Span,
 }
 
-#[derive(Debug)]
+#[derive(Debug, PartialEq, Eq)]
 ///A Identifier that might contain a generic. Such as Component<int>
 pub struct GenericIdentifier {
     ///The generic this identifier contains.

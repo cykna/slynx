@@ -16,18 +16,36 @@ impl SlynxHir {
         &mut self,
         name: GenericIdentifier,
         fields: Vec<ObjectField>,
+        span: Span,
     ) -> Result<(), HIRError> {
         let mut fields = {
             let mut out = Vec::with_capacity(fields.len());
-            for field in fields {  
+            for field in &fields {
+                if field.name.kind.to_string() == name.to_string() {
+                    return Err(HIRError { kind: HIRErrorKind::RecursiveType { ty: name.to_string() }, span: field.name.span.clone() })
+                }
                 out.push(self.retrieve_type_of_name(&field.name.kind, &field.name.span)?);
             }
             out
         };
-        let HirType::Struct { fields:ty_field }= self.retrieve_ref_to_type(&name.identifier, &name.span)? else {
+        let id = self.retrieve_hirdid_of(&name.to_string(), &name.span)?;
+        let HirType::Struct { fields: ty_field } =
+            self.retrieve_ref_to_type(&name.identifier, &name.span)?
+        else {
             unreachable!("WTF. Type of object should be a Struct ty");
         };
+
         ty_field.append(&mut fields);
+        let ty = HirType::Struct {
+            fields: ty_field.clone(),
+        };
+        self.declarations.push(HirDeclaration {
+            kind: HirDeclarationKind::Object,
+            id,
+            ty,
+            span,
+        });
+
         Ok(())
     }
 
@@ -39,6 +57,7 @@ impl SlynxHir {
         let def_fields = obj_fields.iter().map(|f| f.name.name.clone()).collect();
         let id = self.create_hirid_for(name.to_string(), HirType::Struct { fields: Vec::new() });
         self.objects_deffinitions.insert(id, def_fields);
+
         Ok(())
     }
 

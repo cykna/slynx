@@ -47,7 +47,7 @@ impl SlynxHir {
             }
         }
         if non_recognized_fields.is_empty() {
-            Ok(HirExpressionKind::Object { name: HirId::new(), fields: out})
+            Ok(HirExpressionKind::Object { name: objid, fields: out})
         }else {
             Err(HIRError {
                 kind: HIRErrorKind::PropertyNotRecognized { prop_names: non_recognized_fields }, span: span.clone()
@@ -106,7 +106,7 @@ impl SlynxHir {
             ASTExpressionKind::ObjectExpression { name, fields } => {
                 let (id, ty) = self.retrieve_information_of(&name.identifier, &expr.span)?;
                 let kind = self.organized_object_fields(id, &ty, fields, &expr.span)?;
-                Ok(HirExpression { id: HirId::new(), ty, kind, span: expr.span })
+                Ok(HirExpression { id: HirId::new(), ty: HirType::Reference { rf:id, generics: Vec::new() }, kind, span: expr.span })
             }
         }
     }
