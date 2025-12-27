@@ -1,39 +1,66 @@
 use swc_common::{DUMMY_SP, SyntaxContext};
-use swc_ecma_ast::{AssignPat, BindingIdent, BlockStmt, Decl, EmptyStmt, FnDecl, Function, Param, Pat, Stmt};
+use swc_ecma_ast::{
+    AssignPat, BindingIdent, BlockStmt, Decl, EmptyStmt, FnDecl, Function, Param, Pat, Stmt,
+};
 
-use crate::{compiler::{js::WebCompiler, slynx_compiler::SlynxCompiler}, hir::HirId, intermediate::{IntermediateRepr, context::{IntermediateContext, IntermediateProperty}}};
+use crate::{
+    compiler::{
+        js::{WebCompiler, create_ident},
+        slynx_compiler::SlynxCompiler,
+    },
+    intermediate::{
+        IntermediateRepr,
+        context::{IntermediateContext, IntermediateContextType, IntermediateProperty},
+        node::IntermediateInstruction,
+    },
+};
 
 impl WebCompiler {
-    
-    pub fn retrieve_component_params(&mut self, properties:&Vec<IntermediateProperty>, ctx: &IntermediateContext, ir:&IntermediateRepr) -> Vec<Param> {
-       properties.iter().enumerate().map(|(idx,prop)| {
-           let ident = Pat::Ident(BindingIdent { id: self.map_name(prop.id, &format!("a{idx}")), type_ann: None });
-           Param {
-                   pat: if let Some(default) = prop.default_value {
-                       Pat::Assign(AssignPat{
-                           span:DUMMY_SP,
-                           left: Box::new(ident),
-                           right: Box::new(self.compile_expression(&ctx.exprs[default], ctx, ir))
-                       })
-                   }else {
-                       ident
-                   },
-                   span:DUMMY_SP,
-                   decorators: Vec::new()
-               }
-            }
-       ).collect()
+    pub fn retrieve_component_params(
+        &mut self,
+        properties: &Vec<IntermediateProperty>,
+        ctx: &IntermediateContext,
+        ir: &IntermediateRepr,
+    ) -> Vec<Param> {
+        properties
+            .iter()
+            .enumerate()
+            .map(|(idx, prop)| {
+                let ident = Pat::Ident(BindingIdent {
+                    id: self.map_name(prop.id, &format!("a{idx}")),
+                    type_ann: None,
+                });
+                Param {
+                    pat: if let Some(default) = prop.default_value {
+                        Pat::Assign(AssignPat {
+                            span: DUMMY_SP,
+                            left: Box::new(ident),
+                            right: Box::new(self.compile_expression(&ctx.exprs[default], ctx, ir)),
+                        })
+                    } else {
+                        ident
+                    },
+                    span: DUMMY_SP,
+                    decorators: Vec::new(),
+                }
+            })
+            .collect()
     }
-    
-    pub fn compile_component_body(&mut self) -> BlockStmt{
-        BlockStmt{
+
+    pub fn compile_component_body(&mut self) -> BlockStmt {
+        BlockStmt {
             stmts: vec![Stmt::Empty(EmptyStmt { span: DUMMY_SP })],
-            span:DUMMY_SP,
-            ctxt:SyntaxContext::empty()
+            span: DUMMY_SP,
+            ctxt: SyntaxContext::empty(),
         }
     }
-    
-    pub fn compile_component(&mut self, id: HirId, properties:&Vec<IntermediateProperty>, ctx: &IntermediateContext, ir:&IntermediateRepr) {
+
+    pub fn compile_component(
+        &mut self,
+        properties: &Vec<IntermediateProperty>,
+        ctx: &IntermediateContext,
+        ir: &IntermediateRepr,
+    ) {
         let params = self.retrieve_component_params(properties, ctx, ir);
         let func = Function {
             params,
@@ -44,13 +71,82 @@ impl WebCompiler {
             ctxt: SyntaxContext::empty(),
             type_params: None,
             return_type: None,
-            body: Some(self.compile_component_body())
+            body: Some(self.compile_component_body()),
         };
         let f = Decl::Fn(FnDecl {
-            ident:self.retrieve_next_component_name(id),
-            declare: true,
-            function: Box::new(func)
+            ident: self.get_name(&ctx.id).clone(),
+            declare: false,
+            function: Box::new(func),
         });
         self.script.body.push(Stmt::Decl(f));
+    }
+
+    pub fn compile_func_body(
+        &mut self,
+        instructions: &Vec<IntermediateInstruction>,
+        ctx: &IntermediateContext,
+        ir: &IntermediateRepr,
+    ) -> BlockStmt {
+        let mut stmts = Vec::with_capacity(instructions.len());
+        for instruction in instructions {
+            let stmt = match instruction {
+                IntermediateInstruction::Ret(ret) => {
+                    let stmt = self.compile_expression(&ctx.exprs[*ret], ctx, ir);
+                    Stmt::Expr(swc_ecma_ast::ExprStmt {
+                        span: DUMMY_SP,
+                        expr: Box::new(stmt),
+                    })
+                }
+                other => {
+                    unimplemented!("Must implement intermediate expression {other:?}")
+                }
+            };
+            stmts.push(stmt);
+        }
+        BlockStmt {
+            span: DUMMY_SP,
+            ctxt: SyntaxContext::empty(),
+            stmts,
+        }
+    }
+
+    pub fn compile_function(&mut self, ctx: &IntermediateContext, ir: &IntermediateRepr) {
+        let IntermediateContextType::Function {
+            name,
+            args,
+            instructions,
+            ..
+        } = &ctx.ty
+        else {
+            unreachable!();
+        };
+        let func = Function {
+            is_generator: false,
+            is_async: false,
+            span: DUMMY_SP,
+            ctxt: SyntaxContext::empty(),
+            type_params: None,
+            return_type: None,
+            decorators: Vec::new(),
+            params: args
+                .iter()
+                .enumerate()
+                .map(|(idx, _)| Param {
+                    pat: Pat::Ident(BindingIdent {
+                        id: create_ident(&format!("p{idx}")),
+                        type_ann: None,
+                    }),
+                    span: DUMMY_SP,
+                    decorators: Vec::new(),
+                })
+                .collect(),
+            body: Some(self.compile_func_body(instructions, ctx, ir)),
+        };
+
+        self.script.body.push(Stmt::Decl(Decl::Fn(FnDecl {
+            ident: self.get_name(&ctx.id).clone(),
+            declare: false,
+            function: Box::new(func),
+        })));
     }
 }
