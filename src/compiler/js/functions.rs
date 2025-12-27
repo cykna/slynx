@@ -85,7 +85,22 @@ impl WebCompiler {
         ctx: &IntermediateContext,
         ir: &IntermediateRepr,
     ) -> BlockStmt {
-        let stmts = self.compile_instructions(instructions, ctx, ir);
+        let mut stmts = Vec::with_capacity(instructions.len());
+        for instruction in instructions {
+            let stmt = match instruction {
+                IntermediateInstruction::Ret(ret) => {
+                    let stmt = self.compile_expression(&ctx.exprs[*ret], ctx, ir);
+                    Stmt::Expr(swc_ecma_ast::ExprStmt {
+                        span: DUMMY_SP,
+                        expr: Box::new(stmt),
+                    })
+                }
+                other => {
+                    unimplemented!("Must implement intermediate expression {other:?}")
+                }
+            };
+            stmts.push(stmt);
+        }
         BlockStmt {
             span: DUMMY_SP,
             ctxt: SyntaxContext::empty(),

@@ -8,9 +8,13 @@ use std::{collections::HashMap, rc::Rc};
 
 use swc_atoms::Atom;
 use swc_common::{DUMMY_SP, SourceMap, SyntaxContext};
+<<<<<<< HEAD
 use swc_ecma_ast::{
     CallExpr, Callee, Expr, ExprOrSpread, Ident, Lit, Number, Program, ReturnStmt, Script, Stmt,
 };
+=======
+use swc_ecma_ast::{CallExpr, Callee, Expr, ExprOrSpread, Ident, Lit, Number, Program, Script};
+>>>>>>> 4511ea6 (feat: added support for compiling element expressions and ints)
 use swc_ecma_codegen::{Config, Emitter, text_writer::JsWriter};
 
 use crate::{
@@ -51,7 +55,7 @@ impl WebCompiler {
 
     ///Maps the provided `id` to the provided `name` and returns it's indent
     pub fn map_name(&mut self, id: HirId, name: &str) -> Ident {
-        self.names.insert(id, create_ident(name));
+        self.names.insert(id, create_ident(&name));
         self.names.get(&id).cloned().unwrap()
     }
 }
@@ -88,17 +92,27 @@ impl SlynxCompiler for WebCompiler {
         ir: &IntermediateRepr,
     ) -> Self::ExpressionType {
         match expr {
+<<<<<<< HEAD
             IntermediateExpr::Identifier(i) => Expr::Ident(self.names.get(&i).unwrap().clone()),
+=======
+>>>>>>> 4511ea6 (feat: added support for compiling element expressions and ints)
             IntermediateExpr::Int(int) => Expr::Lit(Lit::Num(Number {
                 span: DUMMY_SP,
                 value: *int as f64,
                 raw: None,
             })),
             IntermediateExpr::StringLiteral(s) => Expr::Lit(Lit::Str(ir.strings[s].into())),
+<<<<<<< HEAD
             IntermediateExpr::Element {
                 id,
                 props,
                 children,
+=======
+            IntermediateExpr::Component {
+                id,
+                props,
+                ..
+>>>>>>> 4511ea6 (feat: added support for compiling element expressions and ints)
             } => {
                 let callee = Callee::Expr(Box::new(Expr::Ident(self.get_name(&id).clone())));
                 let args = {
@@ -132,7 +146,10 @@ impl SlynxCompiler for WebCompiler {
                     type_args: None,
                 })
             }
+<<<<<<< HEAD
             IntermediateExpr::Struct { id, exprs } => self.compile_struct(id, exprs, ctx, ir),
+=======
+>>>>>>> 4511ea6 (feat: added support for compiling element expressions and ints)
             un => unimplemented!("{un:?}"),
         }
     }
