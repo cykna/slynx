@@ -1,13 +1,14 @@
 mod contexts;
 mod expr;
 mod functions;
+mod helper;
 mod types;
 
 use std::{collections::HashMap, rc::Rc};
 
 use swc_atoms::Atom;
-use swc_common::{DUMMY_SP, SourceMap};
-use swc_ecma_ast::{Expr, Ident, Lit, Program, Script};
+use swc_common::{DUMMY_SP, SourceMap, SyntaxContext};
+use swc_ecma_ast::{CallExpr, Callee, Expr, ExprOrSpread, Ident, Lit, Number, Program, Script};
 use swc_ecma_codegen::{Config, Emitter, text_writer::JsWriter};
 
 use crate::{
@@ -73,11 +74,53 @@ impl SlynxCompiler for WebCompiler {
     fn compile_expression(
         &mut self,
         expr: &IntermediateExpr,
-        _: &IntermediateContext,
+        ctx: &IntermediateContext,
         ir: &IntermediateRepr,
     ) -> Self::ExpressionType {
         match expr {
+            IntermediateExpr::Int(int) => Expr::Lit(Lit::Num(Number {
+                span: DUMMY_SP,
+                value: *int as f64,
+                raw: None,
+            })),
             IntermediateExpr::StringLiteral(s) => Expr::Lit(Lit::Str(ir.strings[s].into())),
+            IntermediateExpr::Element {
+                id,
+                props,
+                children,
+            } => {
+                let callee = Callee::Expr(Box::new(Expr::Ident(self.get_name(&id).clone())));
+                let args = {
+                    if props.iter().all(|v| v.is_none()) {
+                        Vec::new()
+                    } else {
+                        let out = props
+                            .into_iter()
+                            .map(|expr| ExprOrSpread {
+                                spread: None,
+                                expr: if let Some(expr_idx) = expr {
+                                    Box::new(self.compile_expression(
+                                        &ctx.exprs[*expr_idx],
+                                        ctx,
+                                        ir,
+                                    ))
+                                } else {
+                                    Self::undefined()
+                                },
+                            })
+                            .collect();
+
+                        out
+                    }
+                };
+                Expr::Call(CallExpr {
+                    span: DUMMY_SP,
+                    ctxt: SyntaxContext::empty(),
+                    callee,
+                    args,
+                    type_args: None,
+                })
+            }
             un => unimplemented!("{un:?}"),
         }
     }

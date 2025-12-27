@@ -78,4 +78,73 @@ impl WebCompiler {
         });
         self.script.body.push(Stmt::Decl(f));
     }
+
+    pub fn compile_func_body(
+        &mut self,
+        instructions: &Vec<IntermediateInstruction>,
+        ctx: &IntermediateContext,
+        ir: &IntermediateRepr,
+    ) -> BlockStmt {
+        let mut stmts = Vec::with_capacity(instructions.len());
+        for instruction in instructions {
+            let stmt = match instruction {
+                IntermediateInstruction::Ret(ret) => {
+                    let stmt = self.compile_expression(&ctx.exprs[*ret], ctx, ir);
+                    Stmt::Expr(swc_ecma_ast::ExprStmt {
+                        span: DUMMY_SP,
+                        expr: Box::new(stmt),
+                    })
+                }
+                other => {
+                    unimplemented!("Must implement intermediate expression {other:?}")
+                }
+            };
+            stmts.push(stmt);
+        }
+        BlockStmt {
+            span: DUMMY_SP,
+            ctxt: SyntaxContext::empty(),
+            stmts,
+        }
+    }
+
+    pub fn compile_function(&mut self, ctx: &IntermediateContext, ir: &IntermediateRepr) {
+        let IntermediateContextType::Function {
+            name,
+            args,
+            instructions,
+            ..
+        } = &ctx.ty
+        else {
+            unreachable!();
+        };
+        let func = Function {
+            is_generator: false,
+            is_async: false,
+            span: DUMMY_SP,
+            ctxt: SyntaxContext::empty(),
+            type_params: None,
+            return_type: None,
+            decorators: Vec::new(),
+            params: args
+                .iter()
+                .enumerate()
+                .map(|(idx, _)| Param {
+                    pat: Pat::Ident(BindingIdent {
+                        id: create_ident(&format!("p{idx}")),
+                        type_ann: None,
+                    }),
+                    span: DUMMY_SP,
+                    decorators: Vec::new(),
+                })
+                .collect(),
+            body: Some(self.compile_func_body(instructions, ctx, ir)),
+        };
+
+        self.script.body.push(Stmt::Decl(Decl::Fn(FnDecl {
+            ident: self.get_name(&ctx.id).clone(),
+            declare: false,
+            function: Box::new(func),
+        })));
+    }
 }
