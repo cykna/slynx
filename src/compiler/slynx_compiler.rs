@@ -6,12 +6,13 @@ use crate::intermediate::{
 ///A trait to define how the Slynx IR will be compiled
 pub trait SlynxCompiler {
     type ExpressionType;
+    type StatmentType;
     fn compile_instructions(
         &mut self,
         instructions: &[IntermediateInstruction],
         ctx: &IntermediateContext,
         ir: &IntermediateRepr,
-    );
+    ) -> Vec<Self::StatmentType>;
     fn compile_expression(
         &mut self,
         expr: &IntermediateExpr,

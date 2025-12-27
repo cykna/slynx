@@ -8,7 +8,9 @@ use std::{collections::HashMap, rc::Rc};
 
 use swc_atoms::Atom;
 use swc_common::{DUMMY_SP, SourceMap, SyntaxContext};
-use swc_ecma_ast::{CallExpr, Callee, Expr, ExprOrSpread, Ident, Lit, Number, Program, Script};
+use swc_ecma_ast::{
+    CallExpr, Callee, Expr, ExprOrSpread, Ident, Lit, Number, Program, ReturnStmt, Script, Stmt,
+};
 use swc_ecma_codegen::{Config, Emitter, text_writer::JsWriter};
 
 use crate::{
@@ -56,20 +58,28 @@ impl WebCompiler {
 
 impl SlynxCompiler for WebCompiler {
     type ExpressionType = Expr;
+    type StatmentType = Stmt;
     fn compile_instructions(
         &mut self,
         instructions: &[IntermediateInstruction],
         ctx: &IntermediateContext,
         ir: &IntermediateRepr,
-    ) {
+    ) -> Vec<Self::StatmentType> {
+        let mut out = Vec::with_capacity(instructions.len());
         for inst in instructions {
-            match inst {
+            let stmt = match inst {
                 IntermediateInstruction::Ret(id) => {
-                    self.compile_expression(&ctx.exprs[*id], ctx, ir);
+                    let expr = self.compile_expression(&ctx.exprs[*id], ctx, ir);
+                    Stmt::Return(ReturnStmt {
+                        span: DUMMY_SP,
+                        arg: Some(Box::new(expr)),
+                    })
                 }
                 _ => unimplemented!(),
-            }
+            };
+            out.push(stmt);
         }
+        out
     }
     fn compile_expression(
         &mut self,
