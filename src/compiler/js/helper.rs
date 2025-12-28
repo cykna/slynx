@@ -1,4 +1,4 @@
-use swc_atoms::Wtf8Atom;
+use swc_atoms::{Atom, Wtf8Atom};
 use swc_common::DUMMY_SP;
 use swc_ecma_ast::{Expr, KeyValueProp, Prop};
 
@@ -13,10 +13,9 @@ impl WebCompiler {
     ///Creates a new property with provided `name` and `value`
     pub fn prop(name: &str, value: Expr) -> Prop {
         Prop::KeyValue(KeyValueProp {
-            key: swc_ecma_ast::PropName::Str(swc_ecma_ast::Str {
+            key: swc_ecma_ast::PropName::Ident(swc_ecma_ast::IdentName {
                 span: DUMMY_SP,
-                value: Wtf8Atom::new(name),
-                raw: None,
+                sym: Atom::new(name),
             }),
             value: value.into(),
         })
