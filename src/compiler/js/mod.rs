@@ -88,6 +88,7 @@ impl SlynxCompiler for WebCompiler {
         ir: &IntermediateRepr,
     ) -> Self::ExpressionType {
         match expr {
+            IntermediateExpr::Identifier(i) => Expr::Ident(create_ident("example")),
             IntermediateExpr::Int(int) => Expr::Lit(Lit::Num(Number {
                 span: DUMMY_SP,
                 value: *int as f64,
@@ -131,12 +132,14 @@ impl SlynxCompiler for WebCompiler {
                     type_args: None,
                 })
             }
+            IntermediateExpr::Struct { id, exprs } => self.compile_struct(id, exprs, ctx, ir),
             un => unimplemented!("{un:?}"),
         }
     }
 
     ///The flattener has everything it's required
     fn compile(mut self, ir: IntermediateRepr) -> Vec<u8> {
+        println!("{ir:#?}");
         for ctx in ir.contexts.iter() {
             self.hoist_ctx(ctx);
         }

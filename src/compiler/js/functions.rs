@@ -86,7 +86,6 @@ impl WebCompiler {
         ir: &IntermediateRepr,
     ) -> BlockStmt {
         let stmts = self.compile_instructions(instructions, ctx, ir);
-
         BlockStmt {
             span: DUMMY_SP,
             ctxt: SyntaxContext::empty(),
@@ -96,10 +95,7 @@ impl WebCompiler {
 
     pub fn compile_function(&mut self, ctx: &IntermediateContext, ir: &IntermediateRepr) {
         let IntermediateContextType::Function {
-            name,
-            args,
-            instructions,
-            ..
+            args, instructions, ..
         } = &ctx.ty
         else {
             unreachable!();
