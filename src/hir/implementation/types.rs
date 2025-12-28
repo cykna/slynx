@@ -16,6 +16,7 @@ impl SlynxHir {
         self.types.insert(id, ty);
         id
     }
+
     ///Retrieves the type of the provided `name` but in the global scope
     pub fn retrieve_type_of_name(
         &mut self,
@@ -26,9 +27,12 @@ impl SlynxHir {
             Ok(value) => Ok(value),
             Err(_) => {
                 if let Some(name_id) = self.names.get(&name.identifier)
-                    && let Some(ty) = self.types.get(name_id)
+                    && let Some(_) = self.types.get(name_id)
                 {
-                    Ok(ty.clone())
+                    Ok(HirType::Reference {
+                        rf: *name_id,
+                        generics: Vec::new(),
+                    })
                 } else {
                     Err(HIRError {
                         kind: HIRErrorKind::NameNotRecognized(name.to_string()),
@@ -70,8 +74,12 @@ impl SlynxHir {
             })
         }
     }
-    
-    pub fn retrieve_ref_to_type(&mut self, name:&str, span: &Span) -> Result<&mut HirType, HIRError> {
+
+    pub fn retrieve_ref_to_type(
+        &mut self,
+        name: &str,
+        span: &Span,
+    ) -> Result<&mut HirType, HIRError> {
         if let Some(name_id) = self.names.get(name)
             && let Some(ty) = self.types.get_mut(name_id)
         {
