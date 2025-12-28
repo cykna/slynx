@@ -24,7 +24,12 @@ impl SlynxHir {
             let mut out = Vec::with_capacity(fields.len());
             for field in &fields {
                 if field.name.kind.to_string() == name.to_string() {
-                    return Err(HIRError { kind: HIRErrorKind::RecursiveType { ty: name.to_string() }, span: field.name.span.clone() })
+                    return Err(HIRError {
+                        kind: HIRErrorKind::RecursiveType {
+                            ty: name.to_string(),
+                        },
+                        span: field.name.span.clone(),
+                    });
                 }
                 out.push(self.retrieve_type_of_name(&field.name.kind, &field.name.span)?);
             }
