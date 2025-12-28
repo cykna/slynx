@@ -23,6 +23,10 @@ pub enum IntermediateExpr {
     Int(i32),
     Float(f32),
     StringLiteral(StringHandle),
+    Struct {
+        id: HirId,
+        exprs: Vec<usize>,
+    },
     Binary {
         ///Inside the IntermediateRepr, the index of the lhs expression
         lhs: usize,
