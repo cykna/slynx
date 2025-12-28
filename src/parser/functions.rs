@@ -32,6 +32,11 @@ impl Parser {
         let mut names = Vec::new();
         while !matches!(self.peek()?.kind, TokenKind::RParen) {
             names.push(self.parse_typedname()?);
+            if matches!(self.peek()?.kind, TokenKind::RParen) {
+                break;
+            } else {
+                self.expect(&TokenKind::Comma)?;
+            }
         }
 
         Ok(names)
