@@ -21,7 +21,7 @@ use crate::{
         types::IntermediateType,
     },
 };
-#[derive(Default)]
+#[derive(Debug,Default)]
 ///Struct used to represent the intermediate representation of Slynx. WIll be used when being compiled. This contains the monomorfization of types
 ///and flat values of everything in the source code. It can be understood as the context itself of the IR
 pub struct IntermediateRepr {
