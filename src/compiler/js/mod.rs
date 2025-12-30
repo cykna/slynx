@@ -99,7 +99,7 @@ impl SlynxCompiler for WebCompiler {
         ir: &IntermediateRepr,
     ) -> Self::ExpressionType {
         match expr {
-            IntermediateExpr::Identifier(i) => Expr::Ident(create_ident("example")),
+            IntermediateExpr::Identifier(i) => Expr::Ident(self.names.get(&i).unwrap().clone()),
             IntermediateExpr::Int(int) => Expr::Lit(Lit::Num(Number {
                 span: DUMMY_SP,
                 value: *int as f64,
