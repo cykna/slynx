@@ -1,4 +1,4 @@
-use swc_atoms::{Atom, Wtf8Atom};
+use swc_atoms::Atom;
 use swc_common::DUMMY_SP;
 use swc_ecma_ast::{Expr, KeyValueProp, Prop};
 
