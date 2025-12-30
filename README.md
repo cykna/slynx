@@ -7,7 +7,7 @@ The Slynx language is a project intended to be a programming language that focus
 The idea is for Slynx to be a UI language that focuses on being fast, readable, able to be used not for creating UI's that are agnostic of runtime and so, compiled down to different targets with the same code base. 
 
 #### Long answer
-The language tries to solve the problem of code not being able to be used across platforms and the difficulty of reading them to understand what's being shown on the screen. The main idea behind Slynx, which is what made me start it, is how hard it's to open a JSX file and get what's going on. The main idea is to make the language simple to be read, so if you look at the language and get confused and thinking "what in the fuck is this?" we failed as a language.
+The language tries to solve the problem of code not being able to be used across platforms and the difficulty of reading them to understand what's being shown on the screen. The main idea behind Slynx, which is what made me start it, is how hard it's to open a JSX file and get what's going on. The main idea is to make the language simple to be read, so if you look at the language and get confused and thinking "what am i looking at?" we failed as a language.
 
 Other problem that is tried to be solved on the language is to make it fast, the idea is for the language to be data-oriented, so instead of the default being an AOS, the language treats things like SOA, and only AOS when explicitly said to. Another feature is to make it able to have good serialization of data, how? I'm still thinking.
 
@@ -154,7 +154,7 @@ which will compile the code and then compile it down to js
 - [ ] Serialization-friendly format
 
 #### Code Generation
-JavaScript (initial target, and maybe, only one)
+JavaScript (initial target, and maybe, the only one)
 - [~] JS backend design
 - [~] IR → JS lowering
 - [ ] Runtime support (reactivity, events)
