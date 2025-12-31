@@ -1,6 +1,6 @@
 use crate::{
     hir::declaration::HirExpression,
-    parser::ast::{ElementExpression, Span},
+    parser::ast::{ComponentExpression, Span},
 };
 
 #[derive(Debug)]
@@ -25,7 +25,7 @@ pub enum HIRErrorKind {
         prop_name: String,
     },
     InvalidChild {
-        child: ElementExpression,
+        child: ComponentExpression,
     },
     InvalidType {
         ty: String,
