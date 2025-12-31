@@ -29,7 +29,7 @@ pub enum HirDeclarationKind {
         statments: Vec<HirStatment>,
         name: String,
     },
-    ElementDeclaration {
+    ComponentDeclaration{
         props: Vec<ComponentMemberDeclaration>,
     },
 }
@@ -99,7 +99,7 @@ pub enum HirExpressionKind {
     },
     Identifier(HirId),
     Specialized(SpecializedComponent),
-    Element {
+    Component {
         name: HirId,
         ///reference to a type
         values: Vec<ComponentMemberDeclaration>,

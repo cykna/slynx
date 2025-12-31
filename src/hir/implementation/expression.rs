@@ -50,7 +50,7 @@ impl SlynxHir {
                     self.retrieve_information_of(&component.name.identifier, &component.span)?;
 
                 Ok(HirExpression {
-                    kind: HirExpressionKind::Element {
+                    kind: HirExpressionKind::Component {
                         name: id,
                         values: self.resolve_component_members(component.values, &ty)?,
                     },
