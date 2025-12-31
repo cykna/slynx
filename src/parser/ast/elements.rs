@@ -1,19 +1,4 @@
-use std::borrow::Cow;
-
-use crate::parser::ast::{ASTExpression, GenericIdentifier, MacroElementArgs, Span};
-
-#[derive(Default, Debug, Clone)]
-pub enum PropertyModifier {
-    ///Property visible to everyone
-    Public,
-    ///Property visible only to the element itself.
-    #[default]
-    Private,
-    ///Property visible only for the children
-    ChildrenPublic,
-    ///Property visible only for the parents
-    ParentPublic,
-}
+use crate::parser::ast::{ASTExpression, GenericIdentifier, Span, VisibilityModifier};
 #[derive(Debug)]
 ///A member on a component, this can be a property or a child expression
 pub struct ComponentMember {
@@ -22,14 +7,9 @@ pub struct ComponentMember {
 }
 #[derive(Debug)]
 pub enum ComponentMemberKind {
-    RawJs(Cow<'static, str>),
-    MacroCall {
-        name: String,
-        args: MacroElementArgs,
-    },
     Property {
         name: String,
-        modifier: PropertyModifier,
+        modifier: VisibilityModifier,
         ty: Option<GenericIdentifier>,
         rhs: Option<ASTExpression>,
     },
