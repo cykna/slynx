@@ -1,12 +1,11 @@
-use crate::{parser::{
+use crate::parser::{
     Parser,
     ast::{
-        ASTExpression, ASTExpressionKind, ComponentExpression, ComponentMemberValue,
-        GenericIdentifier, Operator, Span,
+        ASTExpression, ASTExpressionKind, ComponentExpression, ComponentMemberValue, GenericIdentifier, NamedExpr, Operator, Span
     },
     error::ParseError,
     lexer::tokens::{Token, TokenKind},
-}};
+};
 
 impl Parser {
     ///Parses an element expression but, starting from the LBrace, assuming the name of the element is the provided `name`
@@ -110,7 +109,7 @@ impl Parser {
                     let element = self.parse_element_expr_with_name(ty)?;
                     Ok(Some(ASTExpression {
                         span: element.span.clone(),
-                        kind: ASTExpressionKind::Element(element),
+                        kind: ASTExpressionKind::Component(element),
                     }))
                 } else {
                     Err(ParseError::UnexpectedToken(self.eat()?, "'{'".to_string()))
@@ -120,7 +119,7 @@ impl Parser {
                 let element = self.parse_element_expr()?;
                 Ok(Some(ASTExpression {
                     span: element.span.clone(),
-                    kind: ASTExpressionKind::Element(element),
+                    kind: ASTExpressionKind::Component(element),
                 }))
             }
             TokenKind::LParen => {

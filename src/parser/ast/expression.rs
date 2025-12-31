@@ -16,7 +16,7 @@ pub struct ASTExpression {
 
 #[derive(Debug)]
 pub enum ASTExpressionKind {
-    Element(ComponentExpression),
+    Component(ComponentExpression),
     IntLiteral(i32),
     StringLiteral(String),
     FloatLiteral(f32),
