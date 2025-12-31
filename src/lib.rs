@@ -1,7 +1,10 @@
-use std::{path::PathBuf, sync::Arc};
+use std::path::PathBuf;
 
 use crate::{
-    checker::TypeChecker, compiler::{js::WebCompiler, slynx_compiler::SlynxCompiler}, hir::{SlynxHir, macros::js::JSMacro}, intermediate::IntermediateRepr
+    checker::TypeChecker,
+    compiler::{js::WebCompiler, slynx_compiler::SlynxCompiler},
+    hir::SlynxHir,
+    intermediate::IntermediateRepr,
 };
 
 pub mod checker;
@@ -17,17 +20,12 @@ pub fn compile_code(path: PathBuf) -> i32 {
     let mut ast = parser::Parser::new(tokens);
     let decls = ast.parse_declarations().unwrap();
     let mut hir = SlynxHir::new();
-    {
-        let js = Arc::new(JSMacro {});
-        hir.insert_element_macro(js.clone());
-        hir.insert_statment_macro(js);
-    }
+
     hir.generate(decls).unwrap();
     TypeChecker::check(&mut hir).unwrap();
     let mut intermediate = IntermediateRepr::new();
     intermediate.generate(hir.declarations);
-    let mut compiler = WebCompiler::new();
-    
+    let compiler = WebCompiler::new();
     let code = compiler.compile(intermediate);
     println!("Writing: \n{code:?}");
     std::fs::write(path.with_extension("js"), code).unwrap();

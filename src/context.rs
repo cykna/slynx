@@ -5,7 +5,7 @@ use color_eyre::{eyre::Result, owo_colors::OwoColorize};
 use crate::{
     checker::TypeChecker,
     compiler::slynx_compiler::SlynxCompiler,
-    hir::{SlynxHir, macros::js::JSMacro},
+    hir::{SlynxHir},
     intermediate::IntermediateRepr,
     parser::{
         Parser,
@@ -204,13 +204,7 @@ impl SlynxContext {
                 };
             }
         };
-        let mut hir = SlynxHir::new();
-
-        {
-            let jsmacro = Arc::new(JSMacro {});
-            hir.insert_element_macro(jsmacro.clone());
-            hir.insert_statment_macro(jsmacro);
-        }
+        let mut hir = SlynxHir::new(); 
 
         if let Err(e) = hir.generate(decls) {
             let (line, column, src) = self.get_line_info(&self.entry_point, e.span.start);
