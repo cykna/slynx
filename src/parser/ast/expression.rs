@@ -1,4 +1,4 @@
-use crate::parser::ast::{ElementExpression, Operator, Span};
+use crate::parser::ast::{ComponentExpression, Operator, Span};
 
 #[derive(Debug)]
 pub struct ASTExpression {
@@ -8,7 +8,7 @@ pub struct ASTExpression {
 
 #[derive(Debug)]
 pub enum ASTExpressionKind {
-    Element(ElementExpression),
+    Element(ComponentExpression),
     IntLiteral(i32),
     StringLiteral(String),
     FloatLiteral(f32),
