@@ -73,7 +73,7 @@ impl Parser {
                         let element = self.parse_element_expr_with_name(ty)?;
                         Ok(ASTExpression {
                             span: element.span.clone(),
-                            kind: ASTExpressionKind::Element(element),
+                            kind: ASTExpressionKind::Component(element),
                         })
                     } else {
                         Err(ParseError::UnexpectedToken(self.eat()?, "'{'".to_string()))
@@ -82,7 +82,7 @@ impl Parser {
                     let element = self.parse_element_expr()?;
                     return Ok(ASTExpression {
                         span: element.span.clone(),
-                        kind: ASTExpressionKind::Element(element),
+                        kind: ASTExpressionKind::Component(element),
                     });
                 } else {
                 }
