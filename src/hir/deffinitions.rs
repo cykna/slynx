@@ -9,7 +9,7 @@ pub enum SpecializedComponent {
         text: Box<HirExpression>,
     },
     Div {
-        children: Vec<ElementValueDeclaration>,
+        children: Vec<ComponentMemberDeclaration>,
     },
 }
 
@@ -31,13 +31,13 @@ pub enum HirDeclarationKind {
         name: String,
     },
     ElementDeclaration {
-        props: Vec<ElementValueDeclaration>,
+        props: Vec<ComponentMemberDeclaration>,
     },
 }
 
 #[derive(Debug)]
 #[repr(C)]
-pub enum ElementValueDeclaration {
+pub enum ComponentMemberDeclaration {
     Property {
         id: HirId,
         ///The index of the property on the component
@@ -47,7 +47,7 @@ pub enum ElementValueDeclaration {
     },
     Child {
         name: HirId,
-        values: Vec<ElementValueDeclaration>,
+        values: Vec<ComponentMemberDeclaration>,
         span: Span,
     },
     Specialized(SpecializedComponent),
@@ -103,7 +103,7 @@ pub enum HirExpressionKind {
     Element {
         name: HirId,
         ///reference to a type
-        values: Vec<ElementValueDeclaration>,
+        values: Vec<ComponentMemberDeclaration>,
     },
     Object {
         name: HirId,

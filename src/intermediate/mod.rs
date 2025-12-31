@@ -9,7 +9,7 @@ use crate::{
     hir::{
         HirId,
         deffinitions::{
-            ElementValueDeclaration, HirDeclaration, HirDeclarationKind, HirExpression,
+            ComponentMemberDeclaration, HirDeclaration, HirDeclarationKind, HirExpression,
             HirExpressionKind, HirStatment, HirStatmentKind, SpecializedComponent,
         },
         types::HirType,
@@ -105,13 +105,13 @@ impl IntermediateRepr {
         }
     }
     ///Creates a new child on the current context and returns the element expression and the child id
-    fn generate_child(&mut self, name: HirId, values: Vec<ElementValueDeclaration>) -> usize {
+    fn generate_child(&mut self, name: HirId, values: Vec<ComponentMemberDeclaration>) -> usize {
         let mut props = Vec::new();
         let mut children = Vec::new();
 
         for value in values {
             match value {
-                ElementValueDeclaration::Property { index, value, .. } => {
+                ComponentMemberDeclaration::Property { index, value, .. } => {
                     let out = if let Some(value) = value {
                         Some(self.generate_expr(value))
                     } else {
@@ -122,11 +122,11 @@ impl IntermediateRepr {
                     }
                     props.push(out);
                 }
-                ElementValueDeclaration::Child { name, values, .. } => {
+                ComponentMemberDeclaration::Child { name, values, .. } => {
                     let idx = self.generate_child(name, values);
                     children.push(idx);
                 }
-                ElementValueDeclaration::Specialized(spec) => {
+                ComponentMemberDeclaration::Specialized(spec) => {
                     let idx = self.generate_specialized(spec);
                     children.push(idx);
                 }
@@ -156,17 +156,17 @@ impl IntermediateRepr {
                 let children = children
                     .into_iter()
                     .filter_map(|v| match v {
-                        ElementValueDeclaration::Child { name, values, .. } => {
+                        ComponentMemberDeclaration::Child { name, values, .. } => {
                             Some(self.generate_child(name, values))
                         }
-                        ElementValueDeclaration::Property { index, value, .. } => {
+                        ComponentMemberDeclaration::Property { index, value, .. } => {
                             let out = value.map(|v| self.generate_expr(v));
                             for _ in 0..index - props.len() {
                                 props.push(None);
                             }
                             out
                         }
-                        ElementValueDeclaration::Specialized(spec) => {
+                        ComponentMemberDeclaration::Specialized(spec) => {
                             Some(self.generate_specialized(spec))
                         }
                     })
@@ -183,7 +183,7 @@ impl IntermediateRepr {
     fn generate_element(
         &mut self,
         id: HirId,
-        props: Vec<ElementValueDeclaration>,
+        props: Vec<ComponentMemberDeclaration>,
         tys: &Vec<IntermediateType>,
     ) {
         let expr = IntermediateContext::new_element(id);
@@ -191,7 +191,7 @@ impl IntermediateRepr {
         self.contexts.push(expr);
         for (idx, prop) in props.into_iter().enumerate() {
             match prop {
-                ElementValueDeclaration::Property { value, id, .. } => {
+                ComponentMemberDeclaration::Property { value, id, .. } => {
                     let default_value = if let Some(value) = value {
                         Some(self.generate_expr(value))
                     } else {
@@ -203,10 +203,10 @@ impl IntermediateRepr {
                         ty: tys[idx].clone(),
                     });
                 }
-                ElementValueDeclaration::Specialized(spec) => {
+                ComponentMemberDeclaration::Specialized(spec) => {
                     self.generate_specialized(spec);
                 }
-                ElementValueDeclaration::Child { name, values, .. } => {
+                ComponentMemberDeclaration::Child { name, values, .. } => {
                     self.generate_child(name, values);
                 }
             }

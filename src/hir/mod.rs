@@ -3,16 +3,12 @@ pub mod error;
 mod implementation;
 mod scope;
 pub mod types;
-use std::{
-    collections::HashMap,
-    sync::{Arc, atomic::AtomicU64},
-};
+use std::{collections::HashMap, sync::atomic::AtomicU64};
 
 use crate::{
     hir::{
         deffinitions::{
-            ElementValueDeclaration, HirDeclaration, HirDeclarationKind, HirStatment,
-            HirStatmentKind,
+            ComponentMemberDeclaration, HirDeclaration, HirDeclarationKind, HirStatment, HirStatmentKind,
         },
         error::{HIRError, HIRErrorKind},
         scope::HIRScope,
@@ -123,7 +119,7 @@ impl SlynxHir {
         &mut self,
         members: Vec<ComponentMemberValue>,
         ty: &HirType,
-    ) -> Result<Vec<ElementValueDeclaration>, HIRError> {
+    ) -> Result<Vec<ComponentMemberDeclaration>, HIRError> {
         let mut out = Vec::with_capacity(members.len());
         let HirType::Component { props } = ty else {
             unreachable!("The type should be a component instead");
@@ -166,7 +162,7 @@ impl SlynxHir {
                         });
                     }
 
-                    ElementValueDeclaration::Property {
+                    ComponentMemberDeclaration::Property {
                         id: HirId::new(),
                         index,
                         value: Some(self.resolve_expr(rhs, Some(&props[index].2))?),
@@ -177,7 +173,7 @@ impl SlynxHir {
                     if accepting_children {
                         let (name, ty) =
                             self.retrieve_information_of(&child.name.identifier, &child.name.span)?;
-                        ElementValueDeclaration::Child {
+                        ComponentMemberDeclaration::Child {
                             name,
                             values: self.resolve_component_members(child.values, &ty)?,
                             span: child.span,
