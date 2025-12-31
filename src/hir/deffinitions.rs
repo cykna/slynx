@@ -4,7 +4,7 @@ use crate::{
 };
 
 #[derive(Debug)]
-pub enum SpecializedElement {
+pub enum SpecializedComponent {
     Text {
         text: Box<HirExpression>,
     },
@@ -50,7 +50,7 @@ pub enum ElementValueDeclaration {
         values: Vec<ElementValueDeclaration>,
         span: Span,
     },
-    Specialized(SpecializedElement),
+    Specialized(SpecializedComponent),
 }
 
 #[derive(Debug)]
@@ -99,7 +99,7 @@ pub enum HirExpressionKind {
         rhs: Box<HirExpression>,
     },
     Identifier(HirId),
-    Specialized(SpecializedElement),
+    Specialized(SpecializedComponent),
     Element {
         name: HirId,
         ///reference to a type

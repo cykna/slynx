@@ -7,7 +7,7 @@ use crate::{
         HirId, SlynxHir,
         deffinitions::{
             ElementValueDeclaration, HirDeclaration, HirDeclarationKind, HirExpression,
-            HirExpressionKind, HirStatment, HirStatmentKind, SpecializedElement,
+            HirExpressionKind, HirStatment, HirStatmentKind, SpecializedComponent,
         },
         types::HirType,
     },
@@ -238,7 +238,7 @@ impl TypeChecker {
         }
     }
 
-    fn resolve_specialized(&mut self, _: &mut SpecializedElement) -> Result<(), TypeError> {
+    fn resolve_specialized(&mut self, _: &mut SpecializedComponent) -> Result<(), TypeError> {
         Ok(())
     }
     
