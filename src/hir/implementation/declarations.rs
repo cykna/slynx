@@ -6,7 +6,7 @@ use crate::{
         types::HirType,
     },
     parser::ast::{
-        ElementDeffinition, ElementDeffinitionKind, ElementValue, GenericIdentifier, ObjectField,
+        ComponentMember, ComponentMemberKind, ComponentMemberValue, GenericIdentifier, ObjectField,
         Span, TypedName,
     },
 };
@@ -63,13 +63,13 @@ impl SlynxHir {
 
     pub fn specialize_text(
         &mut self,
-        values: Vec<ElementValue>,
+        values: Vec<ComponentMemberValue>,
         span: &Span,
     ) -> Result<SpecializedElement, HIRError> {
         let mut text = None;
         for value in values {
             match value {
-                ElementValue::Assign {
+                ComponentMemberValue::Assign {
                     prop_name,
                     rhs,
                     span,
@@ -82,7 +82,7 @@ impl SlynxHir {
                         });
                     }
                 },
-                ElementValue::Element(e) => {
+                ComponentMemberValue::Element(e) => {
                     return Err(HIRError {
                         kind: HIRErrorKind::InvalidChild { child: e },
                         span: span.clone(),
@@ -106,13 +106,13 @@ impl SlynxHir {
 
     pub fn resolve_component_defs(
         &mut self,
-        def: Vec<ElementDeffinition>,
+        def: Vec<ComponentMember>,
     ) -> Result<Vec<ElementValueDeclaration>, HIRError> {
         let mut out = Vec::with_capacity(def.len());
         let mut prop_idx = 0;
         for def in def {
             match def.kind {
-                ElementDeffinitionKind::Property { ty, rhs, name, .. } => {
+                ComponentMemberKind::Property { ty, rhs, name, .. } => {
                     let ty = if let Some(ty) = ty {
                         self.retrieve_type_of_name(&ty, &ty.span)?
                     } else {
@@ -132,7 +132,7 @@ impl SlynxHir {
                     self.last_scope().insert_name(id, name);
                     prop_idx += 1;
                 }
-                ElementDeffinitionKind::Child(child) => {
+                ComponentMemberKind::Child(child) => {
                     match (&child.name.generic, child.name.identifier.as_str()) {
                         (None, "Text") => {
                             let text = self.specialize_text(child.values, &child.span)?;
