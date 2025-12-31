@@ -8,7 +8,8 @@ pub use macros::*;
 pub use types::*;
 pub use elements::*;
 
-#[derive(Debug, Clone,Eq, PartialEq)]
+#[derive(Debug, Clone,Eq,PartialEq)]
+///The representation of the bounds of something on the code. 
 pub struct Span {
     pub start: usize,
     pub end: usize,
@@ -16,6 +17,7 @@ pub struct Span {
 
 #[derive(Debug, Clone, Copy)]
 #[repr(C)]
+///Some operator on the code. Something like, +, - , *, /, &, &&, etc
 pub enum Operator {
     Add,
     Sub,
@@ -24,6 +26,7 @@ pub enum Operator {
 }
 
 #[derive(Debug)]
+///Some statment on the code, a statment not necessarily have value, in general expressions do.
 pub struct ASTStatment {
     pub kind: ASTStatmentKind,
     pub span: Span,
@@ -64,9 +67,9 @@ pub enum ASTDeclarationKind {
         name: GenericIdentifier,
         fields: Vec<ObjectField>
     },
-    ElementDeclaration {
+    ComponentDeclaration {
         name: GenericIdentifier,
-        deffinitions: Vec<ElementDeffinition>,
+        members: Vec<ComponentMember>,
     },
     FuncDeclaration {
         name: GenericIdentifier,

@@ -15,12 +15,13 @@ pub enum PropertyModifier {
     ParentPublic,
 }
 #[derive(Debug)]
-pub struct ElementDeffinition {
-    pub kind: ElementDeffinitionKind,
+///A member on a component, this can be a property or a child expression
+pub struct ComponentMember {
+    pub kind: ComponentMemberKind,
     pub span: Span,
 }
 #[derive(Debug)]
-pub enum ElementDeffinitionKind {
+pub enum ComponentMemberKind {
     RawJs(Cow<'static, str>),
     MacroCall {
         name: String,
@@ -32,21 +33,21 @@ pub enum ElementDeffinitionKind {
         ty: Option<GenericIdentifier>,
         rhs: Option<ASTExpression>,
     },
-    Child(ElementExpression),
+    Child(ComponentExpression),
 }
 #[derive(Debug)]
-pub enum ElementValue {
+pub enum ComponentMemberValue {
     Assign {
         prop_name: String,
         rhs: ASTExpression,
         span: Span,
     },
-    Element(ElementExpression),
+    Child(ComponentExpression),
 }
 
 #[derive(Debug)]
-pub struct ElementExpression {
+pub struct ComponentExpression {
     pub name: GenericIdentifier,
-    pub values: Vec<ElementValue>,
+    pub values: Vec<ComponentMemberValue>,
     pub span: Span,
 }
