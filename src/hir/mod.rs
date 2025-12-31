@@ -15,13 +15,12 @@ use crate::{
             HirStatmentKind,
         },
         error::{HIRError, HIRErrorKind},
-
         scope::HIRScope,
         types::HirType,
     },
     parser::ast::{
-        ASTDeclaration, ASTDeclarationKind, ASTStatment, ASTStatmentKind, ElementDeffinition,
-        ElementDeffinitionKind, ElementValue, PropertyModifier, Span,
+        ASTDeclaration, ASTDeclarationKind, ASTStatmentKind, ComponentMemberKind,
+        ComponentMemberValue, Span, VisibilityModifier,
     },
 };
 
@@ -46,7 +45,7 @@ pub struct SlynxHir {
     ///id => ['data', 'ty'] to resolve its order correctly if some object expression like Packet(ty:PacketTy::Crypto, data:[100]0) appears
     objects_deffinitions: HashMap<HirId, Vec<String>>,
     ///The scopes of this HIR. On the final it's expected to have only one, which is the global one
-    scopes: Vec<HIRScope>, 
+    scopes: Vec<HIRScope>,
     pub declarations: Vec<HirDeclaration>,
 }
 
@@ -57,12 +56,13 @@ impl SlynxHir {
             objects_deffinitions: HashMap::new(),
             names: HashMap::new(),
             types: HashMap::new(),
-            declarations: Vec::new(),        };
+            declarations: Vec::new(),
+        };
         out
-    } 
+    }
 
     ///Generates the declarations from the provided `ast`
-    pub fn generate(&mut self, ast: Vec<ASTDeclaration>) -> Result<(), HIRError> { 
+    pub fn generate(&mut self, ast: Vec<ASTDeclaration>) -> Result<(), HIRError> {
         for ast in &ast {
             self.hoist(ast)?;
         }
@@ -70,7 +70,7 @@ impl SlynxHir {
             self.resolve(ast)?;
         }
         Ok(())
-    } 
+    }
     ///Retrieves information about the provided `name` going from the current scope to the outer ones, finishing on the global
     pub fn retrieve_information_of_scoped(
         &mut self,
@@ -119,12 +119,12 @@ impl SlynxHir {
     }
 
     ///Resolves the provided values on a element. The `ty`is the type of the component we are resolving it
-    fn resolve_element_values(
+    fn resolve_component_members(
         &mut self,
-        values: Vec<ElementValue>,
+        members: Vec<ComponentMemberValue>,
         ty: &HirType,
     ) -> Result<Vec<ElementValueDeclaration>, HIRError> {
-        let mut out = Vec::with_capacity(values.len());
+        let mut out = Vec::with_capacity(members.len());
         let HirType::Component { props } = ty else {
             unreachable!("The type should be a component instead");
         };
@@ -135,13 +135,13 @@ impl SlynxHir {
                 prop.1 == "children"
                     && matches!(
                         prop.0,
-                        PropertyModifier::ParentPublic | PropertyModifier::Public
+                        VisibilityModifier::ParentPublic | VisibilityModifier::Public
                     )
             })
             .is_some();
-        for value in values {
-            out.push(match value {
-                ElementValue::Assign {
+        for member in members {
+            out.push(match member {
+                ComponentMemberValue::Assign {
                     prop_name,
                     rhs,
                     span,
@@ -158,7 +158,7 @@ impl SlynxHir {
 
                     if matches!(
                         props[index].0,
-                        PropertyModifier::Private | PropertyModifier::ChildrenPublic
+                        VisibilityModifier::Private | VisibilityModifier::ChildrenPublic
                     ) {
                         return Err(HIRError {
                             kind: HIRErrorKind::PropertyNotVisible { prop_name },
@@ -173,21 +173,19 @@ impl SlynxHir {
                         span,
                     }
                 }
-                ElementValue::Element(element) => {
+                ComponentMemberValue::Child(child) => {
                     if accepting_children {
-                        let (name, ty) = self.retrieve_information_of(
-                            &element.name.identifier,
-                            &element.name.span,
-                        )?;
+                        let (name, ty) =
+                            self.retrieve_information_of(&child.name.identifier, &child.name.span)?;
                         ElementValueDeclaration::Child {
                             name,
-                            values: self.resolve_element_values(element.values, &ty)?,
-                            span: element.span,
+                            values: self.resolve_component_members(child.values, &ty)?,
+                            span: child.span,
                         }
                     } else {
                         return Err(HIRError {
-                            span: element.span.clone(),
-                            kind: HIRErrorKind::InvalidChild { child: element },
+                            span: child.span.clone(),
+                            kind: HIRErrorKind::InvalidChild { child },
                         });
                     }
                 }
@@ -208,27 +206,25 @@ impl SlynxHir {
                 return_type,
                 ..
             } => self.hoist_function(name, args, return_type)?,
-            ASTDeclarationKind::ElementDeclaration {
-                name, deffinitions, ..
-            } => {
+            ASTDeclarationKind::ComponentDeclaration { name, members, .. } => {
                 let props = {
-                    let mut out = Vec::with_capacity(deffinitions.len());
-                    for def in deffinitions {
-                        match &def.kind {
-                            ElementDeffinitionKind::Property {
+                    let mut out = Vec::with_capacity(members.len());
+                    for member in members {
+                        match &member.kind {
+                            ComponentMemberKind::Property {
                                 name, modifier, ty, ..
                             } => {
                                 out.push((
                                     modifier.clone(),
                                     name.clone(),
                                     if let Some(generic) = ty {
-                                        self.retrieve_type_of_name(&generic, &def.span)?
+                                        self.retrieve_type_of_name(&generic, &member.span)?
                                     } else {
                                         HirType::Infer
                                     },
                                 ));
                             }
-                            ElementDeffinitionKind::Child(_) => {}
+                            ComponentMemberKind::Child(_) => {}
                             _ => {}
                         }
                     }
@@ -288,12 +284,12 @@ impl SlynxHir {
                 });
                 self.exit_scope();
             }
-            ASTDeclarationKind::ElementDeclaration { deffinitions, name } => {
+            ASTDeclarationKind::ComponentDeclaration { members, name } => {
                 self.enter_scope();
 
                 let (hir, ty) = self.retrieve_information_of(&name.to_string(), &ast.span)?; //modify later to accept the generic identifier instead
 
-                let defs = self.resolve_component_defs(deffinitions)?;
+                let defs = self.resolve_component_defs(members)?;
                 self.declarations.push(HirDeclaration {
                     id: hir,
                     kind: HirDeclarationKind::ElementDeclaration { props: defs },
