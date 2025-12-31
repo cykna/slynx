@@ -82,7 +82,7 @@ impl SlynxHir {
                         });
                     }
                 },
-                ComponentMemberValue::Element(e) => {
+                ComponentMemberValue::Child(e) => {
                     return Err(HIRError {
                         kind: HIRErrorKind::InvalidChild { child: e },
                         span: span.clone(),
@@ -141,7 +141,7 @@ impl SlynxHir {
                         _ => {
                             let (id, ty) =
                                 self.retrieve_information_of(&child.name.identifier, &child.span)?;
-                            let values = self.resolve_element_values(child.values, &ty)?;
+                            let values = self.resolve_component_members(child.values, &ty)?;
                             out.push(ElementValueDeclaration::Child {
                                 name: id,
                                 values,

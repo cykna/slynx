@@ -32,7 +32,7 @@ impl SlynxHir {
                     id: HirId::new(),
                     ty: HirType::Reference {
                         rf: id,
-                        generics: Vec::new()
+                        generics: Vec::new(),
                     },
                     span: expr.span,
                 })
@@ -52,7 +52,7 @@ impl SlynxHir {
                 Ok(HirExpression {
                     kind: HirExpressionKind::Element {
                         name: id,
-                        values: self.resolve_element_values(element.values, &ty)?,
+                        values: self.resolve_component_members(element.values, &ty)?,
                     },
                     id: HirId::new(),
                     ty,
