@@ -166,9 +166,7 @@ impl Lexer {
                         idx += 1;
                     }
 
-                    if chars[idx] == '!' {
-                        Token::macro_name(&buffer, start, idx)
-                    } else {
+                   
                         idx -= 1;
                         let span = Span { start, end: idx };
                         match buffer.as_str() {
@@ -191,7 +189,7 @@ impl Lexer {
                             },
                             _ => Token::identifier(&buffer, start, idx),
                         }
-                    }
+                    
                 }
                 c => {
                     return Err(LexerError::UnrecognizedChar {

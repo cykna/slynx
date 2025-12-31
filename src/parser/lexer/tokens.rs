@@ -74,7 +74,6 @@ pub enum TokenKind {
     Int(i32),
     String(String),
     Identifier(String),
-    MacroName(String),
     Component,
     Func,
     Pub,
@@ -287,12 +286,6 @@ impl Token {
     pub fn int(value: i32, start: usize, end: usize) -> Self {
         Self {
             kind: TokenKind::Int(value),
-            span: Span { end, start },
-        }
-    }
-    pub fn macro_name(buffer: &str, start: usize, end: usize) -> Self {
-        Self {
-            kind: TokenKind::MacroName(buffer.to_string()),
             span: Span { end, start },
         }
     }
