@@ -1,10 +1,8 @@
 mod expression;
-mod macros;
 mod elements;
 mod types;
 
 pub use expression::*;
-pub use macros::*;
 pub use types::*;
 pub use elements::*;
 
@@ -34,7 +32,6 @@ pub struct ASTStatment {
 
 #[derive(Debug)]
 pub enum ASTStatmentKind {
-    MacroCall(MacroCallStmt),
     Var {
         name: String,
         ty: Option<GenericIdentifier>,
@@ -62,7 +59,6 @@ pub struct ObjectField {
 
 #[derive(Debug)]
 pub enum ASTDeclarationKind {
-    MacroCall(MacroCallDecl),
     ObjectDeclaration {
         name: GenericIdentifier,
         fields: Vec<ObjectField>
