@@ -6,7 +6,7 @@ use crate::{
     hir::{
         HirId, SlynxHir,
         declaration::{
-            ElementValueDeclaration, HirDeclaration, HirDeclarationKind, HirExpression,
+            ComponentMemberDeclaration, HirDeclaration, HirDeclarationKind, HirExpression,
             HirExpressionKind, HirStatment, HirStatmentKind, SpecializedComponent,
         },
         types::HirType,
@@ -58,7 +58,7 @@ impl TypeChecker {
                     };
 
                     match prop {
-                        ElementValueDeclaration::Property {
+                        ComponentMemberDeclaration::Property {
                             index, value, span, ..
                         } => {
                             if let Some(value) = value {
@@ -67,8 +67,8 @@ impl TypeChecker {
                                 props[index].2 = self.unify(&props[index].2, &ty, span)?;
                             }
                         }
-                        ElementValueDeclaration::Child { .. }
-                        | ElementValueDeclaration::Specialized(_) => {}
+                        ComponentMemberDeclaration::Child { .. }
+                        | ComponentMemberDeclaration::Specialized(_) => {}
                     }
                 }
             }
@@ -212,7 +212,7 @@ impl TypeChecker {
 
     fn resolve_element_values(
         &mut self,
-        values: &mut Vec<ElementValueDeclaration>,
+        values: &mut Vec<ComponentMemberDeclaration>,
         mut target: HirType,
     ) -> Result<HirType, TypeError> {
         let HirType::Component { ref mut props } = target else {
@@ -222,10 +222,10 @@ impl TypeChecker {
         };
         for value in values {
             match value {
-                ElementValueDeclaration::Specialized(spec) => {
+                ComponentMemberDeclaration::Specialized(spec) => {
                     self.resolve_specialized(spec);
                 }
-                ElementValueDeclaration::Property {
+                ComponentMemberDeclaration::Property {
                     index, value, span, ..
                 } => {
                     if let Some(value) = value {
@@ -233,7 +233,7 @@ impl TypeChecker {
                         props[*index].2 = self.unify(&props[*index].2, &ty, span)?;
                     }
                 }
-                ElementValueDeclaration::Child { name, values, span } => {
+                ComponentMemberDeclaration::Child { name, values, span } => {
                     let ty = self
                         .types
                         .get(name)
@@ -335,7 +335,7 @@ impl TypeChecker {
                 };
                 for val in values {
                     match val {
-                        ElementValueDeclaration::Property {
+                        ComponentMemberDeclaration::Property {
                             index, value, span, ..
                         } => {
                             if let Some(value) = value {
@@ -343,8 +343,8 @@ impl TypeChecker {
                                 props[*index].2 = self.unify(&props[*index].2, &ty, &span)?;
                             }
                         }
-                        ElementValueDeclaration::Specialized(_) => {}
-                        ElementValueDeclaration::Child { name, values, span } => {
+                        ComponentMemberDeclaration::Specialized(_) => {}
+                        ComponentMemberDeclaration::Child { name, values, span } => {
                             let ty = self
                                 .types
                                 .get(name)

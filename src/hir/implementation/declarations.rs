@@ -1,7 +1,7 @@
 use crate::{
     hir::{
         HirId, SlynxHir,
-        declaration::{ElementValueDeclaration, SpecializedComponent},
+        declaration::{ComponentMemberDeclaration, SpecializedComponent},
         error::{HIRError, HIRErrorKind},
         types::HirType,
     },
@@ -107,7 +107,7 @@ impl SlynxHir {
     pub fn resolve_component_defs(
         &mut self,
         def: Vec<ComponentMember>,
-    ) -> Result<Vec<ElementValueDeclaration>, HIRError> {
+    ) -> Result<Vec<ComponentMemberDeclaration>, HIRError> {
         let mut out = Vec::with_capacity(def.len());
         let mut prop_idx = 0;
         for def in def {
@@ -119,7 +119,7 @@ impl SlynxHir {
                         HirType::Infer
                     };
                     let id = HirId::new();
-                    out.push(ElementValueDeclaration::Property {
+                    out.push(ComponentMemberDeclaration::Property {
                         id,
                         index: prop_idx,
                         value: if let Some(rhs) = rhs {
@@ -136,13 +136,13 @@ impl SlynxHir {
                     match (&child.name.generic, child.name.identifier.as_str()) {
                         (None, "Text") => {
                             let text = self.specialize_text(child.values, &child.span)?;
-                            out.push(ElementValueDeclaration::Specialized(text));
+                            out.push(ComponentMemberDeclaration::Specialized(text));
                         }
                         _ => {
                             let (id, ty) =
                                 self.retrieve_information_of(&child.name.identifier, &child.span)?;
                             let values = self.resolve_component_members(child.values, &ty)?;
-                            out.push(ElementValueDeclaration::Child {
+                            out.push(ComponentMemberDeclaration::Child {
                                 name: id,
                                 values,
                                 span: child.span,
