@@ -72,7 +72,7 @@ impl IntermediateRepr {
             HirExpressionKind::Identifier(name) => self
                 .active_context()
                 .insert_expr(IntermediateExpr::Identifier(name)),
-            HirExpressionKind::Element { name, values, .. } => {
+            HirExpressionKind::Component{ name, values, .. } => {
                 let eidx = self.generate_child(name, values);
                 if matches!(
                     self.active_context().ty,
@@ -259,7 +259,7 @@ impl IntermediateRepr {
                     let ret = self.get_type(return_type);
                     self.generate_function(args, ret, statments, name, decl.id);
                 }
-                HirDeclarationKind::ElementDeclaration { props } => {
+                HirDeclarationKind::ComponentDeclaration{ props } => {
                     let mut tys = Vec::new();
                     let HirType::Component { props: ref decl_ty } = decl.ty else {
                         unreachable!("Type of element decl should be component");

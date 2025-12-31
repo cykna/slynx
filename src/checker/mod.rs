@@ -5,13 +5,8 @@ use crate::{
     checker::error::{IncompatibleComponentReason, TypeError, TypeErrorKind},
     hir::{
         HirId, SlynxHir,
-<<<<<<< HEAD
         deffinitions::{
-            ElementValueDeclaration, HirDeclaration, HirDeclarationKind, HirExpression,
-=======
-        declaration::{
             ComponentMemberDeclaration, HirDeclaration, HirDeclarationKind, HirExpression,
->>>>>>> 987cb0a (chore: renamed 'ElementValueDeclaration' to 'ComponentMemberDeclaration')
             HirExpressionKind, HirStatment, HirStatmentKind, SpecializedComponent,
         },
         types::HirType,
@@ -52,6 +47,7 @@ impl TypeChecker {
     fn check_decl(&mut self, decl: &mut HirDeclaration) -> Result<(), TypeError> {
         self.types.insert(decl.id, decl.ty.clone());
         match decl.kind {
+<<<<<<< HEAD
             HirDeclarationKind::Function { ref mut statments, ..} => {
                 self.resolve_statments(statments, &decl.ty)?;
             }
@@ -60,6 +56,10 @@ impl TypeChecker {
                 self.types.insert(decl.id, decl.ty.clone());
             }
             HirDeclarationKind::ElementDeclaration { ref mut props } => {
+=======
+            HirDeclarationKind::Function { .. } => {}
+            HirDeclarationKind::ComponentDeclaration{ ref mut props } => {
+>>>>>>> 28d8fa7 (chore: modified element decl to component decl on the hir and hirexpr 'Element' variant to 'Component')
                 for prop in props {
                     let HirType::Component { props } = &mut decl.ty else {
                         unreachable!("Element declaration should have type component");
@@ -344,6 +344,7 @@ impl TypeChecker {
                 ty
             }
             HirExpressionKind::Identifier(_) => self.resolve(&expr.ty)?,
+<<<<<<< HEAD
             HirExpressionKind::Object {
                 name,
                 ref mut fields,
@@ -356,6 +357,10 @@ impl TypeChecker {
                 }
             }
             HirExpressionKind::Element {
+=======
+
+            HirExpressionKind::Component{
+>>>>>>> 28d8fa7 (chore: modified element decl to component decl on the hir and hirexpr 'Element' variant to 'Component')
                 name,
                 ref mut values,
             } => {
@@ -398,10 +403,14 @@ impl TypeChecker {
             HirExpressionKind::Specialized(_) => {
                 expr.ty = self.unify(&expr.ty, &HirType::GenericComponent, &expr.span)?
             }
+<<<<<<< HEAD
             HirExpressionKind::Object { .. } => {
                 expr.ty = self.resolve(&expr.ty)?;
             }
             HirExpressionKind::Element {
+=======
+            HirExpressionKind::Component {
+>>>>>>> 28d8fa7 (chore: modified element decl to component decl on the hir and hirexpr 'Element' variant to 'Component')
                 ref name,
                 ref mut values,
             } => {
@@ -473,7 +482,7 @@ impl TypeChecker {
                     self.default_statment(statment, &return_type)?;
                 }
             }
-            HirDeclarationKind::ElementDeclaration { ref mut props } => {
+            HirDeclarationKind::ComponentDeclaration{ ref mut props } => {
                 self.resolve_element_values(props, decl.ty.clone())?;
             }
         }

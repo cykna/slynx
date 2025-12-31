@@ -288,7 +288,7 @@ impl SlynxHir {
                 let defs = self.resolve_component_defs(members)?;
                 self.declarations.push(HirDeclaration {
                     id: hir,
-                    kind: HirDeclarationKind::ElementDeclaration { props: defs },
+                    kind: HirDeclarationKind::ComponentDeclaration { props: defs },
                     ty,
                     span: ast.span,
                 });
