@@ -5,7 +5,6 @@ pub mod error;
 mod expr;
 mod functions;
 pub mod lexer;
-mod macros;
 mod statment;
 mod types;
 
