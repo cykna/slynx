@@ -47,22 +47,15 @@ impl TypeChecker {
     fn check_decl(&mut self, decl: &mut HirDeclaration) -> Result<(), TypeError> {
         self.types.insert(decl.id, decl.ty.clone());
         match decl.kind {
-<<<<<<< HEAD
             HirDeclarationKind::Function { ref mut statments, ..} => {
                 self.resolve_statments(statments, &decl.ty)?;
             }
             HirDeclarationKind::Object => {
-
                 self.types.insert(decl.id, decl.ty.clone());
             }
-            HirDeclarationKind::ElementDeclaration { ref mut props } => {
-=======
-            HirDeclarationKind::Function { .. } => {}
-            HirDeclarationKind::ComponentDeclaration{ ref mut props } => {
->>>>>>> 28d8fa7 (chore: modified element decl to component decl on the hir and hirexpr 'Element' variant to 'Component')
-                for prop in props {
+            HirDeclarationKind::ComponentDeclaration{ ref mut props } => {                for prop in props {
                     let HirType::Component { props } = &mut decl.ty else {
-                        unreachable!("Element declaration should have type component");
+                        unreachable!("Component declaration should have type component");
                     };
 
                     match prop {
@@ -263,14 +256,14 @@ impl TypeChecker {
         Ok(())
     }
 
-    fn resolve_element_values(
+    fn resolve_component_members(
         &mut self,
         values: &mut Vec<ComponentMemberDeclaration>,
         mut target: HirType,
     ) -> Result<HirType, TypeError> {
         let HirType::Component { ref mut props } = target else {
             unreachable!(
-                "The type received when resolving element values should be a component one"
+                "The type received when resolving component values should be a component one"
             );
         };
         for value in values {
@@ -300,7 +293,7 @@ impl TypeChecker {
                             span: span.clone(),
                         })?
                         .clone();
-                    self.resolve_element_values(values, ty)?;
+                    self.resolve_component_members(values, ty)?;
                 }
             }
         }
@@ -364,9 +357,21 @@ impl TypeChecker {
                 name,
                 ref mut values,
             } => {
+<<<<<<< HEAD
                 let parent = self.get_type_of_name(&name, span)?;
                 
                 self.resolve_element_values(values, parent)?
+=======
+                let parent = self
+                    .types
+                    .get_mut(&name)
+                    .ok_or(TypeError {
+                        kind: TypeErrorKind::Unrecognized(name),
+                        span: span.clone(),
+                    })?
+                    .clone();
+                self.resolve_component_members(values, parent)?
+>>>>>>> 8fc43c9 (chore: modified 'element' to 'component' inside type checker)
             }
             ref un => {
                 unimplemented!("{un:?}")
@@ -415,7 +420,7 @@ impl TypeChecker {
                 ref mut values,
             } => {
                 let HirType::Component { ref mut props } = expr.ty.clone() else {
-                    unreachable!("Element expression should be of type element");
+                    unreachable!("Component expression should be of type component");
                 };
                 expr.ty = HirType::Reference {
                     rf: *name,
@@ -441,7 +446,7 @@ impl TypeChecker {
                                     span: span.clone(),
                                 })?
                                 .clone();
-                            self.resolve_element_values(values, ty)?;
+                            self.resolve_component_members(values, ty)?;
                         }
                     }
                 }
@@ -483,7 +488,7 @@ impl TypeChecker {
                 }
             }
             HirDeclarationKind::ComponentDeclaration{ ref mut props } => {
-                self.resolve_element_values(props, decl.ty.clone())?;
+                self.resolve_component_members(props, decl.ty.clone())?;
             }
         }
         Ok(())
