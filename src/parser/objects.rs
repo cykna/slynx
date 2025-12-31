@@ -1,4 +1,4 @@
-use crate::parser::{Parser, ast::{ASTDeclaration, ASTDeclarationKind, ObjectField, Span}, error::ParseError, lexer::tokens::{Token, TokenKind}};
+use crate::parser::{Parser, ast::{ASTDeclaration, ASTDeclarationKind, ObjectField, Span, VisibilityModifier}, error::ParseError, lexer::tokens::{Token, TokenKind}};
 
 impl Parser {
     pub fn parse_object(&mut self, start:Span) ->Result<ASTDeclaration, ParseError> {
@@ -8,7 +8,7 @@ impl Parser {
         while self.peek()?.kind != TokenKind::RBrace {
             let name = self.parse_typedname()?;
             fields.push(ObjectField {
-                visibility: super::ast::PropertyModifier::Public,
+                visibility: VisibilityModifier::Public,
                 name
             });
             if self.peek()?.kind == TokenKind::RBrace {
