@@ -83,7 +83,7 @@ impl WebCompiler {
 
     pub fn compile_func_body(
         &mut self,
-        instructions: &Vec<IntermediateInstruction>,
+        instructions: &[IntermediateInstruction],
         ctx: &IntermediateContext,
         ir: &IntermediateRepr,
     ) -> BlockStmt {

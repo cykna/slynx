@@ -26,8 +26,8 @@ pub enum ASTExpressionKind {
         rhs: Box<ASTExpression>,
     },
     Identifier(String),
-    ObjectExpression{
+    ObjectExpression {
         name: GenericIdentifier,
-        fields: Vec<NamedExpr>
-    }
+        fields: Vec<NamedExpr>,
+    },
 }

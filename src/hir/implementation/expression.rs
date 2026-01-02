@@ -11,50 +11,89 @@ use crate::{
 };
 
 impl SlynxHir {
-    
-    pub fn organized_object_fields(&mut self, objid:HirId, ty: &HirType, fields: Vec<NamedExpr>, span:&Span) -> Result<HirExpressionKind, HIRError>{
-        let HirType::Struct { fields:field_types } = ty else {
+    pub fn organized_object_fields(
+        &mut self,
+        objid: HirId,
+        ty: &HirType,
+        fields: Vec<NamedExpr>,
+        span: &Span,
+    ) -> Result<HirExpressionKind, HIRError> {
+        let HirType::Struct {
+            fields: field_types,
+        } = ty
+        else {
             unreachable!("Type when organizing object fields should be a struct");
         };
         let Some(defined_layout) = self.objects_deffinitions.get(&objid) else {
-            unreachable!("The deffinition of this should have been defined during hoisting and the resolving of it")
+            unreachable!(
+                "The deffinition of this should have been defined during hoisting and the resolving of it"
+            )
         };
         if defined_layout.len() != fields.len() {
-           if defined_layout.len() > fields.len() {
-               let missing_fields = defined_layout.iter().filter_map(|field| {
-                   if let Some(_) = fields.iter().position(|f| &f.name == field) {
-                       None
-                   }else {
-                       Some(field.clone())
-                   }
-               }).collect::<Vec<String>>();
-               return Err(HIRError { kind: HIRErrorKind::MissingProperty { prop_names: missing_fields }, span: span.clone() })
-           }else {
-               let non_existent_fields = fields.into_iter().filter(|provided_field| {
-                   defined_layout.iter().position(|f| f == &provided_field.name).is_none()
-               }).map(|f| f.name).collect::<Vec<String>>();
-               return Err(HIRError { kind: HIRErrorKind::PropertyNotRecognized { prop_names: non_existent_fields }, span: span.clone() })
-           }
+            if defined_layout.len() > fields.len() {
+                let missing_fields = defined_layout
+                    .iter()
+                    .filter_map(|field| {
+                        if fields.iter().any(|f| &f.name == field) {
+                            None
+                        } else {
+                            Some(field.clone())
+                        }
+                    })
+                    .collect::<Vec<String>>();
+                return Err(HIRError {
+                    kind: HIRErrorKind::MissingProperty {
+                        prop_names: missing_fields,
+                    },
+                    span: span.clone(),
+                });
+            } else {
+                let non_existent_fields = fields
+                    .into_iter()
+                    .filter(|provided_field| {
+                        !defined_layout.iter().any(|f| f == &provided_field.name)
+                    })
+                    .map(|f| f.name)
+                    .collect::<Vec<String>>();
+                return Err(HIRError {
+                    kind: HIRErrorKind::PropertyNotRecognized {
+                        prop_names: non_existent_fields,
+                    },
+                    span: span.clone(),
+                });
+            }
         }
         let mut out = Vec::with_capacity(fields.len());
         let mut non_recognized_fields = Vec::with_capacity(fields.len());
         let cloned_layout = defined_layout.clone(); //resolve isso dps
         for field in fields {
-            if let Some(field_idx) = cloned_layout.iter().position(|defined_field| &field.name == defined_field) {
-                out.insert(field_idx.max(out.len()), self.resolve_expr(field.expr, Some(&field_types[field_idx]))?);
-            }else {
+            if let Some(field_idx) = cloned_layout
+                .iter()
+                .position(|defined_field| &field.name == defined_field)
+            {
+                out.insert(
+                    field_idx.max(out.len()),
+                    self.resolve_expr(field.expr, Some(&field_types[field_idx]))?,
+                );
+            } else {
                 non_recognized_fields.push(field.name);
             }
         }
         if non_recognized_fields.is_empty() {
-            Ok(HirExpressionKind::Object { name: objid, fields: out})
-        }else {
+            Ok(HirExpressionKind::Object {
+                name: objid,
+                fields: out,
+            })
+        } else {
             Err(HIRError {
-                kind: HIRErrorKind::PropertyNotRecognized { prop_names: non_recognized_fields }, span: span.clone()
+                kind: HIRErrorKind::PropertyNotRecognized {
+                    prop_names: non_recognized_fields,
+                },
+                span: span.clone(),
             })
         }
     }
-    
+
     ///Ty only serves to tell the type of the expression if it's needed to infer and check if it doesnt correspond
     pub fn resolve_expr(
         &mut self,
@@ -106,7 +145,15 @@ impl SlynxHir {
             ASTExpressionKind::ObjectExpression { name, fields } => {
                 let (id, ty) = self.retrieve_information_of(&name.identifier, &expr.span)?;
                 let kind = self.organized_object_fields(id, &ty, fields, &expr.span)?;
-                Ok(HirExpression { id: HirId::new(), ty: HirType::Reference { rf:id, generics: Vec::new() }, kind, span: expr.span })
+                Ok(HirExpression {
+                    id: HirId::new(),
+                    ty: HirType::Reference {
+                        rf: id,
+                        generics: Vec::new(),
+                    },
+                    kind,
+                    span: expr.span,
+                })
             }
         }
     }

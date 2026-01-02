@@ -63,7 +63,7 @@ impl WebCompiler {
 
     ///Maps the provided `id` to the provided `name` and returns it's indent
     pub fn map_name(&mut self, id: HirId, name: &str) -> Ident {
-        self.names.insert(id, create_ident(&name));
+        self.names.insert(id, create_ident(name));
         self.names.get(&id).cloned().unwrap()
     }
 }
@@ -100,25 +100,21 @@ impl SlynxCompiler for WebCompiler {
         ir: &IntermediateRepr,
     ) -> Self::ExpressionType {
         match expr {
-            IntermediateExpr::Identifier(i) => Expr::Ident(self.names.get(&i).unwrap().clone()),
+            IntermediateExpr::Identifier(i) => Expr::Ident(self.names.get(i).unwrap().clone()),
             IntermediateExpr::Int(int) => Expr::Lit(Lit::Num(Number {
                 span: DUMMY_SP,
                 value: *int as f64,
                 raw: None,
             })),
             IntermediateExpr::StringLiteral(s) => Expr::Lit(Lit::Str(ir.strings[s].into())),
-            IntermediateExpr::Component {
-                id,
-                props,
-                ..
-            } => {
-                let callee = Callee::Expr(Box::new(Expr::Ident(self.get_name(&id).clone())));
+            IntermediateExpr::Component { id, props, .. } => {
+                let callee = Callee::Expr(Box::new(Expr::Ident(self.get_name(id).clone())));
                 let args = {
                     if props.iter().all(|v| v.is_none()) {
                         Vec::new()
                     } else {
-                        let out = props
-                            .into_iter()
+                        props
+                            .iter()
                             .map(|expr| ExprOrSpread {
                                 spread: None,
                                 expr: if let Some(expr_idx) = expr {
@@ -131,9 +127,7 @@ impl SlynxCompiler for WebCompiler {
                                     Self::undefined()
                                 },
                             })
-                            .collect();
-
-                        out
+                            .collect()
                     }
                 };
                 Expr::Call(CallExpr {

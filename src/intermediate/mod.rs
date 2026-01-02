@@ -21,7 +21,7 @@ use crate::{
         types::IntermediateType,
     },
 };
-#[derive(Debug,Default)]
+#[derive(Debug, Default)]
 ///Struct used to represent the intermediate representation of Slynx. WIll be used when being compiled. This contains the monomorfization of types
 ///and flat values of everything in the source code. It can be understood as the context itself of the IR
 pub struct IntermediateRepr {
@@ -219,7 +219,7 @@ impl IntermediateRepr {
         for statment in statments {
             match statment.kind {
                 HirStatmentKind::Expression { expr } => {
-                    let expr = self.generate_expr(expr);
+                    self.generate_expr(expr);
                 }
                 HirStatmentKind::Return { expr } => {
                     let id = self.generate_expr(expr);

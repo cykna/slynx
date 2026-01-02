@@ -11,7 +11,7 @@ impl WebCompiler {
     pub fn compile_struct(
         &mut self,
         _: &HirId,
-        exprs: &Vec<usize>,
+        exprs: &[usize],
         ctx: &IntermediateContext,
         ir: &IntermediateRepr,
     ) -> Expr {

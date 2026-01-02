@@ -1,5 +1,5 @@
 use crate::{
-    hir::declaration::HirExpression,
+    hir::deffinitions::HirExpression,
     parser::ast::{ComponentExpression, Span},
 };
 
@@ -23,7 +23,7 @@ pub enum HIRErrorKind {
         prop_names: Vec<String>,
     },
     PropertyNotRecognized {
-        prop_names: Vec<String>
+        prop_names: Vec<String>,
     },
     PropertyNotVisible {
         prop_name: String,
@@ -37,7 +37,7 @@ pub enum HIRErrorKind {
     },
     RecursiveType {
         ty: String,
-    }
+    },
 }
 
 impl std::fmt::Display for HIRError {
@@ -65,11 +65,19 @@ impl std::fmt::Display for HIRError {
                 format!("The name '{name}' was already defined before. Use a different name")
             }
             HIRErrorKind::MissingProperty { prop_names } => {
-                let names = prop_names.into_iter().map(|v| format!("'{v}'")).collect::<Vec<String>>().join(", ");
+                let names = prop_names
+                    .iter()
+                    .map(|v| format!("'{v}'"))
+                    .collect::<Vec<String>>()
+                    .join(", ");
                 format!("Property(ies) named as {names} is required but wasn't provided")
             }
-            HIRErrorKind::PropertyNotRecognized{ prop_names } => {
-                let names = prop_names.into_iter().map(|v| format!("'{v}'")).collect::<Vec<String>>().join(", ");
+            HIRErrorKind::PropertyNotRecognized { prop_names } => {
+                let names = prop_names
+                    .iter()
+                    .map(|v| format!("'{v}'"))
+                    .collect::<Vec<String>>()
+                    .join(", ");
                 format!("Property(ies) named as {names} are not recognized for this object")
             }
             HIRErrorKind::RecursiveType { ty } => {

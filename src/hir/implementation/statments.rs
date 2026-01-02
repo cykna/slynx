@@ -1,7 +1,7 @@
 use crate::{
     hir::{
         SlynxHir,
-        declaration::{HirStatment, HirStatmentKind},
+        deffinitions::{HirStatment, HirStatmentKind},
         error::HIRError,
     },
     parser::ast::{ASTStatment, ASTStatmentKind},

@@ -8,7 +8,8 @@ use std::{collections::HashMap, sync::atomic::AtomicU64};
 use crate::{
     hir::{
         deffinitions::{
-            ComponentMemberDeclaration, HirDeclaration, HirDeclarationKind, HirStatment, HirStatmentKind,
+            ComponentMemberDeclaration, HirDeclaration, HirDeclarationKind, HirStatment,
+            HirStatmentKind,
         },
         error::{HIRError, HIRErrorKind},
         scope::HIRScope,

@@ -1,15 +1,15 @@
 use crate::hir::{
-    {
-        HirId, SlynxHir,
-        deffinitions::{ComponentMemberDeclaration, SpecializedComponent,
-        error::{HIRError, HIRErrorKind},
-        types::HirType,
+    HirId, SlynxHir,
+    deffinitions::{
+        ComponentMemberDeclaration, HirDeclaration, HirDeclarationKind, SpecializedComponent,
     },
-    parser::ast::{
-        ComponentMember, ComponentMemberKind, ComponentMemberValue, GenericIdentifier, ObjectField,
-        Span, TypedName,
-    },
-}};
+    error::{HIRError, HIRErrorKind},
+    types::HirType,
+};
+use crate::parser::ast::{
+    ComponentMember, ComponentMemberKind, ComponentMemberValue, GenericIdentifier, ObjectField,
+    Span, TypedName,
+};
 
 impl SlynxHir {
     pub fn resolve_object(
@@ -57,7 +57,7 @@ impl SlynxHir {
     pub fn hoist_object(
         &mut self,
         name: &GenericIdentifier,
-        obj_fields: &Vec<ObjectField>,
+        obj_fields: &[ObjectField],
     ) -> Result<(), HIRError> {
         let def_fields = obj_fields.iter().map(|f| f.name.name.clone()).collect();
         let id = self.create_hirid_for(name.to_string(), HirType::Struct { fields: Vec::new() });

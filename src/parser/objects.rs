@@ -16,10 +16,10 @@ impl Parser {
                 visibility: VisibilityModifier::Public,
                 name,
             });
-            
+
             if self.peek()?.kind == TokenKind::RBrace {
                 break;
-            }else {
+            } else {
                 self.expect(&TokenKind::Comma)?;
             }
         }

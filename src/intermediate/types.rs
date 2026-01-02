@@ -20,7 +20,7 @@ pub enum IntermediateType {
 
 impl IntermediateRepr {
     ////Creates a new complex type from the provided `tys` and returns it
-    pub fn retrieve_complex(&mut self, tys: &Vec<HirType>) -> IntermediateType {
+    pub fn retrieve_complex(&mut self, tys: &[HirType]) -> IntermediateType {
         IntermediateType::Complex(tys.iter().map(|t| self.get_type(t)).collect())
     }
 
