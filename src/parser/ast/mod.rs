@@ -1,24 +1,26 @@
-mod expression;
 mod component;
+mod expression;
 mod types;
 
+pub use component::*;
 pub use expression::*;
 pub use types::*;
-pub use component::*;
 
 #[derive(Default, Debug, Clone)]
-pub enum VisibilityModifier{
+pub enum VisibilityModifier {
     ///Property visible to everyone
     Public,
     ///Property visible only by the one defining it.
     #[default]
     Private,
-    ///Property visible only for the parents. Onlu usable on Components.
+    ///Property visible only for the children. Only usable on Components. 
+    ChildrenPublic,
+    ///Property visible only for the parents. Only usable on Components.
     ParentPublic,
 }
 
 #[derive(Debug, Clone)]
-///The representation of the bounds of something on the code. 
+///The representation of the bounds of something on the code.
 pub struct Span {
     pub start: usize,
     pub end: usize,
@@ -65,14 +67,14 @@ pub struct ASTDeclaration {
 #[derive(Debug)]
 pub struct ObjectField {
     pub visibility: VisibilityModifier,
-    pub name: TypedName
+    pub name: TypedName,
 }
 
 #[derive(Debug)]
 pub enum ASTDeclarationKind {
     ObjectDeclaration {
         name: GenericIdentifier,
-        fields: Vec<ObjectField>
+        fields: Vec<ObjectField>,
     },
     ComponentDeclaration {
         name: GenericIdentifier,

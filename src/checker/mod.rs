@@ -51,7 +51,7 @@ impl TypeChecker {
         self.types.insert(decl.id, decl.ty.clone());
         match decl.kind {
             HirDeclarationKind::Function { .. } => {}
-            HirDeclarationKind::ComponentDeclaration{ ref mut props } => {
+            HirDeclarationKind::ComponentDeclaration { ref mut props } => {
                 for prop in props {
                     let HirType::Component { props } = &mut decl.ty else {
                         unreachable!("Component declaration should have type component");
@@ -273,7 +273,7 @@ impl TypeChecker {
             }
             HirExpressionKind::Identifier(_) => self.resolve(&expr.ty)?,
 
-            HirExpressionKind::Component{
+            HirExpressionKind::Component {
                 name,
                 ref mut values,
             } => {
@@ -393,7 +393,7 @@ impl TypeChecker {
                     self.default_statment(statment, &return_type)?;
                 }
             }
-            HirDeclarationKind::ComponentDeclaration{ ref mut props } => {
+            HirDeclarationKind::ComponentDeclaration { ref mut props } => {
                 self.resolve_component_members(props, decl.ty.clone())?;
             }
         }

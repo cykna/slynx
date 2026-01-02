@@ -44,9 +44,9 @@ impl WebCompiler {
         self.names.insert(id, create_ident(&name));
         self.names.get(&id).cloned().unwrap()
     }
-    
+
     ///Maps the provided `id` to the provided `name` and returns it's indent
-    pub fn map_name(&mut self, id: HirId, name:&str) -> Ident {
+    pub fn map_name(&mut self, id: HirId, name: &str) -> Ident {
         self.names.insert(id, create_ident(&name));
         self.names.get(&id).cloned().unwrap()
     }
