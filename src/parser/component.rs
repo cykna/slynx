@@ -46,7 +46,7 @@ impl Parser {
         })
     }
 
-    ///Checks if the next tokens will be used for statments or not. For so, as the ones for element deffinitions are more limited, we simply check if the next ones aren't they.
+    ///Checks if the next tokens will be used for statments or not. For so, as the ones for component deffinitions are more limited, we simply check if the next ones aren't they.
     ///So something like `pub prop` is understood as a deffinition, so this will be false. The same with `H1<f32> {}` but not `H1<f32>::abc`
     fn check_for_statment(&self) -> Result<bool, ParseError> {
         let out = match self.peek()?.kind {
@@ -87,7 +87,7 @@ impl Parser {
         match curr.kind {
             TokenKind::Identifier(_) => {
                 let span = curr.span.clone();
-                let expr = self.parse_element_expr()?;
+                let expr = self.parse_component_expr()?;
                 Ok(ComponentMember {
                     kind: ComponentMemberKind::Child(expr),
                     span,

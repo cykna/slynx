@@ -111,7 +111,7 @@ impl SlynxHir {
         &mut self.scopes[idx]
     }
 
-    ///Resolves the provided values on a element. The `ty`is the type of the component we are resolving it
+    ///Resolves the provided values on a component. The `ty`is the type of the component we are resolving it
     fn resolve_component_members(
         &mut self,
         members: Vec<ComponentMemberValue>,

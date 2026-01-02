@@ -83,8 +83,8 @@ impl IntermediateContext {
             _ => None,
         }
     }
-    ///Inserts a new property on this element and returns it's property child index.
-    ///Returns None if this isn't an element
+    ///Inserts a new property on this component and returns it's property child index.
+    ///Returns None if this isn't an component 
     pub fn insert_property(&mut self, expr: IntermediateProperty) -> Option<usize> {
         match &mut self.ty {
             IntermediateContextType::Component { properties, .. } => {

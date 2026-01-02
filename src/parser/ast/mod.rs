@@ -1,21 +1,19 @@
 mod expression;
-mod elements;
+mod component;
 mod types;
 
 pub use expression::*;
 pub use types::*;
-pub use elements::*;
+pub use component::*;
 
 #[derive(Default, Debug, Clone)]
 pub enum VisibilityModifier{
     ///Property visible to everyone
     Public,
-    ///Property visible only to the element itself.
+    ///Property visible only by the one defining it.
     #[default]
     Private,
-    ///Property visible only for the children
-    ChildrenPublic,
-    ///Property visible only for the parents
+    ///Property visible only for the parents. Onlu usable on Components.
     ParentPublic,
 }
 

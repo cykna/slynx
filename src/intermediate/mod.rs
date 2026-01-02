@@ -93,7 +93,7 @@ impl IntermediateRepr {
             }
         }
     }
-    ///Creates a new child on the current context and returns the element expression and the child id
+    ///Creates a new child on the current context and returns the component expression and the child id
     fn generate_child(&mut self, name: HirId, values: Vec<ComponentMemberDeclaration>) -> usize {
         let mut props = Vec::new();
         let mut children = Vec::new();
@@ -168,8 +168,8 @@ impl IntermediateRepr {
         sidx
     }
 
-    ///Creates a new element with the provided informations. Returns the component id and it's type id
-    fn generate_element(
+    ///Creates a new component with the provided informations. Returns the component id and it's type id
+    fn generate_component(
         &mut self,
         id: HirId,
         props: Vec<ComponentMemberDeclaration>,
@@ -244,14 +244,14 @@ impl IntermediateRepr {
                 HirDeclarationKind::ComponentDeclaration{ props } => {
                     let mut tys = Vec::new();
                     let HirType::Component { props: ref decl_ty } = decl.ty else {
-                        unreachable!("Type of element decl should be component");
+                        unreachable!("Type of component decl should be component");
                     };
                     for (_, _, ty) in decl_ty {
                         let typ = self.get_type(ty);
                         tys.push(typ);
                     }
 
-                    self.generate_element(decl.id, props, &tys);
+                    self.generate_component(decl.id, props, &tys);
                     self.types_mapping
                         .insert(decl.id, IntermediateType::Complex(tys));
                 }
