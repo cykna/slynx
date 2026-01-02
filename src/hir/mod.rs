@@ -25,13 +25,18 @@ static ACCUMULATOR: AtomicU64 = AtomicU64::new(0);
 #[derive(Debug, Clone, Copy, Hash, PartialEq, Eq, PartialOrd, Ord)]
 ///An ID for name resolution on the HIR
 pub struct HirId(pub u64);
+impl Default for HirId {
+    fn default() -> Self {
+        HirId::new()
+    }
+}
 impl HirId {
     pub fn new() -> Self {
         Self(ACCUMULATOR.fetch_add(1, std::sync::atomic::Ordering::Relaxed))
     }
 }
 
-#[derive(Debug)]
+#[derive(Debug,Default)]
 pub struct SlynxHir {
     ///Maps a name N to it's ID on the HIR. This is for something like function declaration and function call.
     names: HashMap<String, HirId>,
@@ -45,13 +50,12 @@ pub struct SlynxHir {
 
 impl SlynxHir {
     pub fn new() -> Self {
-        let out = Self {
+        Self {
             scopes: vec![HIRScope::new()],
             names: HashMap::new(),
             types: HashMap::new(),
             declarations: Vec::new(),
-        };
-        out
+        }
     }
 
     ///Generates the declarations from the provided `ast`
@@ -124,14 +128,13 @@ impl SlynxHir {
 
         let accepting_children = props
             .iter()
-            .find(|prop| {
+            .any(|prop| {
                 prop.1 == "children"
                     && matches!(
                         prop.0,
                         VisibilityModifier::ParentPublic | VisibilityModifier::Public
                     )
-            })
-            .is_some();
+            });
         for member in members {
             out.push(match member {
                 ComponentMemberValue::Assign {
@@ -211,14 +214,13 @@ impl SlynxHir {
                                     modifier.clone(),
                                     name.clone(),
                                     if let Some(generic) = ty {
-                                        self.retrieve_type_of_name(&generic, &member.span)?
+                                        self.retrieve_type_of_name(generic, &member.span)?
                                     } else {
                                         HirType::Infer
                                     },
                                 ));
                             }
                             ComponentMemberKind::Child(_) => {}
-                            _ => {}
                         }
                     }
                     out

@@ -54,7 +54,7 @@ impl SlynxHir {
         };
         let func_ty = HirType::Function {
             args,
-            return_type: Box::new(self.retrieve_type_of_name(&return_type, &return_type.span)?),
+            return_type: Box::new(self.retrieve_type_of_name(return_type, &return_type.span)?),
         };
 
         self.create_hirid_for(name.to_string(), func_ty);
@@ -150,7 +150,6 @@ impl SlynxHir {
                         }
                     }
                 }
-                _ => {}
             }
         }
         Ok(out)

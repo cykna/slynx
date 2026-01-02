@@ -17,7 +17,7 @@ impl WebCompiler {
     pub fn compile_ctx(&mut self, ctx: &IntermediateContext, ir: &IntermediateRepr) {
         match &ctx.ty {
             IntermediateContextType::Component { properties, .. } => {
-                self.compile_component(ctx.id, &properties, ctx, ir);
+                self.compile_component(ctx.id, properties, ctx, ir);
             }
             IntermediateContextType::Function { .. } => {}
         }

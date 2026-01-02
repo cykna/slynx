@@ -45,13 +45,13 @@ impl std::fmt::Display for HIRError {
                 format!("Type with name '{name}' is was not defined previously")
             }
             HIRErrorKind::InvalidBinaryExpression { .. } => {
-                format!("Invalid binary expression")
+                "Invalid binary expression".to_string()
             }
             HIRErrorKind::PropertyNotVisible { prop_name } => {
                 format!("Property with name '{prop_name}' is not visible")
             }
             HIRErrorKind::InvalidChild { .. } => {
-                format!("Invalid child. Component is not expecting children")
+                "Invalid child. Component is not expecting children".to_string()
             }
             HIRErrorKind::InvalidType { ty, reason } => {
                 format!("Invalid type '{ty}' because it's {reason}")

@@ -21,7 +21,7 @@ use crate::{
         types::IntermediateType,
     },
 };
-
+#[derive(Default)]
 ///Struct used to represent the intermediate representation of Slynx. WIll be used when being compiled. This contains the monomorfization of types
 ///and flat values of everything in the source code. It can be understood as the context itself of the IR
 pub struct IntermediateRepr {
@@ -101,11 +101,7 @@ impl IntermediateRepr {
         for value in values {
             match value {
                 ComponentMemberDeclaration::Property { index, value, .. } => {
-                    let out = if let Some(value) = value {
-                        Some(self.generate_expr(value))
-                    } else {
-                        None
-                    };
+                    let out = value.map(|value| self.generate_expr(value));
                     for _ in 0..index - props.len() {
                         props.push(None);
                     }
@@ -173,7 +169,7 @@ impl IntermediateRepr {
         &mut self,
         id: HirId,
         props: Vec<ComponentMemberDeclaration>,
-        tys: &Vec<IntermediateType>,
+        tys: &[IntermediateType],
     ) {
         let expr = IntermediateContext::new_component(id);
 
@@ -181,11 +177,7 @@ impl IntermediateRepr {
         for (idx, prop) in props.into_iter().enumerate() {
             match prop {
                 ComponentMemberDeclaration::Property { value, id, .. } => {
-                    let default_value = if let Some(value) = value {
-                        Some(self.generate_expr(value))
-                    } else {
-                        None
-                    };
+                    let default_value = value.map(|value| self.generate_expr(value));
                     self.active_context().insert_property(IntermediateProperty {
                         id,
                         default_value,

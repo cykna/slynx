@@ -92,10 +92,10 @@ impl Parser {
                 })
             }
             _ => {
-                return Err(ParseError::UnexpectedToken(
+                Err(ParseError::UnexpectedToken(
                     current,
                     "'->' or '{'".to_string(),
-                ));
+                ))
             }
         }
     }

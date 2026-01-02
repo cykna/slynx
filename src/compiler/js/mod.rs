@@ -19,6 +19,7 @@ use crate::{
     },
 };
 
+#[derive(Debug,Default)]
 pub struct WebCompiler {
     script: Script,
     names: HashMap<HirId, Ident>,
@@ -47,7 +48,7 @@ impl WebCompiler {
 
     ///Maps the provided `id` to the provided `name` and returns it's indent
     pub fn map_name(&mut self, id: HirId, name: &str) -> Ident {
-        self.names.insert(id, create_ident(&name));
+        self.names.insert(id, create_ident(name));
         self.names.get(&id).cloned().unwrap()
     }
 }
@@ -56,7 +57,7 @@ impl SlynxCompiler for WebCompiler {
     type ExpressionType = Expr;
     fn compile_instructions(
         &mut self,
-        instructions: &Vec<IntermediateInstruction>,
+        instructions: &[IntermediateInstruction],
         ctx: &IntermediateContext,
         ir: &IntermediateRepr,
     ) {

@@ -84,7 +84,6 @@ impl Parser {
                         span: component.span.clone(),
                         kind: ASTExpressionKind::Component(component),
                     });
-                } else {
                 }
             }
             _ => {}

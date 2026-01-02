@@ -15,7 +15,7 @@ use crate::{
 impl WebCompiler {
     pub fn retrieve_component_params(
         &mut self,
-        properties: &Vec<IntermediateProperty>,
+        properties: &[IntermediateProperty],
         ctx: &IntermediateContext,
         ir: &IntermediateRepr,
     ) -> Vec<Param> {
@@ -55,7 +55,7 @@ impl WebCompiler {
     pub fn compile_component(
         &mut self,
         id: HirId,
-        properties: &Vec<IntermediateProperty>,
+        properties: &[IntermediateProperty],
         ctx: &IntermediateContext,
         ir: &IntermediateRepr,
     ) {
