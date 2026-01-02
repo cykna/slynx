@@ -34,7 +34,7 @@ impl Parser {
             Ok(GenericIdentifier {
                 generic: Some(generics),
                 identifier: ident,
-                span: span,
+                span,
             })
         } else {
             Ok(GenericIdentifier {

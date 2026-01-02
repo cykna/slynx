@@ -13,7 +13,7 @@ pub enum VisibilityModifier {
     ///Property visible only by the one defining it.
     #[default]
     Private,
-    ///Property visible only for the children. Only usable on Components. 
+    ///Property visible only for the children. Only usable on Components.
     ChildrenPublic,
     ///Property visible only for the parents. Only usable on Components.
     ParentPublic,

@@ -118,7 +118,7 @@ impl Lexer {
                                 'n' => buffer.push('\n'),
                                 't' => buffer.push('\t'),
                                 'r' => buffer.push('\r'),
-                                c @ '0'..'9' => buffer.push(c),
+                                c @ '0'..='9' => buffer.push(c),
                                 '\\' => buffer.push('\\'),
                                 '"' => buffer.push('"'),
                                 _ => buffer.push('\\'),
@@ -194,8 +194,7 @@ impl Lexer {
                     return Err(LexerError::UnrecognizedChar {
                         char: c,
                         index: idx,
-                    }
-                    .into());
+                    });
                 }
             };
             out.push_back(tk);

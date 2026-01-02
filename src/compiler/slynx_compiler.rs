@@ -9,7 +9,7 @@ pub trait SlynxCompiler {
     type StatmentType;
     fn compile_instructions(
         &mut self,
-        instructions: &Vec<IntermediateInstruction>,
+        instructions: &[IntermediateInstruction],
         ctx: &IntermediateContext,
         ir: &IntermediateRepr,
     ) -> Vec<Self::StatmentType>;

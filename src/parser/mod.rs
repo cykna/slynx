@@ -52,7 +52,7 @@ impl Parser {
                 TokenKind::Int(_) => "an integer literal".to_string(),
                 TokenKind::Float(_) => "a float literal".to_string(),
                 TokenKind::String(_) => "a string literal".to_string(),
-                _ => format!("'{}'", kind.to_string()),
+                _ => format!("'{kind}'",),
             };
             Err(ParseError::UnexpectedToken(token, kind))
         }

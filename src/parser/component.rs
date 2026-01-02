@@ -66,11 +66,7 @@ impl Parser {
                             idx += 1
                         }
                     }
-
-                    match self.peek_at(idx)?.kind {
-                        TokenKind::LBrace => false,
-                        _ => true,
-                    }
+                    matches!(self.peek_at(idx)?.kind, TokenKind::LBrace)
                 }
                 TokenKind::LBrace => false,
                 _ => true,
@@ -194,18 +190,18 @@ impl Parser {
                         })
                     }
                     _ => {
-                        return Err(ParseError::UnexpectedToken(
+                        Err(ParseError::UnexpectedToken(
                             self.eat()?,
                             "'=' or ':' to define the type of the property or a ';' to keep it to be initialized by it's parent".to_string(),
-                        ));
+                        ))
                     }
                 }
             }
             _ => {
-                return Err(ParseError::UnexpectedToken(
+                Err(ParseError::UnexpectedToken(
                     self.eat()?,
                     "'prop' a macro name or an identifier".to_string(),
-                ));
+                ))
             }
         }
     }

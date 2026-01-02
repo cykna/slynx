@@ -55,6 +55,7 @@ impl std::fmt::Display for SlynxError {
             &"^".repeat(err.len() - (self.column_start - 1)),
         );
         let err = format!("  | {}", err);
+        let source_err = format!("\n{source}\n{err}");
         writeln!(
             f,
             "{}: {} => {}:{}:{}{}",
@@ -63,7 +64,7 @@ impl std::fmt::Display for SlynxError {
             self.file.bold(),
             self.line.blue().bold(),
             self.column_start.blue().bold(),
-            format!("\n{source}\n{err}")
+            source_err
         )
     }
 }
@@ -98,7 +99,7 @@ impl SlynxContext {
 
     ///Inserts the file with provided `path` if it exists.
     pub fn insert_file(&mut self, path: Arc<PathBuf>) -> Result<()> {
-        let file = std::fs::read_to_string(&path.as_path())?;
+        let file = std::fs::read_to_string(path.as_path())?;
         let lines = file
             .chars()
             .enumerate()
@@ -121,7 +122,7 @@ impl SlynxContext {
             .files
             .get(path)
             .expect("Path should be provided on the context");
-        let out = match lines.binary_search(&index) {
+        match lines.binary_search(&index) {
             Ok(v) => (
                 v,
                 index - lines[v],
@@ -138,9 +139,7 @@ impl SlynxContext {
                 },
                 &source[lines[e - 1] + 1..lines[e]],
             ),
-        };
-
-        out
+        }
     }
 
     ///The name of the file this context is parsing

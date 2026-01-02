@@ -33,7 +33,7 @@ impl IntermediateRepr {
             HirType::Float => IntermediateType::Float,
             HirType::Str => IntermediateType::Str,
             HirType::Void => IntermediateType::Void,
-            HirType::Vector { ty } => IntermediateType::Vector(Box::new(self.get_type(&*ty))),
+            HirType::Vector { ty } => IntermediateType::Vector(Box::new(self.get_type(ty))),
             HirType::GenericComponent => IntermediateType::Component,
             HirType::Reference { rf, .. } => IntermediateType::Reference(*rf),
             HirType::Function { .. } | HirType::Struct { .. } | HirType::Component { .. } => {
