@@ -9,6 +9,7 @@ pub struct Token {
 impl std::fmt::Display for TokenKind {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
         let result = match self {
+            Self::Dot => ".".to_string(),
             Self::LParen => "(".to_string(),
             Self::RParen => ")".to_string(),
             Self::LBrace => "{".to_string(),
@@ -69,6 +70,7 @@ pub enum TokenKind {
     Arrow,
     Comma,
     Colon,
+    Dot,
     Float(f32),
     Int(i32),
     String(String),
@@ -87,6 +89,16 @@ impl std::fmt::Display for Token {
 }
 
 impl Token {
+
+    pub fn dot(pos: usize) -> Self {
+        Self {
+            kind: TokenKind::Dot,
+            span: Span {
+                end: pos,
+                start: pos,
+            },
+        }
+    }
     pub fn lparen(pos: usize) -> Self {
         Self {
             kind: TokenKind::LParen,

@@ -41,6 +41,7 @@ impl Lexer {
         let mut idx = 0;
         while idx < chars.len() {
             let tk = match chars[idx] {
+                '.' => Token::dot(idx),
                 '(' => Token::lparen(idx),
                 ')' => Token::rparen(idx),
                 '{' => Token::lbrace(idx),

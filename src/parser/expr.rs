@@ -135,6 +135,7 @@ impl Parser {
                     (TokenKind::Identifier(_), TokenKind::Colon) => {
                         Ok(Some(self.parse_object_expression()?))
                     }
+                    
                     _ => Ok(None),
                 }
             }
