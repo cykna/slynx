@@ -9,7 +9,7 @@ use crate::{
 };
 
 #[derive(Debug)]
-pub struct HIRScope { 
+pub struct HIRScope {
     ///A map to a name to an id. This can be used to save variables for example
     names: HashMap<String, HirId>,
 }
@@ -21,7 +21,7 @@ impl HIRScope {
         }
     }
 
-    pub fn insert_name(&mut self, id: HirId, name: String) { 
+    pub fn insert_name(&mut self, id: HirId, name: String) {
         self.names.insert(name, id);
     }
 

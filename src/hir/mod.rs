@@ -1,28 +1,23 @@
 pub mod declaration;
 pub mod error;
 mod implementation;
-pub mod macros;
 mod scope;
 pub mod types;
-use std::{
-    collections::HashMap,
-    sync::{Arc, atomic::AtomicU64},
-};
+use std::{collections::HashMap, sync::atomic::AtomicU64};
 
 use crate::{
     hir::{
         declaration::{
-            ElementValueDeclaration, HirDeclaration, HirDeclarationKind, HirStatment,
+            ComponentMemberDeclaration, HirDeclaration, HirDeclarationKind, HirStatment,
             HirStatmentKind,
         },
         error::{HIRError, HIRErrorKind},
-        macros::{DeclarationMacro, ElementMacro, StatmentMacro},
         scope::HIRScope,
         types::HirType,
     },
     parser::ast::{
-        ASTDeclaration, ASTDeclarationKind, ASTStatment, ASTStatmentKind, ElementDeffinition,
-        ElementDeffinitionKind, ElementValue, PropertyModifier, Span,
+        ASTDeclaration, ASTDeclarationKind, ASTStatmentKind, ComponentMemberKind,
+        ComponentMemberValue, Span, VisibilityModifier,
     },
 };
 
@@ -30,13 +25,18 @@ static ACCUMULATOR: AtomicU64 = AtomicU64::new(0);
 #[derive(Debug, Clone, Copy, Hash, PartialEq, Eq, PartialOrd, Ord)]
 ///An ID for name resolution on the HIR
 pub struct HirId(pub u64);
+impl Default for HirId {
+    fn default() -> Self {
+        HirId::new()
+    }
+}
 impl HirId {
     pub fn new() -> Self {
         Self(ACCUMULATOR.fetch_add(1, std::sync::atomic::Ordering::Relaxed))
     }
 }
 
-#[derive(Debug)]
+#[derive(Debug, Default)]
 pub struct SlynxHir {
     ///Maps a name N to it's ID on the HIR. This is for something like function declaration and function call.
     names: HashMap<String, HirId>,
@@ -45,96 +45,21 @@ pub struct SlynxHir {
     types: HashMap<HirId, HirType>,
     ///The scopes of this HIR. On the final it's expected to have only one, which is the global one
     scopes: Vec<HIRScope>,
-    decl_macros: HashMap<&'static str, Arc<dyn DeclarationMacro>>,
-    stmt_macros: HashMap<&'static str, Arc<dyn StatmentMacro>>,
-    elmt_macros: HashMap<&'static str, Arc<dyn ElementMacro>>,
     pub declarations: Vec<HirDeclaration>,
 }
 
 impl SlynxHir {
     pub fn new() -> Self {
-        let out = Self {
+        Self {
             scopes: vec![HIRScope::new()],
             names: HashMap::new(),
             types: HashMap::new(),
             declarations: Vec::new(),
-            decl_macros: HashMap::new(),
-            stmt_macros: HashMap::new(),
-            elmt_macros: HashMap::new(),
-        };
-        out
-    }
-
-    ///Expands all the macro call declarations inside the given `ast`
-    fn expand_decls(&mut self, ast: &mut Vec<ASTDeclaration>) -> Result<(), HIRError> {
-        let mut idx = 0;
-        while idx < ast.len() {
-            if let Some(news) = self.expand_decl(idx, &ast[idx])? {
-                ast.remove(idx);
-                for (nidx, newast) in news.into_iter().enumerate() {
-                    ast.insert(idx + nidx, newast);
-                }
-            }
-
-            idx += 1;
         }
-        Ok(())
-    }
-    ///Expands the element macros inside the given `ast`. Since it's a Declaration array, this will look into
-    ///the macro inside the declarations, if some is a macro call, then expands it
-    fn expand_elements(&mut self, ast: &mut Vec<ASTDeclaration>) -> Result<(), HIRError> {
-        for ast in ast {
-            match &mut ast.kind {
-                ASTDeclarationKind::ElementDeclaration { deffinitions, .. } => {
-                    let mut idx = 0;
-                    while idx < deffinitions.len() {
-                        if let Some(news) = self.expand_element(idx, &deffinitions[idx])? {
-                            deffinitions.remove(idx);
-
-                            for (nidx, newast) in news.into_iter().enumerate() {
-                                deffinitions.insert(idx + nidx, newast);
-                            }
-                        }
-                        idx += 1;
-                    }
-                }
-                _ => {}
-            }
-        }
-        Ok(())
-    }
-
-    ///Expands the statment macros inside the given `ast`. Since it's a Declaration array, this will look into
-    ///the statments inside the declarations, if some is a macro call, then expands it
-    fn expand_stmts(&mut self, ast: &mut Vec<ASTDeclaration>) -> Result<(), HIRError> {
-        for ast in ast {
-            match &mut ast.kind {
-                ASTDeclarationKind::MacroCall(..)
-                | ASTDeclarationKind::ElementDeclaration { .. }
-                | ASTDeclarationKind::ObjectDeclaration { .. } => {}
-                ASTDeclarationKind::FuncDeclaration { body, .. } => {
-                    let mut idx = 0;
-                    while idx < body.len() {
-                        if let Some(news) = self.expand_stmt(idx, &body[idx])? {
-                            body.remove(idx);
-                            for (nidx, newast) in news.into_iter().enumerate() {
-                                body.insert(idx + nidx, newast);
-                            }
-                        }
-                        idx += 1;
-                    }
-                }
-            }
-        }
-        Ok(())
     }
 
     ///Generates the declarations from the provided `ast`
-    pub fn generate(&mut self, mut ast: Vec<ASTDeclaration>) -> Result<(), HIRError> {
-        self.expand_decls(&mut ast)?;
-        self.expand_elements(&mut ast)?;
-        self.expand_stmts(&mut ast)?;
-
+    pub fn generate(&mut self, ast: Vec<ASTDeclaration>) -> Result<(), HIRError> {
         for ast in &ast {
             self.hoist(ast)?;
         }
@@ -142,22 +67,6 @@ impl SlynxHir {
             self.resolve(ast)?;
         }
         Ok(())
-    }
-
-    #[inline]
-    ///Inserts a new Macro that can be executed on declaration toplevel.
-    pub fn insert_element_macro(&mut self, macr: Arc<dyn ElementMacro>) {
-        self.elmt_macros.insert(macr.name(), macr);
-    }
-    #[inline]
-    ///Inserts a new Macro that can be executed on declaration toplevel.
-    pub fn insert_declaration_macro(&mut self, macr: Arc<dyn DeclarationMacro>) {
-        self.decl_macros.insert(macr.name(), macr);
-    }
-    #[inline]
-    ///Inserts a new macro that can be executed on statment toplevel.
-    pub fn insert_statment_macro(&mut self, macr: Arc<dyn StatmentMacro>) {
-        self.stmt_macros.insert(macr.name(), macr);
     }
     ///Retrieves information about the provided `name` going from the current scope to the outer ones, finishing on the global
     pub fn retrieve_information_of_scoped(
@@ -206,30 +115,27 @@ impl SlynxHir {
         &mut self.scopes[idx]
     }
 
-    ///Resolves the provided values on a element. The `ty`is the type of the component we are resolving it
-    fn resolve_element_values(
+    ///Resolves the provided values on a component. The `ty`is the type of the component we are resolving it
+    fn resolve_component_members(
         &mut self,
-        values: Vec<ElementValue>,
+        members: Vec<ComponentMemberValue>,
         ty: &HirType,
-    ) -> Result<Vec<ElementValueDeclaration>, HIRError> {
-        let mut out = Vec::with_capacity(values.len());
+    ) -> Result<Vec<ComponentMemberDeclaration>, HIRError> {
+        let mut out = Vec::with_capacity(members.len());
         let HirType::Component { props } = ty else {
             unreachable!("The type should be a component instead");
         };
 
-        let accepting_children = props
-            .iter()
-            .find(|prop| {
-                prop.1 == "children"
-                    && matches!(
-                        prop.0,
-                        PropertyModifier::ParentPublic | PropertyModifier::Public
-                    )
-            })
-            .is_some();
-        for value in values {
-            out.push(match value {
-                ElementValue::Assign {
+        let accepting_children = props.iter().any(|prop| {
+            prop.1 == "children"
+                && matches!(
+                    prop.0,
+                    VisibilityModifier::ParentPublic | VisibilityModifier::Public
+                )
+        });
+        for member in members {
+            out.push(match member {
+                ComponentMemberValue::Assign {
                     prop_name,
                     rhs,
                     span,
@@ -246,7 +152,7 @@ impl SlynxHir {
 
                     if matches!(
                         props[index].0,
-                        PropertyModifier::Private | PropertyModifier::ChildrenPublic
+                        VisibilityModifier::Private | VisibilityModifier::ChildrenPublic
                     ) {
                         return Err(HIRError {
                             kind: HIRErrorKind::PropertyNotVisible { prop_name },
@@ -254,28 +160,28 @@ impl SlynxHir {
                         });
                     }
 
-                    ElementValueDeclaration::Property {
+                    ComponentMemberDeclaration::Property {
                         id: HirId::new(),
                         index,
                         value: Some(self.resolve_expr(rhs, Some(&props[index].2))?),
                         span,
                     }
                 }
-                ElementValue::Element(element) => {
+                ComponentMemberValue::Child(child) => {
                     if accepting_children {
-                        let (name, ty) = self.retrieve_information_of(
-                            &element.name.identifier,
-                            &element.name.span,
-                        )?;
-                        ElementValueDeclaration::Child {
+                        let (name, ty) =
+                            self.retrieve_information_of(&child.name.identifier, &child.name.span)?;
+                        ComponentMemberDeclaration::Child {
                             name,
-                            values: self.resolve_element_values(element.values, &ty)?,
-                            span: element.span,
+                            values: self.resolve_component_members(child.values, &ty)?,
+                            span: child.span,
                         }
                     } else {
                         return Err(HIRError {
-                            span: element.span.clone(),
-                            kind: HIRErrorKind::InvalidChild { child: element },
+                            span: child.span.clone(),
+                            kind: HIRErrorKind::InvalidChild {
+                                child: Box::new(child),
+                            },
                         });
                     }
                 }
@@ -286,7 +192,6 @@ impl SlynxHir {
     ///Hoist the provided `ast` declaration, with so no errors of undefined values because declared later may occurr
     fn hoist(&mut self, ast: &ASTDeclaration) -> Result<(), HIRError> {
         match &ast.kind {
-            ASTDeclarationKind::MacroCall(..) => {}
             ASTDeclarationKind::ObjectDeclaration { name, fields } => {
                 self.hoist_object(name, fields)?
             }
@@ -297,28 +202,25 @@ impl SlynxHir {
                 return_type,
                 ..
             } => self.hoist_function(name, args, return_type)?,
-            ASTDeclarationKind::ElementDeclaration {
-                name, deffinitions, ..
-            } => {
+            ASTDeclarationKind::ComponentDeclaration { name, members, .. } => {
                 let props = {
-                    let mut out = Vec::with_capacity(deffinitions.len());
-                    for def in deffinitions {
-                        match &def.kind {
-                            ElementDeffinitionKind::Property {
+                    let mut out = Vec::with_capacity(members.len());
+                    for member in members {
+                        match &member.kind {
+                            ComponentMemberKind::Property {
                                 name, modifier, ty, ..
                             } => {
                                 out.push((
                                     modifier.clone(),
                                     name.clone(),
                                     if let Some(generic) = ty {
-                                        self.retrieve_type_of_name(&generic, &def.span)?
+                                        self.retrieve_type_of_name(generic, &member.span)?
                                     } else {
                                         HirType::Infer
                                     },
                                 ));
                             }
-                            ElementDeffinitionKind::Child(_) => {}
-                            _ => {}
+                            ComponentMemberKind::Child(_) => {}
                         }
                     }
                     out
@@ -333,7 +235,6 @@ impl SlynxHir {
     }
     fn resolve(&mut self, ast: ASTDeclaration) -> Result<(), HIRError> {
         match ast.kind {
-            ASTDeclarationKind::MacroCall(..) => {}
             ASTDeclarationKind::ObjectDeclaration { name, fields } => {
                 self.resolve_object(name, fields)?
             }
@@ -378,15 +279,15 @@ impl SlynxHir {
                 });
                 self.exit_scope();
             }
-            ASTDeclarationKind::ElementDeclaration { deffinitions, name } => {
+            ASTDeclarationKind::ComponentDeclaration { members, name } => {
                 self.enter_scope();
 
                 let (hir, ty) = self.retrieve_information_of(&name.to_string(), &ast.span)?; //modify later to accept the generic identifier instead
 
-                let defs = self.resolve_component_defs(deffinitions)?;
+                let defs = self.resolve_component_defs(members)?;
                 self.declarations.push(HirDeclaration {
                     id: hir,
-                    kind: HirDeclarationKind::ElementDeclaration { props: defs },
+                    kind: HirDeclarationKind::ComponentDeclaration { props: defs },
                     ty,
                     span: ast.span,
                 });
@@ -394,68 +295,5 @@ impl SlynxHir {
             }
         }
         Ok(())
-    }
-    ///Expands, or atleast, tries to, the given AST if it's a macro call declaration
-    fn expand_decl(
-        &mut self,
-        idx: usize,
-        ast: &ASTDeclaration,
-    ) -> Result<Option<Vec<ASTDeclaration>>, HIRError> {
-        match &ast.kind {
-            ASTDeclarationKind::MacroCall(call_data) => {
-                let macr = self
-                    .decl_macros
-                    .get::<&str>(&call_data.name.as_ref())
-                    .ok_or(HIRError {
-                        kind: HIRErrorKind::NameNotRecognized(call_data.name.clone()),
-                        span: ast.span.clone(),
-                    })?;
-                Ok(Some(macr.execute(&call_data.args, idx)))
-            }
-            _ => Ok(None),
-        }
-    }
-    ///Expands, or atleast, tries to, the given AST if it's a macro call statment
-    fn expand_element(
-        &mut self,
-        idx: usize,
-        ast: &ElementDeffinition,
-    ) -> Result<Option<Vec<ElementDeffinition>>, HIRError> {
-        match &ast.kind {
-            ElementDeffinitionKind::MacroCall { name, args } => {
-                let macr = self
-                    .elmt_macros
-                    .get::<&str>(&name.as_ref())
-                    .ok_or(HIRError {
-                        kind: HIRErrorKind::NameNotRecognized(name.clone()),
-                        span: Span {
-                            start: ast.span.start,
-                            end: ast.span.start + name.len(),
-                        },
-                    })?;
-                Ok(Some(macr.execute(&args, idx)))
-            }
-            _ => Ok(None),
-        }
-    }
-    ///Expands, or atleast, tries to, the given AST if it's a macro call statment
-    fn expand_stmt(
-        &mut self,
-        idx: usize,
-        ast: &ASTStatment,
-    ) -> Result<Option<Vec<ASTStatment>>, HIRError> {
-        match &ast.kind {
-            ASTStatmentKind::MacroCall(call_data) => {
-                let macr = self
-                    .stmt_macros
-                    .get::<&str>(&call_data.name.as_ref())
-                    .ok_or(HIRError {
-                        kind: HIRErrorKind::NameNotRecognized(call_data.name.clone()),
-                        span: ast.span.clone(),
-                    })?;
-                Ok(Some(macr.execute(&call_data.args, idx)))
-            }
-            _ => Ok(None),
-        }
     }
 }

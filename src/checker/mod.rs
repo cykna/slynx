@@ -6,8 +6,8 @@ use crate::{
     hir::{
         HirId, SlynxHir,
         declaration::{
-            ElementValueDeclaration, HirDeclaration, HirDeclarationKind, HirExpression,
-            HirExpressionKind, HirStatment, HirStatmentKind, SpecializedElement,
+            ComponentMemberDeclaration, HirDeclaration, HirDeclarationKind, HirExpression,
+            HirExpressionKind, HirStatment, HirStatmentKind, SpecializedComponent,
         },
         types::HirType,
     },
@@ -26,8 +26,6 @@ pub struct PropRef {
 pub struct TypeChecker {
     ///The type of everything that is expected to have some
     types: HashMap<HirId, HirType>,
-    ///Tracking of the types of the properties
-    properties: HashMap<PropRef, HirType>,
 }
 
 impl TypeChecker {
@@ -36,7 +34,6 @@ impl TypeChecker {
     pub fn check(hir: &mut SlynxHir) -> Result<(), TypeError> {
         let mut inner = Self {
             types: HashMap::new(),
-            properties: HashMap::new(),
         };
         for decl in &mut hir.declarations {
             inner.check_decl(decl)?;
@@ -51,14 +48,14 @@ impl TypeChecker {
         self.types.insert(decl.id, decl.ty.clone());
         match decl.kind {
             HirDeclarationKind::Function { .. } => {}
-            HirDeclarationKind::ElementDeclaration { ref mut props } => {
+            HirDeclarationKind::ComponentDeclaration { ref mut props } => {
                 for prop in props {
                     let HirType::Component { props } = &mut decl.ty else {
-                        unreachable!("Element declaration should have type component");
+                        unreachable!("Component declaration should have type component");
                     };
 
                     match prop {
-                        ElementValueDeclaration::Property {
+                        ComponentMemberDeclaration::Property {
                             index, value, span, ..
                         } => {
                             if let Some(value) = value {
@@ -67,8 +64,8 @@ impl TypeChecker {
                                 props[index].2 = self.unify(&props[index].2, &ty, span)?;
                             }
                         }
-                        ElementValueDeclaration::Child { .. }
-                        | ElementValueDeclaration::Specialized(_) => {}
+                        ComponentMemberDeclaration::Child { .. }
+                        | ComponentMemberDeclaration::Specialized(_) => {}
                     }
                 }
             }
@@ -131,7 +128,7 @@ impl TypeChecker {
                     });
                 }
                 let mut unified_props = Vec::with_capacity(aprops.len());
-                for (prop_a, prop_b) in aprops.into_iter().zip(aprops.into_iter()) {
+                for (prop_a, prop_b) in aprops.iter().zip(aprops.iter()) {
                     let unified_prop = self.unify(&prop_a.2, &prop_b.2, span)?;
                     unified_props.push((prop_a.0.clone(), prop_a.1.clone(), unified_prop));
                 }
@@ -141,15 +138,13 @@ impl TypeChecker {
             }
             (t @ HirType::Component { .. }, HirType::GenericComponent)
             | (HirType::GenericComponent, t @ HirType::Component { .. }) => Ok(t.clone()),
-            (a, b) => {
-                return Err(TypeError {
-                    kind: TypeErrorKind::IncompatibleTypes {
-                        lhs: a.clone(),
-                        rhs: b.clone(),
-                    },
-                    span: span.clone(),
-                });
-            }
+            (a, b) => Err(TypeError {
+                kind: TypeErrorKind::IncompatibleTypes {
+                    lhs: a.clone(),
+                    rhs: b.clone(),
+                },
+                span: span.clone(),
+            }),
         }
     }
 
@@ -174,7 +169,7 @@ impl TypeChecker {
                 generics: Vec::new(),
             });
         }
-        if self.reccursive_ty(rf, &ty) {
+        if self.reccursive_ty(rf, ty) {
             return Err(TypeError {
                 kind: TypeErrorKind::CiclicType { ty: ty.clone() },
                 span: span.clone(),
@@ -182,7 +177,7 @@ impl TypeChecker {
         }
         self.substitute(rf, ty.clone());
         Ok(HirType::Reference {
-            rf: rf,
+            rf,
             generics: Vec::new(),
         })
     }
@@ -206,26 +201,26 @@ impl TypeChecker {
         }
     }
 
-    fn resolve_specialized(&mut self, _: &mut SpecializedElement) -> Result<(), TypeError> {
+    fn resolve_specialized(&mut self, _: &mut SpecializedComponent) -> Result<(), TypeError> {
         Ok(())
     }
 
-    fn resolve_element_values(
+    fn resolve_component_members(
         &mut self,
-        values: &mut Vec<ElementValueDeclaration>,
+        values: &mut Vec<ComponentMemberDeclaration>,
         mut target: HirType,
     ) -> Result<HirType, TypeError> {
         let HirType::Component { ref mut props } = target else {
             unreachable!(
-                "The type received when resolving element values should be a component one"
+                "The type received when resolving component values should be a component one"
             );
         };
         for value in values {
             match value {
-                ElementValueDeclaration::Specialized(spec) => {
-                    self.resolve_specialized(spec);
+                ComponentMemberDeclaration::Specialized(spec) => {
+                    self.resolve_specialized(spec)?;
                 }
-                ElementValueDeclaration::Property {
+                ComponentMemberDeclaration::Property {
                     index, value, span, ..
                 } => {
                     if let Some(value) = value {
@@ -233,7 +228,7 @@ impl TypeChecker {
                         props[*index].2 = self.unify(&props[*index].2, &ty, span)?;
                     }
                 }
-                ElementValueDeclaration::Child { name, values, span } => {
+                ComponentMemberDeclaration::Child { name, values, span } => {
                     let ty = self
                         .types
                         .get(name)
@@ -242,7 +237,7 @@ impl TypeChecker {
                             span: span.clone(),
                         })?
                         .clone();
-                    self.resolve_element_values(values, ty)?;
+                    self.resolve_component_members(values, ty)?;
                 }
             }
         }
@@ -268,12 +263,11 @@ impl TypeChecker {
             } => {
                 let lhs_ty = self.get_type_of_expr(lhs, &lhs.span.clone())?;
                 let rhs_ty = self.get_type_of_expr(rhs, &rhs.span.clone())?;
-                let ty = self.unify(&lhs_ty, &rhs_ty, span)?;
-                ty
+                self.unify(&lhs_ty, &rhs_ty, span)?
             }
             HirExpressionKind::Identifier(_) => self.resolve(&expr.ty)?,
 
-            HirExpressionKind::Element {
+            HirExpressionKind::Component {
                 name,
                 ref mut values,
             } => {
@@ -285,7 +279,7 @@ impl TypeChecker {
                         span: span.clone(),
                     })?
                     .clone();
-                self.resolve_element_values(values, parent)?
+                self.resolve_component_members(values, parent)?
             }
             ref un => {
                 unimplemented!("{un:?}")
@@ -293,7 +287,7 @@ impl TypeChecker {
         };
         let unified = self.unify(&expected, &calc, span)?;
         expr.ty = unified.clone();
-        return Ok(unified);
+        Ok(unified)
     }
 
     fn default_expr(&mut self, expr: &mut HirExpression) -> Result<(), TypeError> {
@@ -322,12 +316,12 @@ impl TypeChecker {
             HirExpressionKind::Specialized(_) => {
                 expr.ty = self.unify(&expr.ty, &HirType::GenericComponent, &expr.span)?
             }
-            HirExpressionKind::Element {
+            HirExpressionKind::Component {
                 ref name,
                 ref mut values,
             } => {
                 let HirType::Component { ref mut props } = expr.ty.clone() else {
-                    unreachable!("Element expression should be of type element");
+                    unreachable!("Component expression should be of type component");
                 };
                 expr.ty = HirType::Reference {
                     rf: *name,
@@ -335,16 +329,16 @@ impl TypeChecker {
                 };
                 for val in values {
                     match val {
-                        ElementValueDeclaration::Property {
+                        ComponentMemberDeclaration::Property {
                             index, value, span, ..
                         } => {
                             if let Some(value) = value {
                                 let ty = self.get_type_of_expr(value, span)?;
-                                props[*index].2 = self.unify(&props[*index].2, &ty, &span)?;
+                                props[*index].2 = self.unify(&props[*index].2, &ty, span)?;
                             }
                         }
-                        ElementValueDeclaration::Specialized(_) => {}
-                        ElementValueDeclaration::Child { name, values, span } => {
+                        ComponentMemberDeclaration::Specialized(_) => {}
+                        ComponentMemberDeclaration::Child { name, values, span } => {
                             let ty = self
                                 .types
                                 .get(name)
@@ -353,7 +347,7 @@ impl TypeChecker {
                                     span: span.clone(),
                                 })?
                                 .clone();
-                            self.resolve_element_values(values, ty)?;
+                            self.resolve_component_members(values, ty)?;
                         }
                     }
                 }
@@ -371,7 +365,7 @@ impl TypeChecker {
             HirStatmentKind::Expression { ref mut expr } => self.default_expr(expr)?,
             HirStatmentKind::Return { ref mut expr } => {
                 self.default_expr(expr)?;
-                let unify = self.unify(&expr.ty, &expected, &statment.span)?;
+                let unify = self.unify(&expr.ty, expected, &statment.span)?;
                 expr.ty = unify;
             }
         };
@@ -390,11 +384,11 @@ impl TypeChecker {
                     unreachable!("A function should have function type");
                 };
                 for statment in statments {
-                    self.default_statment(statment, &return_type)?;
+                    self.default_statment(statment, return_type)?;
                 }
             }
-            HirDeclarationKind::ElementDeclaration { ref mut props } => {
-                self.resolve_element_values(props, decl.ty.clone())?;
+            HirDeclarationKind::ComponentDeclaration { ref mut props } => {
+                self.resolve_component_members(props, decl.ty.clone())?;
             }
         }
         Ok(())

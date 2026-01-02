@@ -1,19 +1,19 @@
 use crate::parser::{
     Parser,
     ast::{
-        ASTExpression, ASTExpressionKind, ElementExpression, ElementValue, GenericIdentifier,
-        Operator, Span,
+        ASTExpression, ASTExpressionKind, ComponentExpression, ComponentMemberValue,
+        GenericIdentifier, Operator, Span,
     },
     error::ParseError,
     lexer::tokens::{Token, TokenKind},
 };
 
 impl Parser {
-    ///Parses an element expression but, starting from the LBrace, assuming the name of the element is the provided `name`
-    pub fn parse_element_expr_with_name(
+    ///Parses an component expression but, starting from the LBrace, assuming the name of the component is the provided `name`
+    pub fn parse_component_expr_with_name(
         &mut self,
         name: GenericIdentifier,
-    ) -> Result<ElementExpression, ParseError> {
+    ) -> Result<ComponentExpression, ParseError> {
         let mut span = Span {
             start: name.span.start,
             end: 0,
@@ -39,7 +39,7 @@ impl Parser {
                     };
                     self.expect(&TokenKind::Colon)?;
                     let val = self.parse_expression()?;
-                    values.push(ElementValue::Assign {
+                    values.push(ComponentMemberValue::Assign {
                         prop_name: ident,
                         span: Span {
                             start: span.start,
@@ -49,45 +49,40 @@ impl Parser {
                     });
                 }
                 _ => {
-                    let val = self.parse_element_expr()?;
-                    values.push(ElementValue::Element(val));
+                    let val = self.parse_component_expr()?;
+                    values.push(ComponentMemberValue::Child(val));
                 }
             }
         }
         self.expect(&TokenKind::RBrace)?;
-        Ok(ElementExpression { name, values, span })
+        Ok(ComponentExpression { name, values, span })
     }
-    pub fn parse_element_expr(&mut self) -> Result<ElementExpression, ParseError> {
+    pub fn parse_component_expr(&mut self) -> Result<ComponentExpression, ParseError> {
         let ty = self.parse_type()?;
-        self.parse_element_expr_with_name(ty)
+        self.parse_component_expr_with_name(ty)
     }
 
     pub fn parse_primary(&mut self) -> Result<ASTExpression, ParseError> {
-        match self.peek()?.kind {
-            TokenKind::Identifier(_) => {
-                let current_kind = &self.peek_at(1)?.kind;
-
-                if matches!(current_kind, TokenKind::Lt) {
-                    let ty = self.parse_type()?;
-                    return if let TokenKind::LBrace = self.peek()?.kind {
-                        let element = self.parse_element_expr_with_name(ty)?;
-                        Ok(ASTExpression {
-                            span: element.span.clone(),
-                            kind: ASTExpressionKind::Element(element),
-                        })
-                    } else {
-                        Err(ParseError::UnexpectedToken(self.eat()?, "'{'".to_string()))
-                    };
-                } else if matches!(current_kind, TokenKind::LBrace) {
-                    let element = self.parse_element_expr()?;
-                    return Ok(ASTExpression {
-                        span: element.span.clone(),
-                        kind: ASTExpressionKind::Element(element),
-                    });
+        if let TokenKind::Identifier(_) = self.peek()?.kind {
+            let current_kind = &self.peek_at(1)?.kind;
+            if matches!(current_kind, TokenKind::Lt) {
+                let ty = self.parse_type()?;
+                return if let TokenKind::LBrace = self.peek()?.kind {
+                    let component = self.parse_component_expr_with_name(ty)?;
+                    Ok(ASTExpression {
+                        span: component.span.clone(),
+                        kind: ASTExpressionKind::Component(component),
+                    })
                 } else {
-                }
+                    Err(ParseError::UnexpectedToken(self.eat()?, "'{'".to_string()))
+                };
+            } else if matches!(current_kind, TokenKind::LBrace) {
+                let component = self.parse_component_expr()?;
+                return Ok(ASTExpression {
+                    span: component.span.clone(),
+                    kind: ASTExpressionKind::Component(component),
+                });
             }
-            _ => {}
         };
         let current = self.eat()?;
         match current.kind {

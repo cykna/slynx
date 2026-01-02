@@ -1,6 +1,6 @@
 use std::ops::Index;
 
-#[derive(Debug)]
+#[derive(Debug, Default)]
 ///A Pool of linear strings. This is used to don't use a lot of Strings inside a vector, since strings are Vec<u8> internally
 ///having a Vec<String> would be pretty unecessary when talking about lengths
 pub struct StringPool {
@@ -29,6 +29,11 @@ impl StringPool {
     ///Returns the amount of strings allocated on this pool
     pub fn len(&self) -> usize {
         self.len
+    }
+
+    ///Returns the amount of strings allocated on this pool
+    pub fn is_empty(&self) -> bool {
+        self.len == 0
     }
 
     ///Retrieves how many bytes were allocated

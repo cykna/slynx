@@ -1,8 +1,6 @@
 pub mod error;
 use std::{collections::VecDeque, ops::Index};
 
-
-
 use crate::parser::{
     ast::Span,
     lexer::{
@@ -19,12 +17,13 @@ pub struct TokenStream {
     pub new_lines: Vec<usize>,
 }
 
-impl TokenStream {
-    ///Retrieves the next token
-    pub fn next(&mut self) -> Option<Token> {
+impl Iterator for TokenStream {
+    type Item = Token;
+    fn next(&mut self) -> Option<Self::Item> {
         self.stream.pop_front()
     }
 }
+
 impl Index<usize> for TokenStream {
     type Output = Token;
 
@@ -120,7 +119,7 @@ impl Lexer {
                                 'n' => buffer.push('\n'),
                                 't' => buffer.push('\t'),
                                 'r' => buffer.push('\r'),
-                                c @ '0'..'9' => buffer.push(c),
+                                c @ '0'..='9' => buffer.push(c),
                                 '\\' => buffer.push('\\'),
                                 '"' => buffer.push('"'),
                                 _ => buffer.push('\\'),
@@ -166,39 +165,37 @@ impl Lexer {
                         idx += 1;
                     }
 
-                    if chars[idx] == '!' {
-                        Token::macro_name(&buffer, start, idx)
-                    } else {
-                        idx -= 1;
-                        let span = Span { start, end: idx };
-                        match buffer.as_str() {
-                            "object"=> Token { kind: TokenKind::Object, span },
-                            "component" => Token {
-                                kind: TokenKind::Component,
-                                span,
-                            },
-                            "func" => Token {
-                                kind: TokenKind::Func,
-                                span,
-                            },
-                            "pub" => Token {
-                                kind: TokenKind::Pub,
-                                span,
-                            },
-                            "prop" => Token {
-                                kind: TokenKind::Prop,
-                                span,
-                            },
-                            _ => Token::identifier(&buffer, start, idx),
-                        }
+                    idx -= 1;
+                    let span = Span { start, end: idx };
+                    match buffer.as_str() {
+                        "object" => Token {
+                            kind: TokenKind::Object,
+                            span,
+                        },
+                        "component" => Token {
+                            kind: TokenKind::Component,
+                            span,
+                        },
+                        "func" => Token {
+                            kind: TokenKind::Func,
+                            span,
+                        },
+                        "pub" => Token {
+                            kind: TokenKind::Pub,
+                            span,
+                        },
+                        "prop" => Token {
+                            kind: TokenKind::Prop,
+                            span,
+                        },
+                        _ => Token::identifier(&buffer, start, idx),
                     }
                 }
                 c => {
                     return Err(LexerError::UnrecognizedChar {
                         char: c,
                         index: idx,
-                    }
-                    .into());
+                    });
                 }
             };
             out.push_back(tk);

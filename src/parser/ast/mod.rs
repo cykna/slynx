@@ -1,14 +1,26 @@
+mod component;
 mod expression;
-mod macros;
-mod elements;
 mod types;
 
+pub use component::*;
 pub use expression::*;
-pub use macros::*;
 pub use types::*;
-pub use elements::*;
+
+#[derive(Default, Debug, Clone)]
+pub enum VisibilityModifier {
+    ///Property visible to everyone
+    Public,
+    ///Property visible only by the one defining it.
+    #[default]
+    Private,
+    ///Property visible only for the children. Only usable on Components.
+    ChildrenPublic,
+    ///Property visible only for the parents. Only usable on Components.
+    ParentPublic,
+}
 
 #[derive(Debug, Clone)]
+///The representation of the bounds of something on the code.
 pub struct Span {
     pub start: usize,
     pub end: usize,
@@ -16,6 +28,7 @@ pub struct Span {
 
 #[derive(Debug, Clone, Copy)]
 #[repr(C)]
+///Some operator on the code. Something like, +, - , *, /, &, &&, etc
 pub enum Operator {
     Add,
     Sub,
@@ -24,6 +37,7 @@ pub enum Operator {
 }
 
 #[derive(Debug)]
+///Some statment on the code, a statment not necessarily have value, in general expressions do.
 pub struct ASTStatment {
     pub kind: ASTStatmentKind,
     pub span: Span,
@@ -31,7 +45,6 @@ pub struct ASTStatment {
 
 #[derive(Debug)]
 pub enum ASTStatmentKind {
-    MacroCall(MacroCallStmt),
     Var {
         name: String,
         ty: Option<GenericIdentifier>,
@@ -53,20 +66,19 @@ pub struct ASTDeclaration {
 
 #[derive(Debug)]
 pub struct ObjectField {
-    pub visibility: PropertyModifier,
-    pub name: TypedName
+    pub visibility: VisibilityModifier,
+    pub name: TypedName,
 }
 
 #[derive(Debug)]
 pub enum ASTDeclarationKind {
-    MacroCall(MacroCallDecl),
     ObjectDeclaration {
         name: GenericIdentifier,
-        fields: Vec<ObjectField>
+        fields: Vec<ObjectField>,
     },
-    ElementDeclaration {
+    ComponentDeclaration {
         name: GenericIdentifier,
-        deffinitions: Vec<ElementDeffinition>,
+        members: Vec<ComponentMember>,
     },
     FuncDeclaration {
         name: GenericIdentifier,

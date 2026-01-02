@@ -1,7 +1,7 @@
 use crate::parser::{
     ast::{
-        ASTDeclaration, ASTDeclarationKind, ElementDeffinition, ElementDeffinitionKind,
-        GenericIdentifier, MacroElementArgs, PropertyModifier, Span,
+        ASTDeclaration, ASTDeclarationKind, ComponentMember, ComponentMemberKind,
+        GenericIdentifier, Span, VisibilityModifier,
     },
     error::ParseError,
     lexer::tokens::{Token, TokenKind},
@@ -9,7 +9,7 @@ use crate::parser::{
 
 use super::Parser;
 impl Parser {
-    fn parse_modifier(&mut self) -> Result<PropertyModifier, ParseError> {
+    fn parse_modifier(&mut self) -> Result<VisibilityModifier, ParseError> {
         Ok(match self.peek()?.kind {
             TokenKind::Pub => {
                 self.eat()?;
@@ -23,9 +23,9 @@ impl Parser {
                         unreachable!();
                     };
                     let modifier = if modifier == "parent" {
-                        PropertyModifier::ParentPublic
+                        VisibilityModifier::ParentPublic
                     } else if modifier == "child" {
-                        PropertyModifier::ChildrenPublic
+                        VisibilityModifier::ChildrenPublic
                     } else {
                         return Err(ParseError::UnexpectedToken(
                             Token {
@@ -39,57 +39,23 @@ impl Parser {
                     self.expect(&TokenKind::RParen)?;
                     modifier
                 } else {
-                    PropertyModifier::Public
+                    VisibilityModifier::Public
                 }
             }
-            _ => PropertyModifier::Private,
+            _ => VisibilityModifier::Private,
         })
     }
 
-    ///Checks if the next tokens will be used for statments or not. For so, as the ones for element deffinitions are more limited, we simply check if the next ones aren't they.
-    ///So something like `pub prop` is understood as a deffinition, so this will be false. The same with `H1<f32> {}` but not `H1<f32>::abc`
-    fn check_for_statment(&self) -> Result<bool, ParseError> {
-        let out = match self.peek()?.kind {
-            TokenKind::Prop | TokenKind::Pub => false,
-            TokenKind::Identifier(_) => match self.peek_at(1)?.kind {
-                TokenKind::Lt => {
-                    //advance as much as <> needed
-                    let mut idx = 2;
-                    {
-                        let mut gt_amount = 1;
-                        while gt_amount > 0 {
-                            match self.peek_at(idx)?.kind {
-                                TokenKind::Gt => gt_amount -= 1,
-                                TokenKind::Lt => gt_amount += 1,
-                                _ => {}
-                            }
-                            idx += 1
-                        }
-                    }
-
-                    match self.peek_at(idx)?.kind {
-                        TokenKind::LBrace => false,
-                        _ => true,
-                    }
-                }
-                TokenKind::LBrace => false,
-                _ => true,
-            },
-            _ => true,
-        };
-        Ok(out)
-    }
-
-    fn parse_element_deffinition(&mut self) -> Result<ElementDeffinition, ParseError> {
+    fn parse_component_member(&mut self) -> Result<ComponentMember, ParseError> {
         let mut span = self.peek()?.span.clone();
         let modifier = self.parse_modifier()?;
         let curr = self.peek()?;
         match curr.kind {
             TokenKind::Identifier(_) => {
                 let span = curr.span.clone();
-                let expr = self.parse_element_expr()?;
-                Ok(ElementDeffinition {
-                    kind: ElementDeffinitionKind::Child(expr),
+                let expr = self.parse_component_expr()?;
+                Ok(ComponentMember {
+                    kind: ComponentMemberKind::Child(expr),
                     span,
                 })
             }
@@ -104,8 +70,8 @@ impl Parser {
                 };
                 if ident == "children" {
                     let Token { span: end, .. } = self.expect(&TokenKind::SemiColon)?;
-                    return Ok(ElementDeffinition {
-                        kind: ElementDeffinitionKind::Property {
+                    return Ok(ComponentMember {
+                        kind: ComponentMemberKind::Property {
                             name: ident,
                             modifier,
                             ty: Some(GenericIdentifier {
@@ -135,8 +101,8 @@ impl Parser {
                 match self.peek()?.kind {
                     TokenKind::SemiColon => {
                         span.end = self.eat()?.span.end;
-                        Ok(ElementDeffinition {
-                            kind: ElementDeffinitionKind::Property {
+                        Ok(ComponentMember {
+                            kind: ComponentMemberKind::Property {
                                 name: ident,
                                 modifier,
                                 ty: None,
@@ -169,8 +135,8 @@ impl Parser {
                                 ));
                             }
                         };
-                        Ok(ElementDeffinition {
-                            kind: ElementDeffinitionKind::Property {
+                        Ok(ComponentMember {
+                            kind: ComponentMemberKind::Property {
                                 name: ident,
                                 modifier,
                                 ty: Some(ty),
@@ -183,8 +149,8 @@ impl Parser {
                         self.eat()?;
                         let expr = self.parse_expression()?;
                         span.end = self.expect(&TokenKind::SemiColon)?.span.end;
-                        Ok(ElementDeffinition {
-                            kind: ElementDeffinitionKind::Property {
+                        Ok(ComponentMember {
+                            kind: ComponentMemberKind::Property {
                                 name: ident,
                                 modifier,
                                 ty: None,
@@ -194,64 +160,17 @@ impl Parser {
                         })
                     }
                     _ => {
-                        return Err(ParseError::UnexpectedToken(
+                        Err(ParseError::UnexpectedToken(
                             self.eat()?,
                             "'=' or ':' to define the type of the property or a ';' to keep it to be initialized by it's parent".to_string(),
-                        ));
+                        ))
                     }
                 }
             }
-            TokenKind::MacroName(_) => {
-                let Token {
-                    kind: TokenKind::MacroName(name),
-                    mut span,
-                } = self.eat()?
-                else {
-                    unreachable!();
-                };
-                self.expect(&TokenKind::LBrace)?;
-                let next_is_statment = self.check_for_statment()?;
-
-                if next_is_statment {
-                    let mut args = Vec::new();
-                    loop {
-                        if self.peek()?.kind == TokenKind::RBrace {
-                            span.end = self.eat()?.span.end;
-                            break;
-                        }
-                        args.push(self.parse_statment()?);
-                    }
-                    Ok(ElementDeffinition {
-                        kind: ElementDeffinitionKind::MacroCall {
-                            name,
-                            args: MacroElementArgs::Statments(args),
-                        },
-                        span,
-                    })
-                } else {
-                    let mut args = Vec::new();
-                    loop {
-                        if self.peek()?.kind == TokenKind::RBrace {
-                            span.end = self.eat()?.span.end;
-                            break;
-                        }
-                        args.push(self.parse_element_deffinition()?);
-                    }
-                    Ok(ElementDeffinition {
-                        kind: ElementDeffinitionKind::MacroCall {
-                            name,
-                            args: MacroElementArgs::Deffinitions(args),
-                        },
-                        span,
-                    })
-                }
-            }
-            _ => {
-                return Err(ParseError::UnexpectedToken(
-                    self.eat()?,
-                    "'prop' a macro name or an identifier".to_string(),
-                ));
-            }
+            _ => Err(ParseError::UnexpectedToken(
+                self.eat()?,
+                "'prop' a macro name or an identifier".to_string(),
+            )),
         }
     }
     ///Parses a component declaration. This initializes on the 'component' keyword
@@ -260,14 +179,14 @@ impl Parser {
         self.expect(&TokenKind::LBrace)?;
         let mut defs = Vec::new();
         while self.peek()?.kind != TokenKind::RBrace {
-            defs.push(self.parse_element_deffinition()?);
+            defs.push(self.parse_component_member()?);
         }
         let Token { span: end, .. } = self.expect(&TokenKind::RBrace)?;
         span.end = end.end;
         Ok(ASTDeclaration {
-            kind: ASTDeclarationKind::ElementDeclaration {
+            kind: ASTDeclarationKind::ComponentDeclaration {
                 name: ty,
-                deffinitions: defs,
+                members: defs,
             },
             span,
         })

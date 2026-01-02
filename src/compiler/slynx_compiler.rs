@@ -8,7 +8,7 @@ pub trait SlynxCompiler {
     type ExpressionType;
     fn compile_instructions(
         &mut self,
-        instructions: &Vec<IntermediateInstruction>,
+        instructions: &[IntermediateInstruction],
         ctx: &IntermediateContext,
         ir: &IntermediateRepr,
     );

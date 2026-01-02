@@ -32,7 +32,7 @@ impl SlynxHir {
                     id: HirId::new(),
                     ty: HirType::Reference {
                         rf: id,
-                        generics: Vec::new()
+                        generics: Vec::new(),
                     },
                     span: expr.span,
                 })
@@ -45,14 +45,14 @@ impl SlynxHir {
             }),
 
             ASTExpressionKind::FloatLiteral(float) => Ok(HirExpression::float(float, expr.span)),
-            ASTExpressionKind::Element(element) => {
+            ASTExpressionKind::Component(component) => {
                 let (id, ty) =
-                    self.retrieve_information_of(&element.name.identifier, &element.span)?;
+                    self.retrieve_information_of(&component.name.identifier, &component.span)?;
 
                 Ok(HirExpression {
-                    kind: HirExpressionKind::Element {
+                    kind: HirExpressionKind::Component {
                         name: id,
-                        values: self.resolve_element_values(element.values, &ty)?,
+                        values: self.resolve_component_members(component.values, &ty)?,
                     },
                     id: HirId::new(),
                     ty,

@@ -3,7 +3,7 @@ use crate::{
         HirId,
         error::{HIRError, HIRErrorKind, InvalidTypeReason},
     },
-    parser::ast::{GenericIdentifier, PropertyModifier},
+    parser::ast::{GenericIdentifier, VisibilityModifier},
 };
 
 #[derive(Debug, Clone)]
@@ -46,7 +46,7 @@ pub enum HirType {
     GenericComponent,
     ///A type specific for components
     Component {
-        props: Vec<(PropertyModifier, String, HirType)>,
+        props: Vec<(VisibilityModifier, String, HirType)>,
     },
     ///A type that represents no value
     Void,
@@ -81,13 +81,4 @@ impl HirType {
             }),
         }
     }
-}
-
-#[derive(Debug)]
-pub enum HirValueKind {
-    Variable,
-    MutableVariable,
-    Property { modifier: PropertyModifier },
-    Function { modifier: PropertyModifier },
-    Component { modifier: PropertyModifier },
 }

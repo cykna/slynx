@@ -47,7 +47,7 @@ impl SlynxHir {
         if let Some(name_id) = self.names.get(name)
             && let Some(ty) = self.types.get(name_id)
         {
-            Ok((name_id.clone(), ty.clone()))
+            Ok((*name_id, ty.clone()))
         } else {
             Err(HIRError {
                 kind: HIRErrorKind::NameNotRecognized(name.to_string()),

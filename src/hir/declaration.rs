@@ -4,12 +4,12 @@ use crate::{
 };
 
 #[derive(Debug)]
-pub enum SpecializedElement {
+pub enum SpecializedComponent {
     Text {
         text: Box<HirExpression>,
     },
     Div {
-        children: Vec<ElementValueDeclaration>,
+        children: Vec<ComponentMemberDeclaration>,
     },
 }
 
@@ -29,14 +29,14 @@ pub enum HirDeclarationKind {
         statments: Vec<HirStatment>,
         name: String,
     },
-    ElementDeclaration {
-        props: Vec<ElementValueDeclaration>,
+    ComponentDeclaration {
+        props: Vec<ComponentMemberDeclaration>,
     },
 }
 
 #[derive(Debug)]
 #[repr(C)]
-pub enum ElementValueDeclaration {
+pub enum ComponentMemberDeclaration {
     Property {
         id: HirId,
         ///The index of the property on the component
@@ -46,10 +46,10 @@ pub enum ElementValueDeclaration {
     },
     Child {
         name: HirId,
-        values: Vec<ElementValueDeclaration>,
+        values: Vec<ComponentMemberDeclaration>,
         span: Span,
     },
-    Specialized(SpecializedElement),
+    Specialized(SpecializedComponent),
 }
 
 #[derive(Debug)]
@@ -98,11 +98,11 @@ pub enum HirExpressionKind {
         rhs: Box<HirExpression>,
     },
     Identifier(HirId),
-    Specialized(SpecializedElement),
-    Element {
+    Specialized(SpecializedComponent),
+    Component {
         name: HirId,
         ///reference to a type
-        values: Vec<ElementValueDeclaration>,
+        values: Vec<ComponentMemberDeclaration>,
     },
 }
 impl HirExpression {

@@ -1,14 +1,16 @@
-use std::{borrow::Cow, collections::HashMap};
+use std::collections::HashMap;
 
 use crate::{
     hir::HirId,
-    intermediate::{expr::IntermediateExpr, node::IntermediateInstruction, types::IntermediateType},
+    intermediate::{
+        expr::IntermediateExpr, node::IntermediateInstruction, types::IntermediateType,
+    },
 };
 
 #[derive(Debug)]
 ///A Intermediate property used to bind an id to it's default value on the current context
 pub struct IntermediateProperty {
-    pub id: HirId, 
+    pub id: HirId,
     pub ty: IntermediateType,
     pub default_value: Option<usize>,
 }
@@ -19,12 +21,11 @@ pub enum IntermediateContextType {
         name: String,
         instructions: Vec<IntermediateInstruction>,
         args: Vec<IntermediateType>,
-        ret: IntermediateType
+        ret: IntermediateType,
     },
-    Element {
+    Component {
         properties: Vec<IntermediateProperty>,
         children: Vec<usize>,
-        js: Vec<Cow<'static, str>>,
     },
 }
 
@@ -40,7 +41,12 @@ pub struct IntermediateContext {
 }
 
 impl IntermediateContext {
-    pub fn new_function(id: HirId, name: String, args: Vec<IntermediateType>, ret:IntermediateType) -> Self {
+    pub fn new_function(
+        id: HirId,
+        name: String,
+        args: Vec<IntermediateType>,
+        ret: IntermediateType,
+    ) -> Self {
         Self {
             id,
             exprs: Vec::new(),
@@ -50,20 +56,19 @@ impl IntermediateContext {
                 instructions: Vec::new(),
                 name,
                 args,
-                ret 
+                ret,
             },
         }
     }
-    pub fn new_element(id: HirId) -> Self {
+    pub fn new_component(id: HirId) -> Self {
         Self {
             id,
             exprs: Vec::new(),
             vars: Vec::new(),
             names: HashMap::new(),
-            ty: IntermediateContextType::Element {
+            ty: IntermediateContextType::Component {
                 properties: Vec::new(),
                 children: Vec::new(),
-                js: Vec::new(),
             },
         }
     }
@@ -85,11 +90,11 @@ impl IntermediateContext {
             _ => None,
         }
     }
-    ///Inserts a new property on this element and returns it's property child index.
-    ///Returns None if this isn't an element
+    ///Inserts a new property on this component and returns it's property child index.
+    ///Returns None if this isn't an component
     pub fn insert_property(&mut self, expr: IntermediateProperty) -> Option<usize> {
         match &mut self.ty {
-            IntermediateContextType::Element { properties, .. } => {
+            IntermediateContextType::Component { properties, .. } => {
                 let prop = properties.len();
                 properties.push(expr);
                 Some(prop)
@@ -100,7 +105,7 @@ impl IntermediateContext {
 
     ///Creates a new child that value is the provided `expr` in this context. Returns its index if this is a context, else None, and does nothing
     pub fn insert_child(&mut self, expr: usize) -> Option<usize> {
-        if let IntermediateContextType::Element {
+        if let IntermediateContextType::Component {
             ref mut children, ..
         } = self.ty
         {
@@ -109,17 +114,6 @@ impl IntermediateContext {
             Some(id)
         } else {
             None
-        }
-    }
-    ///Inserts the provided `js` code inside. Note that this won't change the way it's transpiled. On components, this will be copy-pasted directly, after the props and on functions, it will be in order of appearance
-    pub fn insert_js(&mut self, js: Cow<'static, str>) {
-        match &mut self.ty {
-            IntermediateContextType::Element { js: js_vec, .. } => {
-                js_vec.push(js);
-            }
-            IntermediateContextType::Function { instructions, .. } => {
-                instructions.push(IntermediateInstruction::Js(js));
-            }
         }
     }
 }

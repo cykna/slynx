@@ -1,4 +1,7 @@
-use crate::{hir::{HirId, types::HirType}, intermediate::IntermediateRepr};
+use crate::{
+    hir::{HirId, types::HirType},
+    intermediate::IntermediateRepr,
+};
 
 #[derive(Debug, Clone)]
 pub enum IntermediateType {
@@ -16,20 +19,19 @@ pub enum IntermediateType {
 }
 
 impl IntermediateRepr {
-    pub fn get_type(&self, ty:&HirType) -> IntermediateType {
+    pub fn get_type(&self, ty: &HirType) -> IntermediateType {
         match ty {
-            
             HirType::Int => IntermediateType::Int,
             HirType::Float => IntermediateType::Float,
             HirType::Str => IntermediateType::Str,
             HirType::Void => IntermediateType::Void,
-            HirType::Vector { ty } => IntermediateType::Vector(Box::new(self.get_type(&*ty))),
+            HirType::Vector { ty } => IntermediateType::Vector(Box::new(self.get_type(ty))),
             HirType::GenericComponent => IntermediateType::Component,
-            HirType::Reference { rf, .. } => {
-               IntermediateType::Reference(*rf) 
+            HirType::Reference { rf, .. } => IntermediateType::Reference(*rf),
+            HirType::Function { .. } | HirType::Struct { .. } | HirType::Component { .. } => {
+                unreachable!("All struct types should be reference instead")
             }
-            HirType::Function { .. } | HirType::Struct { ..} | HirType::Component { .. } => unreachable!("All struct types should be reference instead"),
-            un => unimplemented!("{un:?}")
+            un => unimplemented!("{un:?}"),
         }
     }
 }

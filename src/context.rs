@@ -5,7 +5,7 @@ use color_eyre::{eyre::Result, owo_colors::OwoColorize};
 use crate::{
     checker::TypeChecker,
     compiler::slynx_compiler::SlynxCompiler,
-    hir::{SlynxHir, macros::js::JSMacro},
+    hir::SlynxHir,
     intermediate::IntermediateRepr,
     parser::{
         Parser,
@@ -55,6 +55,7 @@ impl std::fmt::Display for SlynxError {
             &"^".repeat(err.len() - (self.column_start - 1)),
         );
         let err = format!("  | {}", err);
+        let source_err = format!("\n{source}\n{err}");
         writeln!(
             f,
             "{}: {} => {}:{}:{}{}",
@@ -63,7 +64,7 @@ impl std::fmt::Display for SlynxError {
             self.file.bold(),
             self.line.blue().bold(),
             self.column_start.blue().bold(),
-            format!("\n{source}\n{err}")
+            source_err
         )
     }
 }
@@ -98,7 +99,7 @@ impl SlynxContext {
 
     ///Inserts the file with provided `path` if it exists.
     pub fn insert_file(&mut self, path: Arc<PathBuf>) -> Result<()> {
-        let file = std::fs::read_to_string(&path.as_path())?;
+        let file = std::fs::read_to_string(path.as_path())?;
         let lines = file
             .chars()
             .enumerate()
@@ -121,7 +122,7 @@ impl SlynxContext {
             .files
             .get(path)
             .expect("Path should be provided on the context");
-        let out = match lines.binary_search(&index) {
+        match lines.binary_search(&index) {
             Ok(v) => (
                 v,
                 index - lines[v],
@@ -138,9 +139,7 @@ impl SlynxContext {
                 },
                 &source[lines[e - 1] + 1..lines[e]],
             ),
-        };
-
-        out
+        }
     }
 
     ///The name of the file this context is parsing
@@ -148,7 +147,7 @@ impl SlynxContext {
         self.entry_point.to_string_lossy().to_string()
     }
 
-    pub fn start_compilation<S:SlynxCompiler>(self, compiler: S) -> Result<()> {
+    pub fn start_compilation<S: SlynxCompiler>(self, compiler: S) -> Result<()> {
         let stream = match Lexer::tokenize(self.get_entry_point_source()) {
             Ok(value) => value,
             Err(e) => match e {
@@ -205,12 +204,6 @@ impl SlynxContext {
             }
         };
         let mut hir = SlynxHir::new();
-
-        {
-            let jsmacro = Arc::new(JSMacro {});
-            hir.insert_element_macro(jsmacro.clone());
-            hir.insert_statment_macro(jsmacro);
-        }
 
         if let Err(e) = hir.generate(decls) {
             let (line, column, src) = self.get_line_info(&self.entry_point, e.span.start);

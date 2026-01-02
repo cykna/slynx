@@ -1,9 +1,10 @@
 use crate::{
     hir::declaration::HirExpression,
-    parser::ast::{ElementExpression, Span},
+    parser::ast::{ComponentExpression, Span},
 };
 
 #[derive(Debug)]
+#[warn(unused)]
 pub struct HIRError {
     pub kind: HIRErrorKind,
     pub span: Span,
@@ -15,8 +16,8 @@ pub enum HIRErrorKind {
     NameNotRecognized(String),
     NameAlreadyDefined(String),
     InvalidBinaryExpression {
-        lhs: HirExpression,
-        rhs: HirExpression,
+        lhs: Box<HirExpression>,
+        rhs: Box<HirExpression>,
     },
     MissingProperty {
         prop_name: String,
@@ -25,7 +26,7 @@ pub enum HIRErrorKind {
         prop_name: String,
     },
     InvalidChild {
-        child: ElementExpression,
+        child: Box<ComponentExpression>,
     },
     InvalidType {
         ty: String,
@@ -44,14 +45,12 @@ impl std::fmt::Display for HIRError {
             HIRErrorKind::TypeNotRecognized(name) => {
                 format!("Type with name '{name}' is was not defined previously")
             }
-            HIRErrorKind::InvalidBinaryExpression { .. } => {
-                format!("Invalid binary expression")
-            }
+            HIRErrorKind::InvalidBinaryExpression { .. } => "Invalid binary expression".to_string(),
             HIRErrorKind::PropertyNotVisible { prop_name } => {
                 format!("Property with name '{prop_name}' is not visible")
             }
             HIRErrorKind::InvalidChild { .. } => {
-                format!("Invalid child. Component is not expecting children")
+                "Invalid child. Component is not expecting children".to_string()
             }
             HIRErrorKind::InvalidType { ty, reason } => {
                 format!("Invalid type '{ty}' because it's {reason}")
