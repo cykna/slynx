@@ -55,7 +55,7 @@ impl TypeChecker {
             HirDeclarationKind::Object => {
                 self.types.insert(decl.id, decl.ty.clone());
             }
-            
+
             HirDeclarationKind::ComponentDeclaration { ref mut props } => {
                 for prop in props {
                     let HirType::Component { props } = &mut decl.ty else {
@@ -117,17 +117,6 @@ impl TypeChecker {
     fn get_type_of_name(&self, name: &HirId, span: &Span) -> Result<HirType, TypeError> {
         self.types
             .get(name)
-            .ok_or(TypeError {
-                kind: TypeErrorKind::Unrecognized(*name),
-                span: span.clone(),
-            })
-            .cloned()
-    }
-
-    #[inline]
-    fn get_type_of_name(&self, name: &HirId, span: &Span) -> Result<HirType, TypeError> {
-        self.types
-            .get(&name)
             .ok_or(TypeError {
                 kind: TypeErrorKind::Unrecognized(*name),
                 span: span.clone(),
@@ -319,20 +308,6 @@ impl TypeChecker {
         };
         for (idx, f) in fields.iter_mut().enumerate() {
             f.ty = self.unify(&fields_tys[idx], &f.ty, &f.span)?;
-        }
-        Ok(())
-    }
-
-    fn resolve_object_types(
-        &mut self,
-        ty: HirType,
-        fields: &mut Vec<HirExpression>,
-    ) -> Result<(), TypeError> {
-        let HirType::Struct { fields:fields_tys } = ty else {
-            unreachable!("When resolving object types, a type 'struct' should be provided");
-        };
-        for (idx, f) in fields.iter_mut().enumerate() {
-           f.ty = self.unify(&fields_tys[idx], &f.ty, &f.span)?; 
         }
         Ok(())
     }

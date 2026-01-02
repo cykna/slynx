@@ -9,7 +9,7 @@ use crate::{
 impl WebCompiler {
     pub fn hoist_ctx(&mut self, ctx: &IntermediateContext) {
         match ctx.ty {
-            IntermediateContextType::Component{ .. } => {
+            IntermediateContextType::Component { .. } => {
                 self.retrieve_next_component_name(ctx.id);
             }
             IntermediateContextType::Function { .. } => {
@@ -20,8 +20,8 @@ impl WebCompiler {
 
     pub fn compile_ctx(&mut self, ctx: &IntermediateContext, ir: &IntermediateRepr) {
         match &ctx.ty {
-            IntermediateContextType::Component{ properties, .. } => {
-                self.compile_component(&properties, ctx, ir);
+            IntermediateContextType::Component { properties, .. } => {
+                self.compile_component(properties, ctx, ir);
             }
             IntermediateContextType::Function { .. } => self.compile_function(ctx, ir),
         }

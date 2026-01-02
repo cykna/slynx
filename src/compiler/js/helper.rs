@@ -1,5 +1,6 @@
+use swc_atoms::Atom;
 use swc_common::DUMMY_SP;
-use swc_ecma_ast::Expr;
+use swc_ecma_ast::{Expr, KeyValueProp, Prop};
 
 use crate::compiler::js::WebCompiler;
 
