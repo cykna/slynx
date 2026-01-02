@@ -13,9 +13,10 @@ pub enum NativeComponentKind {
 }
 
 #[derive(Debug, Clone)]
+
 pub struct NativeComponent {
-    kind: NativeComponentKind,
-    props: Vec<Option<usize>>,
+    pub kind: NativeComponentKind,
+    pub props: Vec<Option<usize>>,
 }
 
 #[derive(Debug, Clone)]

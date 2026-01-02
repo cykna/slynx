@@ -17,12 +17,13 @@ pub struct TokenStream {
     pub new_lines: Vec<usize>,
 }
 
-impl TokenStream {
-    ///Retrieves the next token
-    pub fn next(&mut self) -> Option<Token> {
+impl Iterator for TokenStream {
+    type Item = Token;
+    fn next(&mut self) -> Option<Self::Item> {
         self.stream.pop_front()
     }
 }
+
 impl Index<usize> for TokenStream {
     type Output = Token;
 

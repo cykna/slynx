@@ -46,36 +46,6 @@ impl Parser {
         })
     }
 
-    ///Checks if the next tokens will be used for statments or not. For so, as the ones for component deffinitions are more limited, we simply check if the next ones aren't they.
-    ///So something like `pub prop` is understood as a deffinition, so this will be false. The same with `H1<f32> {}` but not `H1<f32>::abc`
-    fn check_for_statment(&self) -> Result<bool, ParseError> {
-        let out = match self.peek()?.kind {
-            TokenKind::Prop | TokenKind::Pub => false,
-            TokenKind::Identifier(_) => match self.peek_at(1)?.kind {
-                TokenKind::Lt => {
-                    //advance as much as <> needed
-                    let mut idx = 2;
-                    {
-                        let mut gt_amount = 1;
-                        while gt_amount > 0 {
-                            match self.peek_at(idx)?.kind {
-                                TokenKind::Gt => gt_amount -= 1,
-                                TokenKind::Lt => gt_amount += 1,
-                                _ => {}
-                            }
-                            idx += 1
-                        }
-                    }
-                    matches!(self.peek_at(idx)?.kind, TokenKind::LBrace)
-                }
-                TokenKind::LBrace => false,
-                _ => true,
-            },
-            _ => true,
-        };
-        Ok(out)
-    }
-
     fn parse_component_member(&mut self) -> Result<ComponentMember, ParseError> {
         let mut span = self.peek()?.span.clone();
         let modifier = self.parse_modifier()?;

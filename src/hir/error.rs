@@ -4,6 +4,7 @@ use crate::{
 };
 
 #[derive(Debug)]
+#[warn(unused)]
 pub struct HIRError {
     pub kind: HIRErrorKind,
     pub span: Span,

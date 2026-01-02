@@ -134,13 +134,8 @@ impl Parser {
     }
     
     pub fn parse_primary(&mut self) -> Result<ASTExpression, ParseError> {
-        match self.peek()?.kind {
-            TokenKind::Identifier(_) => {
-                if let Some(value) = self.parse_identifier_exprs()? {
-                    return Ok(value)
-                };
-            }
-            _ => {}
+        if let TokenKind::Identifier(_) = self.peek()?.kind && let Some(value) = self.parse_identifier_exprs()? {
+            return Ok(value)
         };
         let current = self.eat()?;
         match current.kind {
