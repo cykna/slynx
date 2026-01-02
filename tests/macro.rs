@@ -10,10 +10,6 @@ use std::{io::Write, sync::Arc};
 
 fn generate_hir(ast: Vec<ASTDeclaration>) -> SlynxHir {
     let mut hir = SlynxHir::new();
-    let js = Arc::new(JSMacro {});
-    hir.insert_statment_macro(js.clone());
-    hir.insert_element_macro(js);
-    hir.generate(ast).unwrap();
 
     hir
 }
