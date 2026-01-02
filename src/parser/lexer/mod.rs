@@ -1,8 +1,6 @@
 pub mod error;
 use std::{collections::VecDeque, ops::Index};
 
-
-
 use crate::parser::{
     ast::Span,
     lexer::{
@@ -166,30 +164,31 @@ impl Lexer {
                         idx += 1;
                     }
 
-                   
-                        idx -= 1;
-                        let span = Span { start, end: idx };
-                        match buffer.as_str() {
-                            "object"=> Token { kind: TokenKind::Object, span },
-                            "component" => Token {
-                                kind: TokenKind::Component,
-                                span,
-                            },
-                            "func" => Token {
-                                kind: TokenKind::Func,
-                                span,
-                            },
-                            "pub" => Token {
-                                kind: TokenKind::Pub,
-                                span,
-                            },
-                            "prop" => Token {
-                                kind: TokenKind::Prop,
-                                span,
-                            },
-                            _ => Token::identifier(&buffer, start, idx),
-                        }
-                    
+                    idx -= 1;
+                    let span = Span { start, end: idx };
+                    match buffer.as_str() {
+                        "object" => Token {
+                            kind: TokenKind::Object,
+                            span,
+                        },
+                        "component" => Token {
+                            kind: TokenKind::Component,
+                            span,
+                        },
+                        "func" => Token {
+                            kind: TokenKind::Func,
+                            span,
+                        },
+                        "pub" => Token {
+                            kind: TokenKind::Pub,
+                            span,
+                        },
+                        "prop" => Token {
+                            kind: TokenKind::Prop,
+                            span,
+                        },
+                        _ => Token::identifier(&buffer, start, idx),
+                    }
                 }
                 c => {
                     return Err(LexerError::UnrecognizedChar {

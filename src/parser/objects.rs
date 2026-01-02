@@ -1,28 +1,40 @@
-use crate::parser::{Parser, ast::{ASTDeclaration, ASTDeclarationKind, ObjectField, Span, VisibilityModifier}, error::ParseError, lexer::tokens::{Token, TokenKind}};
+use crate::parser::{
+    Parser,
+    ast::{ASTDeclaration, ASTDeclarationKind, ObjectField, Span, VisibilityModifier},
+    error::ParseError,
+    lexer::tokens::{Token, TokenKind},
+};
 
 impl Parser {
-    pub fn parse_object(&mut self, start:Span) ->Result<ASTDeclaration, ParseError> {
+    pub fn parse_object(&mut self, start: Span) -> Result<ASTDeclaration, ParseError> {
         let name = self.parse_type()?;
         self.expect(&TokenKind::LBrace)?;
-        let mut fields= Vec::new();
+        let mut fields = Vec::new();
         while self.peek()?.kind != TokenKind::RBrace {
             let name = self.parse_typedname()?;
             fields.push(ObjectField {
                 visibility: VisibilityModifier::Public,
-                name
+                name,
             });
             
             if self.peek()?.kind == TokenKind::RBrace {
                 break;
+<<<<<<< HEAD
             }else {
                 self.expect(&TokenKind::Comma)?;
+=======
+            } else {
+                self.expect(&TokenKind::Colon)?;
+>>>>>>> e86a821 (chore: formatted the code)
             }
         }
-        let Token {span, .. } = self.expect(&TokenKind::RBrace)?;
-        Ok(ASTDeclaration { kind: ASTDeclarationKind::ObjectDeclaration {
-            name,
-            fields
-        }, span: Span { start: start.start, end: span.end } })
+        let Token { span, .. } = self.expect(&TokenKind::RBrace)?;
+        Ok(ASTDeclaration {
+            kind: ASTDeclarationKind::ObjectDeclaration { name, fields },
+            span: Span {
+                start: start.start,
+                end: span.end,
+            },
+        })
     }
 }
-

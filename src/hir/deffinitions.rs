@@ -30,7 +30,7 @@ pub enum HirDeclarationKind {
         statments: Vec<HirStatment>,
         name: String,
     },
-    ComponentDeclaration{
+    ComponentDeclaration {
         props: Vec<ComponentMemberDeclaration>,
     },
 }

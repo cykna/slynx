@@ -36,4 +36,3 @@ impl std::fmt::Display for GenericIdentifier {
         }
     }
 }
-

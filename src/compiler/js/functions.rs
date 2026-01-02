@@ -4,6 +4,7 @@ use swc_ecma_ast::{
 };
 
 use crate::{
+<<<<<<< HEAD
     compiler::{
         js::{WebCompiler, create_ident},
         slynx_compiler::SlynxCompiler,
@@ -12,6 +13,13 @@ use crate::{
         IntermediateRepr,
         context::{IntermediateContext, IntermediateContextType, IntermediateProperty},
         node::IntermediateInstruction,
+=======
+    compiler::{js::WebCompiler, slynx_compiler::SlynxCompiler},
+    hir::HirId,
+    intermediate::{
+        IntermediateRepr,
+        context::{IntermediateContext, IntermediateProperty},
+>>>>>>> e86a821 (chore: formatted the code)
     },
 };
 
@@ -57,6 +65,10 @@ impl WebCompiler {
 
     pub fn compile_component(
         &mut self,
+<<<<<<< HEAD
+=======
+        id: HirId,
+>>>>>>> e86a821 (chore: formatted the code)
         properties: &Vec<IntermediateProperty>,
         ctx: &IntermediateContext,
         ir: &IntermediateRepr,

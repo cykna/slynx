@@ -1,14 +1,16 @@
-use std::{collections::HashMap};
+use std::collections::HashMap;
 
 use crate::{
     hir::HirId,
-    intermediate::{expr::IntermediateExpr, node::IntermediateInstruction, types::IntermediateType},
+    intermediate::{
+        expr::IntermediateExpr, node::IntermediateInstruction, types::IntermediateType,
+    },
 };
 
 #[derive(Debug)]
 ///A Intermediate property used to bind an id to it's default value on the current context
 pub struct IntermediateProperty {
-    pub id: HirId, 
+    pub id: HirId,
     pub ty: IntermediateType,
     pub default_value: Option<usize>,
 }
@@ -19,9 +21,9 @@ pub enum IntermediateContextType {
         name: String,
         instructions: Vec<IntermediateInstruction>,
         args: Vec<IntermediateType>,
-        ret: IntermediateType
+        ret: IntermediateType,
     },
-    Component{
+    Component {
         properties: Vec<IntermediateProperty>,
         children: Vec<usize>,
     },
@@ -39,7 +41,12 @@ pub struct IntermediateContext {
 }
 
 impl IntermediateContext {
-    pub fn new_function(id: HirId, name: String, args: Vec<IntermediateType>, ret:IntermediateType) -> Self {
+    pub fn new_function(
+        id: HirId,
+        name: String,
+        args: Vec<IntermediateType>,
+        ret: IntermediateType,
+    ) -> Self {
         Self {
             id,
             exprs: Vec::new(),
@@ -49,7 +56,7 @@ impl IntermediateContext {
                 instructions: Vec::new(),
                 name,
                 args,
-                ret 
+                ret,
             },
         }
     }
@@ -59,7 +66,7 @@ impl IntermediateContext {
             exprs: Vec::new(),
             vars: Vec::new(),
             names: HashMap::new(),
-            ty: IntermediateContextType::Component{
+            ty: IntermediateContextType::Component {
                 properties: Vec::new(),
                 children: Vec::new(),
             },
@@ -84,7 +91,7 @@ impl IntermediateContext {
         }
     }
     ///Inserts a new property on this component and returns it's property child index.
-    ///Returns None if this isn't an component 
+    ///Returns None if this isn't an component
     pub fn insert_property(&mut self, expr: IntermediateProperty) -> Option<usize> {
         match &mut self.ty {
             IntermediateContextType::Component { properties, .. } => {
@@ -108,5 +115,5 @@ impl IntermediateContext {
         } else {
             None
         }
-    } 
+    }
 }

@@ -47,13 +47,16 @@ impl TypeChecker {
     fn check_decl(&mut self, decl: &mut HirDeclaration) -> Result<(), TypeError> {
         self.types.insert(decl.id, decl.ty.clone());
         match decl.kind {
+
             HirDeclarationKind::Function { ref mut statments, ..} => {
                 self.resolve_statments(statments, &decl.ty)?;
             }
             HirDeclarationKind::Object => {
                 self.types.insert(decl.id, decl.ty.clone());
             }
-            HirDeclarationKind::ComponentDeclaration{ ref mut props } => {                for prop in props {
+            
+            HirDeclarationKind::ComponentDeclaration { ref mut props } => {
+                for prop in props {
                     let HirType::Component { props } = &mut decl.ty else {
                         unreachable!("Component declaration should have type component");
                     };
@@ -268,13 +271,8 @@ impl TypeChecker {
         };
         for value in values {
             match value {
-<<<<<<< HEAD
-                ElementValueDeclaration::Specialized(spec) => {
-                    self.resolve_specialized(spec)?;
-=======
                 ComponentMemberDeclaration::Specialized(spec) => {
                     self.resolve_specialized(spec);
->>>>>>> 987cb0a (chore: renamed 'ElementValueDeclaration' to 'ComponentMemberDeclaration')
                 }
                 ComponentMemberDeclaration::Property {
                     index, value, span, ..
@@ -349,19 +347,10 @@ impl TypeChecker {
                     generics: Vec::new(),
                 }
             }
-            HirExpressionKind::Element {
-=======
-
-            HirExpressionKind::Component{
->>>>>>> 28d8fa7 (chore: modified element decl to component decl on the hir and hirexpr 'Element' variant to 'Component')
+            HirExpressionKind::Component {
                 name,
                 ref mut values,
             } => {
-<<<<<<< HEAD
-                let parent = self.get_type_of_name(&name, span)?;
-                
-                self.resolve_element_values(values, parent)?
-=======
                 let parent = self
                     .types
                     .get_mut(&name)
@@ -371,7 +360,6 @@ impl TypeChecker {
                     })?
                     .clone();
                 self.resolve_component_members(values, parent)?
->>>>>>> 8fc43c9 (chore: modified 'element' to 'component' inside type checker)
             }
             ref un => {
                 unimplemented!("{un:?}")
@@ -408,14 +396,7 @@ impl TypeChecker {
             HirExpressionKind::Specialized(_) => {
                 expr.ty = self.unify(&expr.ty, &HirType::GenericComponent, &expr.span)?
             }
-<<<<<<< HEAD
-            HirExpressionKind::Object { .. } => {
-                expr.ty = self.resolve(&expr.ty)?;
-            }
-            HirExpressionKind::Element {
-=======
             HirExpressionKind::Component {
->>>>>>> 28d8fa7 (chore: modified element decl to component decl on the hir and hirexpr 'Element' variant to 'Component')
                 ref name,
                 ref mut values,
             } => {
@@ -487,7 +468,7 @@ impl TypeChecker {
                     self.default_statment(statment, &return_type)?;
                 }
             }
-            HirDeclarationKind::ComponentDeclaration{ ref mut props } => {
+            HirDeclarationKind::ComponentDeclaration { ref mut props } => {
                 self.resolve_component_members(props, decl.ty.clone())?;
             }
         }
