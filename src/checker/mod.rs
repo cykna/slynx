@@ -307,11 +307,19 @@ impl TypeChecker {
                 self.unify(&lhs_ty, &rhs_ty, span)?
             }
             HirExpressionKind::Identifier(_) => self.resolve(&expr.ty)?,
-
             HirExpressionKind::Component {
                 name,
                 ref mut values,
             } => {
+                let parent = self
+                                .types
+                                    .get_mut(&name)
+                                    .ok_or(TypeError {
+                                        kind: TypeErrorKind::Unrecognized(name),
+                                        span: span.clone(),
+                                    })?
+                                    .clone();
+                                self.resolve_component_members(values, parent)?
             }
             ref un => {
                 unimplemented!("{un:?}")
