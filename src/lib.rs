@@ -13,6 +13,8 @@ pub mod parser;
 
 pub mod hir;
 pub mod intermediate;
+mod context;
+pub use context::*;
 
 pub fn compile_code(path: PathBuf) -> i32 {
     let code = std::fs::read_to_string(&path).unwrap();
