@@ -155,6 +155,23 @@ impl SlynxHir {
                     span: expr.span,
                 })
             }
+            ASTExpressionKind::FieldAccess { parent, field } => {
+                let parent = self.resolve_expr(*parent, None)?;
+                let HirExpression { ref ty, .. } = parent;
+                let HirType::Reference { rf, .. }= ty else {
+                    unreachable!("Type of parent of field access should be a reference to `struct`");
+                };
+                if let Some(index) = self.objects_deffinitions.get(&rf).expect("Object should have been defined").iter().position(|struct_field| &field == struct_field) {
+                    Ok(HirExpression {
+                        id: HirId::new(),
+                        ty: HirType::Field(rf.clone(), index),
+                        kind: HirExpressionKind::FieldAccess { expr: Box::new(parent), field_index: index },
+                        span: expr.span
+                    })
+                }else {
+                    Err(HIRError { kind: HIRErrorKind::PropertyNotRecognized { prop_names: vec![field] }, span: expr.span })
+                }
+            }
         }
     }
     pub fn resolve_binary(

@@ -101,6 +101,10 @@ impl IntermediateRepr {
                     exprs: indexes,
                 })
             }
+            HirExpressionKind::FieldAccess { expr, field_index } => {
+                let expr = self.generate_expr(*expr);
+                self.active_context().insert_expr(IntermediateExpr::FieldAccess { parent: expr, field: field_index })
+            }
         }
     }
     ///Creates a new child on the current context and returns the component expression and the child id

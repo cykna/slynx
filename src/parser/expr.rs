@@ -230,8 +230,31 @@ impl Parser {
         }
         Ok(lhs)
     }
+    
+    ///Parses a postfix that comes after a '.'. This function initializes right after the '.' 
+    pub fn parse_dot_postfix(&mut self, prefix: ASTExpression) -> Result<ASTExpression, ParseError> {
+        let current = self.eat()?;
+        match current.kind {
+            TokenKind::Identifier(field) => {
+                Ok(ASTExpression {
+                    span: Span {start:prefix.span.start, end:current.span.end},
+                    kind: ASTExpressionKind::FieldAccess { 
+                        parent: Box::new(prefix),
+                        field
+                    },
+                })
+            }
+            _ => Err(ParseError::UnexpectedToken(current, "A field access".to_string()))
+        }
+    }
 
     pub fn parse_expression(&mut self) -> Result<ASTExpression, ParseError> {
-        self.parse_additive()
+        let expr = self.parse_additive()?;
+        if let TokenKind::Dot = self.peek()?.kind {
+            self.eat()?;
+            self.parse_dot_postfix(expr)
+        }else {
+            Ok(expr)
+        }
     }
 }

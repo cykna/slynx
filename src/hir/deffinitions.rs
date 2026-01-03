@@ -109,6 +109,10 @@ pub enum HirExpressionKind {
         name: HirId,
         fields: Vec<HirExpression>,
     },
+    FieldAccess {
+        expr: Box<HirExpression>,
+        field_index: usize
+    }
 }
 impl HirExpression {
     ///Creates a int expression that must be infered.

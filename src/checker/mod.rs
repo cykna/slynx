@@ -88,6 +88,24 @@ impl TypeChecker {
     ///Resolves recursively the names of the types. If A -> B, B -> int; then we assume that A -> int
     fn resolve(&self, ty: &HirType) -> Result<HirType, TypeError> {
         match ty {
+            HirType::Field(rf, idx) => {
+                if let Some(ty) = self.types.get(rf) {
+                    let ty = self.resolve(ty)?;
+                    if let HirType::Struct { fields } = ty {
+                        Ok(fields[*idx].clone())
+                    }else {
+                        Err(TypeError {
+                            kind: TypeErrorKind::IncompatibleTypes {
+                                expected: ty,
+                                received: HirType::Struct { fields: Vec::new() }
+                            },
+                            span:Span { start: 0, end: 0 } 
+                        })
+                    }
+                }else {
+                    unreachable!("Not implemented when a reference doenst point nothing. This is unreacheable because probably this wont be achieved never")
+                }
+            }
             HirType::Reference { rf, .. } => {
                 if let Some(ty) = self.types.get(rf) {
                     let resolved = self.resolve(ty)?;
@@ -164,7 +182,7 @@ impl TypeChecker {
             (HirType::Struct { fields: f1 }, HirType::Struct { fields: f2 }) => {
                 if f1.len() != f2.len() {
                     Err(TypeError {
-                        kind: TypeErrorKind::IncompatibleTypes { lhs: a, rhs: b },
+                        kind: TypeErrorKind::IncompatibleTypes { expected: b, received: a },
                         span: span.clone(),
                     })
                 } else {
@@ -175,7 +193,7 @@ impl TypeChecker {
                 }
             }
             (_, _) => Err(TypeError {
-                kind: TypeErrorKind::IncompatibleTypes { lhs: a, rhs: b },
+                kind: TypeErrorKind::IncompatibleTypes { expected: b, received: a },
                 span: span.clone(),
             }),
         }
@@ -395,6 +413,10 @@ impl TypeChecker {
                 expr.ty = self.unify(&expr.ty, &HirType::GenericComponent, &expr.span)?
             }
             HirExpressionKind::Object { .. } => {
+                expr.ty = self.resolve(&expr.ty)?;
+            }
+            HirExpressionKind::FieldAccess { expr:ref mut parent, .. } => {
+                parent.ty = self.resolve(&parent.ty)?;
                 expr.ty = self.resolve(&expr.ty)?;
             }
             HirExpressionKind::Component {

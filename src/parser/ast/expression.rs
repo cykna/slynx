@@ -30,4 +30,8 @@ pub enum ASTExpressionKind {
         name: GenericIdentifier,
         fields: Vec<NamedExpr>,
     },
+    FieldAccess {
+        parent: Box<ASTExpression>,
+        field: String
+    }
 }

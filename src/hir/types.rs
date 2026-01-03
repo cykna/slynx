@@ -29,7 +29,11 @@ pub enum HirType {
         ///If its got a generic
         generics: Vec<HirType>,
     },
-
+    
+    ///The type of the Nth field on the struct/object with the provided `id`. If the struct is defined as
+    /// struct S {a:int, b:str}, then Field(S_ID, 0) == int
+    Field(HirId, usize),
+    
     Function {
         args: Vec<HirType>,
         return_type: Box<HirType>,

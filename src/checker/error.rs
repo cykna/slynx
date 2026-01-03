@@ -27,8 +27,8 @@ pub enum TypeErrorKind {
         reason: IncompatibleComponentReason,
     },
     IncompatibleTypes {
-        lhs: HirType,
-        rhs: HirType,
+        expected: HirType,
+        received: HirType,
     },
     Unrecognized(HirId),
 }
@@ -45,8 +45,8 @@ impl std::fmt::Display for TypeError {
             TypeErrorKind::IncompatibleComponent { reason } => {
                 format!("The component is incompatible because of '{reason:?}'")
             }
-            TypeErrorKind::IncompatibleTypes { lhs, rhs } => format!(
-                "Incompatible types. Was expecting to receive type '{lhs:?}' instead got type '{rhs:?}'"
+            TypeErrorKind::IncompatibleTypes { expected, received} => format!(
+                "Incompatible types. Was expecting to receive type '{expected:?}' instead got type '{received:?}'"
             ),
             TypeErrorKind::Unrecognized(_) => "Tem que fazer".to_string(),
         };
