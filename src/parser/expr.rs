@@ -135,7 +135,7 @@ impl Parser {
                     (TokenKind::Identifier(_), TokenKind::Colon) => {
                         Ok(Some(self.parse_object_expression()?))
                     }
-                    
+
                     _ => Ok(None),
                 }
             }
@@ -168,7 +168,7 @@ impl Parser {
         if let TokenKind::Dot = self.peek()?.kind {
             self.eat()?;
             self.parse_dot_postfix(expr)
-        }else {
+        } else {
             Ok(expr)
         }
     }
@@ -176,7 +176,7 @@ impl Parser {
     pub fn parse_multiplicative(&mut self) -> Result<ASTExpression, ParseError> {
         let mut lhs = self.parse_primary()?;
         while let Ok(curr) = self.peek()
-            && matches!(curr.kind, TokenKind::Star| TokenKind::Slash)
+            && matches!(curr.kind, TokenKind::Star | TokenKind::Slash)
         {
             let op = if let TokenKind::Star = self.eat()?.kind {
                 Operator::Star
@@ -223,21 +223,28 @@ impl Parser {
         }
         Ok(lhs)
     }
-    
-    ///Parses a postfix that comes after a '.'. This function initializes right after the '.' 
-    pub fn parse_dot_postfix(&mut self, prefix: ASTExpression) -> Result<ASTExpression, ParseError> {
+
+    ///Parses a postfix that comes after a '.'. This function initializes right after the '.'
+    pub fn parse_dot_postfix(
+        &mut self,
+        prefix: ASTExpression,
+    ) -> Result<ASTExpression, ParseError> {
         let current = self.eat()?;
         match current.kind {
-            TokenKind::Identifier(field) => {
-                Ok(ASTExpression {
-                    span: Span {start:prefix.span.start, end:current.span.end},
-                    kind: ASTExpressionKind::FieldAccess { 
-                        parent: Box::new(prefix),
-                        field
-                    },
-                })
-            }
-            _ => Err(ParseError::UnexpectedToken(current, "A field access".to_string()))
+            TokenKind::Identifier(field) => Ok(ASTExpression {
+                span: Span {
+                    start: prefix.span.start,
+                    end: current.span.end,
+                },
+                kind: ASTExpressionKind::FieldAccess {
+                    parent: Box::new(prefix),
+                    field,
+                },
+            }),
+            _ => Err(ParseError::UnexpectedToken(
+                current,
+                "A field access".to_string(),
+            )),
         }
     }
 

@@ -89,7 +89,6 @@ impl std::fmt::Display for Token {
 }
 
 impl Token {
-
     pub fn dot(pos: usize) -> Self {
         Self {
             kind: TokenKind::Dot,

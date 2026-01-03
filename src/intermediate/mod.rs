@@ -103,7 +103,11 @@ impl IntermediateRepr {
             }
             HirExpressionKind::FieldAccess { expr, field_index } => {
                 let expr = self.generate_expr(*expr);
-                self.active_context().insert_expr(IntermediateExpr::FieldAccess { parent: expr, field: field_index })
+                self.active_context()
+                    .insert_expr(IntermediateExpr::FieldAccess {
+                        parent: expr,
+                        field: field_index,
+                    })
             }
         }
     }
