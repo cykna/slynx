@@ -38,6 +38,7 @@ impl WebCompiler {
         ctx: &IntermediateContext,
         ir: &IntermediateRepr,
     ) -> Expr {
+        let parent = self.compile_expression(&ctx.exprs[parent], ctx, ir);
         Expr::Member(MemberExpr {
             span: DUMMY_SP,
             obj: Box::new(parent),
