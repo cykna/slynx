@@ -151,7 +151,7 @@ impl TypeChecker {
             (HirType::Int, HirType::Int)
             | (HirType::Float, HirType::Float)
             | (HirType::Str, HirType::Str) => Ok(a),
-            (out, HirType::Infer) | (HirType::Infer, out) => Ok(out.clone()),
+            (out, HirType::Infer) | (HirType::Infer, out) if !matches!(out, HirType::Infer)=> Ok(out.clone()),
             (HirType::Reference { rf, .. }, b) | (b, HirType::Reference { rf, .. }) => {
                 self.unify_with_ref(*rf, b, span)
             }
