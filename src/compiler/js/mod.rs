@@ -143,7 +143,6 @@ impl SlynxCompiler for WebCompiler {
 
     ///The flattener has everything it's required
     fn compile(mut self, ir: IntermediateRepr) -> Vec<u8> {
-        println!("{ir:#?}");
         for ctx in ir.contexts.iter() {
             self.hoist_ctx(ctx);
         }
