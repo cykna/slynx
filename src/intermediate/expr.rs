@@ -28,8 +28,9 @@ pub enum IntermediateExpr {
         id: HirId,
         exprs: Vec<usize>,
     },
-    FieldAccess{
-        parent: usize, field:usize
+    FieldAccess {
+        parent: usize,
+        field: usize,
     },
     Binary {
         ///Inside the IntermediateRepr, the index of the lhs expression
@@ -48,7 +49,6 @@ pub enum IntermediateExpr {
         children: Vec<usize>,
     },
     Native(NativeComponent),
-    
 }
 
 impl IntermediateExpr {

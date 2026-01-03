@@ -9,7 +9,8 @@ use std::{collections::HashMap, rc::Rc};
 use swc_atoms::Atom;
 use swc_common::{DUMMY_SP, SourceMap, SyntaxContext};
 use swc_ecma_ast::{
-    CallExpr, Callee, Expr, ExprOrSpread, Ident, Lit, Number, Program, ReturnStmt, Script, Stmt,
+    BinExpr, BinaryOp, CallExpr, Callee, Expr, ExprOrSpread, Ident, Lit, Number, Program,
+    ReturnStmt, Script, Stmt,
 };
 use swc_ecma_codegen::{Config, Emitter, text_writer::JsWriter};
 
@@ -139,7 +140,15 @@ impl SlynxCompiler for WebCompiler {
                 })
             }
             IntermediateExpr::Struct { id, exprs } => self.compile_struct(id, exprs, ctx, ir),
-            IntermediateExpr::FieldAccess { parent, field } => self.compile_field_access(*parent, *field, ctx, ir),
+            IntermediateExpr::FieldAccess { parent, field } => {
+                self.compile_field_access(*parent, *field, ctx, ir)
+            }
+            IntermediateExpr::Binary { lhs, rhs, .. } => Expr::Bin(BinExpr {
+                span: DUMMY_SP,
+                op: BinaryOp::Add,
+                left: Box::new(self.compile_expression(&ctx.exprs[*lhs], ctx, ir)),
+                right: Box::new(self.compile_expression(&ctx.exprs[*rhs], ctx, ir)),
+            }),
             un => unimplemented!("{un:?}"),
         }
     }

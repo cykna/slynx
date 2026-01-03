@@ -32,6 +32,6 @@ pub enum ASTExpressionKind {
     },
     FieldAccess {
         parent: Box<ASTExpression>,
-        field: String
-    }
+        field: String,
+    },
 }

@@ -93,17 +93,19 @@ impl TypeChecker {
                     let ty = self.resolve(ty)?;
                     if let HirType::Struct { fields } = ty {
                         Ok(fields[*idx].clone())
-                    }else {
+                    } else {
                         Err(TypeError {
                             kind: TypeErrorKind::IncompatibleTypes {
                                 expected: ty,
-                                received: HirType::Struct { fields: Vec::new() }
+                                received: HirType::Struct { fields: Vec::new() },
                             },
-                            span:Span { start: 0, end: 0 } 
+                            span: Span { start: 0, end: 0 },
                         })
                     }
-                }else {
-                    unreachable!("Not implemented when a reference doenst point nothing. This is unreacheable because probably this wont be achieved never")
+                } else {
+                    unreachable!(
+                        "Not implemented when a reference doenst point nothing. This is unreacheable because probably this wont be achieved never"
+                    )
                 }
             }
             HirType::Reference { rf, .. } => {
@@ -151,7 +153,9 @@ impl TypeChecker {
             (HirType::Int, HirType::Int)
             | (HirType::Float, HirType::Float)
             | (HirType::Str, HirType::Str) => Ok(a),
-            (out, HirType::Infer) | (HirType::Infer, out) if !matches!(out, HirType::Infer)=> Ok(out.clone()),
+            (out, HirType::Infer) | (HirType::Infer, out) if !matches!(out, HirType::Infer) => {
+                Ok(out.clone())
+            }
             (HirType::Reference { rf, .. }, b) | (b, HirType::Reference { rf, .. }) => {
                 self.unify_with_ref(*rf, b, span)
             }
@@ -182,7 +186,10 @@ impl TypeChecker {
             (HirType::Struct { fields: f1 }, HirType::Struct { fields: f2 }) => {
                 if f1.len() != f2.len() {
                     Err(TypeError {
-                        kind: TypeErrorKind::IncompatibleTypes { expected: b, received: a },
+                        kind: TypeErrorKind::IncompatibleTypes {
+                            expected: b,
+                            received: a,
+                        },
                         span: span.clone(),
                     })
                 } else {
@@ -193,7 +200,10 @@ impl TypeChecker {
                 }
             }
             (_, _) => Err(TypeError {
-                kind: TypeErrorKind::IncompatibleTypes { expected: b, received: a },
+                kind: TypeErrorKind::IncompatibleTypes {
+                    expected: b,
+                    received: a,
+                },
                 span: span.clone(),
             }),
         }
@@ -415,7 +425,10 @@ impl TypeChecker {
             HirExpressionKind::Object { .. } => {
                 expr.ty = self.resolve(&expr.ty)?;
             }
-            HirExpressionKind::FieldAccess { expr:ref mut parent, .. } => {
+            HirExpressionKind::FieldAccess {
+                expr: ref mut parent,
+                ..
+            } => {
                 parent.ty = self.resolve(&parent.ty)?;
                 expr.ty = self.resolve(&expr.ty)?;
             }

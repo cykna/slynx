@@ -111,8 +111,8 @@ pub enum HirExpressionKind {
     },
     FieldAccess {
         expr: Box<HirExpression>,
-        field_index: usize
-    }
+        field_index: usize,
+    },
 }
 impl HirExpression {
     ///Creates a int expression that must be infered.
