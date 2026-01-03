@@ -139,6 +139,7 @@ impl SlynxCompiler for WebCompiler {
                 })
             }
             IntermediateExpr::Struct { id, exprs } => self.compile_struct(id, exprs, ctx, ir),
+            IntermediateExpr::FieldAccess { parent, field } => self.compile_field_access(*parent, *field, ctx, ir),
             un => unimplemented!("{un:?}"),
         }
     }

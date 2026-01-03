@@ -1,8 +1,9 @@
+use swc_atoms::Atom;
 use swc_common::DUMMY_SP;
-use swc_ecma_ast::{Expr, ObjectLit, PropOrSpread};
+use swc_ecma_ast::{Expr, MemberExpr, MemberProp, ObjectLit, PropOrSpread, IdentName};
 
 use crate::{
-    compiler::{js::WebCompiler, slynx_compiler::SlynxCompiler},
+    compiler::{js::{WebCompiler}, slynx_compiler::SlynxCompiler},
     hir::HirId,
     intermediate::{IntermediateRepr, context::IntermediateContext},
 };
@@ -26,6 +27,18 @@ impl WebCompiler {
                     )))
                 })
                 .collect(),
+        })
+    }
+    ///Compiles a field expression such as `variable.b`
+    pub fn compile_field_access(&mut self, parent: usize, field: usize, ctx:&IntermediateContext, ir:&IntermediateRepr) -> Expr {
+        let parent = self.compile_expression(&ctx.exprs[parent], ctx, ir);
+        Expr::Member(MemberExpr {
+            span: DUMMY_SP,
+            obj: Box::new(parent),
+            prop: MemberProp::Ident(IdentName {
+                span: DUMMY_SP,
+                sym:Atom::new(format!("f{field}"))
+            })
         })
     }
 }
