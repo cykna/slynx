@@ -165,46 +165,23 @@ impl Parser {
                 });
             }
         };
-        let current = self.eat()?;
-        match current.kind {
-            TokenKind::Float(f) => Ok(ASTExpression {
-                kind: ASTExpressionKind::FloatLiteral(f),
-                span: current.span,
-            }),
-            TokenKind::Int(i) => Ok(ASTExpression {
-                kind: ASTExpressionKind::IntLiteral(i),
-                span: current.span,
-            }),
-            TokenKind::Identifier(i) => Ok(ASTExpression {
-                kind: ASTExpressionKind::Identifier(i),
-                span: current.span,
-            }),
-            TokenKind::String(s) => Ok(ASTExpression {
-                kind: ASTExpressionKind::StringLiteral(s),
-                span: current.span,
-            }),
-            TokenKind::LParen => {
-                let expr = self.parse_expression()?;
-                self.expect(&TokenKind::RParen)?;
-                Ok(expr)
-            }
-
-            _ => Err(ParseError::UnexpectedToken(
-                current,
-                "an expression".to_string(),
-            )),
+        if let TokenKind::Dot = self.peek()?.kind {
+            self.eat()?;
+            self.parse_dot_postfix(expr)
+        }else {
+            Ok(expr)
         }
     }
 
     pub fn parse_multiplicative(&mut self) -> Result<ASTExpression, ParseError> {
         let mut lhs = self.parse_primary()?;
         while let Ok(curr) = self.peek()
-            && matches!(curr.kind, TokenKind::Plus | TokenKind::Sub)
+            && matches!(curr.kind, TokenKind::Star| TokenKind::Slash)
         {
-            let op = if let TokenKind::Plus = self.eat()?.kind {
-                Operator::Add
+            let op = if let TokenKind::Star = self.eat()?.kind {
+                Operator::Star
             } else {
-                Operator::Sub
+                Operator::Slash
             };
             let rhs = self.parse_primary()?;
             lhs = ASTExpression {
@@ -266,11 +243,6 @@ impl Parser {
 
     pub fn parse_expression(&mut self) -> Result<ASTExpression, ParseError> {
         let expr = self.parse_additive()?;
-        if let TokenKind::Dot = self.peek()?.kind {
-            self.eat()?;
-            self.parse_dot_postfix(expr)
-        }else {
-            Ok(expr)
-        }
+        Ok(expr)
     }
 }
