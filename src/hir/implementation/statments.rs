@@ -2,7 +2,7 @@ use crate::{
     hir::{
         SlynxHir,
         deffinitions::{HirStatment, HirStatmentKind},
-        error::HIRError,
+        error::HIRError, types::HirType,
     },
     parser::ast::{ASTStatment, ASTStatmentKind},
 };
@@ -17,8 +17,27 @@ impl SlynxHir {
                     kind: HirStatmentKind::Expression { expr },
                 })
             }
-            _ => {
-                unimplemented!("{:?}", statment)
+            ASTStatmentKind::MutableVar { name, ty, rhs } => {
+                let ty = ty.map(|ty| self.retrieve_type_of_name(&ty, &statment.span)).transpose()?;
+                
+                let rhs = self.resolve_expr(rhs, ty.as_ref())?;
+                let ty = ty.unwrap_or(HirType::Infer);
+                let id = self.create_hirid_for(name, ty.clone());
+                self.last_scope().set_mutable(id);
+                Ok(HirStatment {
+                    kind: HirStatmentKind::Variable { name: id, value: rhs, ty },
+                    span: statment.span
+                })
+            }
+            ASTStatmentKind::Var { name, ty, rhs } => {
+                let ty = ty.map(|ty| self.retrieve_type_of_name(&ty, &statment.span)).transpose()?;
+                let rhs = self.resolve_expr(rhs, ty.as_ref())?;
+                let ty = ty.unwrap_or(HirType::Infer);
+                let id = self.create_hirid_for(name, ty.clone());
+                Ok(HirStatment {
+                    kind: HirStatmentKind::Variable { name: id, value: rhs, ty },
+                    span: statment.span
+                })
             }
         }
     }

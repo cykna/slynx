@@ -114,9 +114,9 @@ impl WebCompiler {
             params: args
                 .iter()
                 .enumerate()
-                .map(|(idx, _)| Param {
+                .map(|(idx, id)| Param {
                     pat: Pat::Ident(BindingIdent {
-                        id: create_ident(&format!("p{idx}")),
+                        id: self.map_name(id.1, &format!("p{idx}")),
                         type_ann: None,
                     }),
                     span: DUMMY_SP,

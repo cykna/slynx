@@ -276,6 +276,10 @@ impl TypeChecker {
         };
         for statment in statments {
             match &mut statment.kind {
+                HirStatmentKind::Variable { value, ty, .. } => {
+                    value.ty = self.unify(&value.ty, ty, &value.span)?;
+                    *ty = value.ty.clone();
+                }
                 HirStatmentKind::Return { expr } => {
                     expr.ty = self.unify(&expr.ty, return_type, &statment.span)?
                 }
@@ -477,9 +481,13 @@ impl TypeChecker {
         statment: &mut HirStatment,
         expected: &HirType,
     ) -> Result<(), TypeError> {
-        match statment.kind {
-            HirStatmentKind::Expression { ref mut expr } => self.default_expr(expr)?,
-            HirStatmentKind::Return { ref mut expr } => {
+        match &mut statment.kind {
+            
+            HirStatmentKind::Variable { name, value, ty } => {
+                println!("{name:?} {value:?} {:?}", ty);
+            }
+            HirStatmentKind::Expression { expr } => self.default_expr(expr)?,
+            HirStatmentKind::Return { expr } => {
                 self.default_expr(expr)?;
                 let unify = self.unify(&expr.ty, expected, &statment.span)?;
                 expr.ty = unify;

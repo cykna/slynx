@@ -48,6 +48,7 @@ pub struct SlynxHir {
     objects_deffinitions: HashMap<HirId, Vec<String>>,
     ///The scopes of this HIR. On the final it's expected to have only one, which is the global one
     scopes: Vec<HIRScope>,
+
     pub declarations: Vec<HirDeclaration>,
 }
 
@@ -251,10 +252,15 @@ impl SlynxHir {
                 let (id, func) = self.retrieve_information_of(&name.to_string(), &ast.span)?; //modify later to accept the generic identifier instead
 
                 self.enter_scope();
-                for arg in args {
-                    let id = HirId::new();
-                    self.last_scope().insert_name(id, arg.name);
-                }
+                let args = args
+                    .into_iter()
+                    .map(|arg| {
+                        let id = HirId::new();
+                        self.last_scope().insert_name(id, arg.name);
+                        id
+                    })
+                    .collect();
+
                 let statments = if let Some(last) = body.pop() {
                     let mut statments = Vec::with_capacity(body.len());
                     for ast in body {
@@ -275,6 +281,7 @@ impl SlynxHir {
                 self.declarations.push(HirDeclaration {
                     kind: HirDeclarationKind::Function {
                         statments,
+                        args,
                         name: name.to_string(),
                     },
                     id,

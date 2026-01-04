@@ -28,6 +28,7 @@ pub enum HirDeclarationKind {
     Object, //just to define this is an object, the actual deffinition of it will be on its type.
     Function {
         statments: Vec<HirStatment>,
+        args: Vec<HirId>,
         name: String,
     },
     ComponentDeclaration {
@@ -63,8 +64,17 @@ pub struct HirStatment {
 #[derive(Debug)]
 #[repr(C)]
 pub enum HirStatmentKind {
-    Expression { expr: HirExpression },
-    Return { expr: HirExpression },
+    Variable {
+        name: HirId,
+        value: HirExpression,
+        ty: HirType,
+    },
+    Expression {
+        expr: HirExpression,
+    },
+    Return {
+        expr: HirExpression,
+    },
 }
 
 #[derive(Debug)]

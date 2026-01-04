@@ -1,7 +1,9 @@
+use crate::hir::HirId;
+
 #[derive(Debug)]
 pub enum IntermediateInstruction {
     ///Allocates(creates) a new function
-    Alloc,
+    Alloc(HirId),
     ///Moves the expression in `value` into `target`
     Move { target: usize, value: usize },
     ///Reads a variable with provided id
