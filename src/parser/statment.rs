@@ -10,6 +10,11 @@ impl Parser {
     ///Maybe, in the future, more things will be parsed.
     ///Obs: this function should initialize right after 'let' token, and the `letstan` the span of the 'let' token
     pub fn parse_let_statment(&mut self, letspan: Span) -> Result<ASTStatment, ParseError> {
+        let mut mutable = false;
+        if let TokenKind::Mut = self.peek()?.kind {
+            self.eat()?;
+            mutable = true;
+        }
         let Token {
             kind: TokenKind::Identifier(name),
             ..
@@ -31,10 +36,18 @@ impl Parser {
                 start: letspan.start,
                 end: rhs.span.end,
             },
-            kind: ASTStatmentKind::Var {
-                name,
-                ty: vartype,
-                rhs,
+            kind: if mutable {
+                ASTStatmentKind::MutableVar {
+                    name: name,
+                    ty: vartype,
+                    rhs,
+                }
+            } else {
+                ASTStatmentKind::Var {
+                    name,
+                    ty: vartype,
+                    rhs,
+                }
             },
         })
     }

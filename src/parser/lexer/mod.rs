@@ -173,6 +173,10 @@ impl Lexer {
                             kind: TokenKind::Let,
                             span,
                         },
+                        "mut" => Token {
+                            kind: TokenKind::Mut,
+                            span,
+                        },
                         "object" => Token {
                             kind: TokenKind::Object,
                             span,

@@ -1,4 +1,4 @@
 func mul_add(a:int,b:int,c:int):int {
-    let mult = a * b;
+    let mut mult = a * b;
     mult + c
 }
