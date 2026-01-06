@@ -51,6 +51,7 @@ impl Parser {
             },
         })
     }
+    
     pub fn parse_statment(&mut self) -> Result<ASTStatment, ParseError> {
         match self.peek()?.kind {
             TokenKind::Let => {
@@ -59,10 +60,19 @@ impl Parser {
             }
             _ => {
                 let expr = self.parse_expression()?;
-                Ok(ASTStatment {
-                    span: expr.span.clone(),
-                    kind: ASTStatmentKind::Expression(expr),
-                })
+                if matches!(self.peek()?.kind, TokenKind::Eq) && expr.is_assignable() {
+                    self.eat()?;
+                    let rhs = self.parse_expression()?;
+                    Ok(ASTStatment { 
+                        span: Span {start: expr.span.start, end: rhs.span.end},
+                        kind: ASTStatmentKind::Assign { lhs: expr, rhs: rhs }
+                    })
+                }else{
+                    Ok(ASTStatment {
+                        span: expr.span.clone(),
+                        kind: ASTStatmentKind::Expression(expr),
+                    })
+                }
             }
         }
     }
