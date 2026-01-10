@@ -335,11 +335,7 @@ impl TypeChecker {
                     expr.ty = self.get_type_of_expr(expr, &expr.span.clone())?;
                 }
                 HirStatmentKind::Assign { lhs, value } => {
-<<<<<<< HEAD
                     let ty = self.resolve(&lhs.ty, &statment.span)?;
-=======
-                    let ty = self.resolve(&lhs.ty)?;
->>>>>>> f560be8 (feat: implemented type checking for variable creation and assigns)
                     value.ty = self.unify(&ty, &value.ty, &value.span)?;
                 }
             }
@@ -535,11 +531,7 @@ impl TypeChecker {
                 self.types.insert(*name, value.ty.clone());
             }
             HirStatmentKind::Assign { lhs, value } => {
-<<<<<<< HEAD
                 let ty = self.resolve(&lhs.ty, &lhs.span)?;
-=======
-                let ty = self.resolve(&lhs.ty)?;
->>>>>>> f560be8 (feat: implemented type checking for variable creation and assigns)
                 value.ty = self.unify(&ty, &value.ty, &value.span)?;
             }
             HirStatmentKind::Expression { expr } => self.default_expr(expr)?,

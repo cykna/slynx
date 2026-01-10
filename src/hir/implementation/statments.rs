@@ -22,7 +22,7 @@ impl SlynxHir {
             _ => {}
         }
         Ok(())
-    }
+    }   
     pub fn resolve_statment(&mut self, statment: ASTStatment) -> Result<HirStatment> {
         match statment.kind {
             ASTStatmentKind::Expression(expr) => {
