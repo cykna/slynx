@@ -2,17 +2,17 @@ use crate::{
     hir::{
         SlynxHir,
         deffinitions::{HirStatment, HirStatmentKind},
-        error::HIRError, types::HirType,
+        error::HIRError,
+        types::HirType,
     },
     parser::ast::{ASTExpression, ASTExpressionKind, ASTStatment, ASTStatmentKind},
 };
 
 impl SlynxHir {
-    
-    pub fn check_existance(&mut self, expr:&ASTExpression) -> Result<(), HIRError> {
+    pub fn check_existance(&mut self, expr: &ASTExpression) -> Result<(), HIRError> {
         match &expr.kind {
             ASTExpressionKind::FieldAccess { parent, .. } => {
-                self.check_existance(parent)?;       
+                self.check_existance(parent)?;
             }
             ASTExpressionKind::Identifier(name) => {
                 self.last_scope().retrieve_name(name, &expr.span)?;
@@ -21,7 +21,7 @@ impl SlynxHir {
         }
         Ok(())
     }
-    
+
     pub fn resolve_statment(&mut self, statment: ASTStatment) -> Result<HirStatment, HIRError> {
         match statment.kind {
             ASTStatmentKind::Expression(expr) => {
@@ -34,32 +34,51 @@ impl SlynxHir {
             ASTStatmentKind::Assign { lhs, rhs } => {
                 let lhs = self.resolve_expr(lhs, None)?;
                 let rhs = self.resolve_expr(rhs, None)?;
+
                 Ok(HirStatment {
-                    kind: HirStatmentKind::Assign {
-                        lhs, value: rhs
-                    }, span: statment.span
+                    kind: HirStatmentKind::Assign { lhs, value: rhs },
+                    span: statment.span,
                 })
             }
             ASTStatmentKind::MutableVar { name, ty, rhs } => {
-                let ty = ty.map(|ty| self.retrieve_type_of_name(&ty, &statment.span)).transpose()?;
-                
-                let rhs = self.resolve_expr(rhs, ty.as_ref())?;
-                let ty = ty.unwrap_or(HirType::Infer);
+                let (ty, rhs) = if let Some(ty) = ty {
+                    let ty = self.retrieve_type_of_name(&ty, &statment.span)?;
+                    let rhs = self.resolve_expr(rhs, Some(&ty))?;
+                    (ty, rhs)
+                } else {
+                    let rhs = self.resolve_expr(rhs, None)?;
+                    (rhs.ty.clone(), rhs)
+                };
+
                 let id = self.create_hirid_for(name, ty.clone());
                 self.last_scope().set_mutable(id);
                 Ok(HirStatment {
-                    kind: HirStatmentKind::Variable { name: id, value: rhs, ty },
-                    span: statment.span
+                    kind: HirStatmentKind::Variable {
+                        name: id,
+                        value: rhs,
+                        ty,
+                    },
+                    span: statment.span,
                 })
             }
             ASTStatmentKind::Var { name, ty, rhs } => {
-                let ty = ty.map(|ty| self.retrieve_type_of_name(&ty, &statment.span)).transpose()?;
-                let rhs = self.resolve_expr(rhs, ty.as_ref())?;
-                let ty = ty.unwrap_or(HirType::Infer);
+                let (ty, rhs) = if let Some(ty) = ty {
+                    let ty = self.retrieve_type_of_name(&ty, &statment.span)?;
+                    let rhs = self.resolve_expr(rhs, Some(&ty))?;
+                    (ty, rhs)
+                } else {
+                    let rhs = self.resolve_expr(rhs, None)?;
+                    (rhs.ty.clone(), rhs)
+                };
+
                 let id = self.create_hirid_for(name, ty.clone());
                 Ok(HirStatment {
-                    kind: HirStatmentKind::Variable { name: id, value: rhs, ty },
-                    span: statment.span
+                    kind: HirStatmentKind::Variable {
+                        name: id,
+                        value: rhs,
+                        ty,
+                    },
+                    span: statment.span,
                 })
             }
         }
