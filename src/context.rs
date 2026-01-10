@@ -5,7 +5,7 @@ use color_eyre::{Report, eyre::Result, owo_colors::OwoColorize};
 use crate::{
     checker::TypeChecker,
     compiler::slynx_compiler::SlynxCompiler,
-    hir::SlynxHir,
+    hir::{SlynxHir, error::HIRError},
     intermediate::IntermediateRepr,
     parser::{
         Parser,
@@ -208,17 +208,22 @@ impl SlynxContext {
         let mut hir = SlynxHir::new();
 
         if let Err(e) = hir.generate(decls) {
-            let (line, column, src) = self.get_line_info(&self.entry_point, e.span.start);
-            let err = SlynxError {
-                line,
-                column_start: column,
-                column_end: column + (e.span.end - e.span.start),
-                ty: SlynxErrorType::Hir,
-                message: e.to_string(),
-                file: self.entry_point.to_string_lossy().to_string(),
-                source_code: src.to_string(),
-            };
-            return Err(Report::new(e).wrap_err(err));
+            match e.downcast_ref::<HIRError>() {
+                Some(err) => {
+                    let (line, column, src) = self.get_line_info(&self.entry_point, err.span.start);
+                    let err = SlynxError {
+                        line,
+                        column_start: column,
+                        column_end: column + (err.span.end - err.span.start),
+                        ty: SlynxErrorType::Hir,
+                        message: e.to_string(),
+                        file: self.entry_point.to_string_lossy().to_string(),
+                        source_code: src.to_string(),
+                    };
+                    return Err(e.wrap_err(err));
+                }
+                None => return Err(e),
+            }
         }
         if let Err(e) = TypeChecker::check(&mut hir) {
             let (line, column, src) = self.get_line_info(&self.entry_point, e.span.start);

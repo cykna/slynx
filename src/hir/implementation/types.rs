@@ -1,3 +1,5 @@
+use color_eyre::eyre::Result;
+
 use crate::{
     hir::{
         HirId, SlynxHir,
@@ -22,7 +24,7 @@ impl SlynxHir {
         &mut self,
         name: &GenericIdentifier,
         span: &Span,
-    ) -> Result<HirType, HIRError> {
+    ) -> Result<HirType> {
         match HirType::new(name) {
             Ok(value) => Ok(value),
             Err(_) => {
@@ -37,17 +39,14 @@ impl SlynxHir {
                     Err(HIRError {
                         kind: HIRErrorKind::NameNotRecognized(name.to_string()),
                         span: span.clone(),
-                    })
+                    }
+                    .into())
                 }
             }
         }
     }
     ///Tries to retrieve the type and HirId of the provided `name` in the global scope
-    pub fn retrieve_information_of(
-        &mut self,
-        name: &str,
-        span: &Span,
-    ) -> Result<(HirId, HirType), HIRError> {
+    pub fn retrieve_information_of(&mut self, name: &str, span: &Span) -> Result<(HirId, HirType)> {
         if let Some(name_id) = self.names.get(name)
             && let Some(ty) = self.types.get(name_id)
         {
@@ -56,7 +55,8 @@ impl SlynxHir {
             Err(HIRError {
                 kind: HIRErrorKind::NameNotRecognized(name.to_string()),
                 span: span.clone(),
-            })
+            }
+            .into())
         }
     }
     ///Retrieves the type of the provided `name` but in the global scope. The difference of a 'named' to a 'name' is that this function

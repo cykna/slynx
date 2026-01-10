@@ -1,3 +1,5 @@
+use color_eyre::eyre::Result;
+
 use crate::hir::{
     HirId, SlynxHir,
     deffinitions::{
@@ -17,7 +19,7 @@ impl SlynxHir {
         name: GenericIdentifier,
         fields: Vec<ObjectField>,
         span: Span,
-    ) -> Result<(), HIRError> {
+    ) -> Result<()> {
         let mut fields = {
             let mut out = Vec::with_capacity(fields.len());
             for field in &fields {
@@ -27,7 +29,8 @@ impl SlynxHir {
                             ty: name.to_string(),
                         },
                         span: field.name.span.clone(),
-                    });
+                    }
+                    .into());
                 }
                 out.push(self.retrieve_type_of_name(&field.name.kind, &field.name.span)?);
             }
@@ -58,11 +61,10 @@ impl SlynxHir {
         &mut self,
         name: &GenericIdentifier,
         obj_fields: &[ObjectField],
-    ) -> Result<(), HIRError> {
+    ) -> Result<()> {
         let def_fields = obj_fields.iter().map(|f| f.name.name.clone()).collect();
         let id = self.create_hirid_for(name.to_string(), HirType::Struct { fields: Vec::new() });
         self.objects_deffinitions.insert(id, def_fields);
-
         Ok(())
     }
 
@@ -71,7 +73,7 @@ impl SlynxHir {
         name: &GenericIdentifier,
         args: &Vec<TypedName>,
         return_type: &GenericIdentifier,
-    ) -> Result<(), HIRError> {
+    ) -> Result<()> {
         let args = {
             let mut vec = Vec::with_capacity(args.len());
             for arg in args {
@@ -93,7 +95,7 @@ impl SlynxHir {
         &mut self,
         values: Vec<ComponentMemberValue>,
         span: &Span,
-    ) -> Result<SpecializedComponent, HIRError> {
+    ) -> Result<SpecializedComponent> {
         let mut text = None;
         for value in values {
             match value {
@@ -107,14 +109,16 @@ impl SlynxHir {
                         return Err(HIRError {
                             kind: HIRErrorKind::TypeNotRecognized(prop_name),
                             span: span.clone(),
-                        });
+                        }
+                        .into());
                     }
                 },
                 ComponentMemberValue::Child(e) => {
                     return Err(HIRError {
                         kind: HIRErrorKind::InvalidChild { child: Box::new(e) },
                         span: span.clone(),
-                    });
+                    }
+                    .into());
                 }
             }
         }
@@ -128,14 +132,15 @@ impl SlynxHir {
                     prop_names: vec![String::from("text")],
                 },
                 span: span.clone(),
-            })
+            }
+            .into())
         }
     }
 
     pub fn resolve_component_defs(
         &mut self,
         def: Vec<ComponentMember>,
-    ) -> Result<Vec<ComponentMemberDeclaration>, HIRError> {
+    ) -> Result<Vec<ComponentMemberDeclaration>> {
         let mut out = Vec::with_capacity(def.len());
         let mut prop_idx = 0;
         for def in def {

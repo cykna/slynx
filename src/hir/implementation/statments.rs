@@ -1,3 +1,5 @@
+use color_eyre::eyre::Result;
+
 use crate::{
     hir::{
         SlynxHir,
@@ -9,7 +11,7 @@ use crate::{
 };
 
 impl SlynxHir {
-    pub fn check_existance(&mut self, expr: &ASTExpression) -> Result<(), HIRError> {
+    pub fn check_existance(&mut self, expr: &ASTExpression) -> Result<()> {
         match &expr.kind {
             ASTExpressionKind::FieldAccess { parent, .. } => {
                 self.check_existance(parent)?;
@@ -22,7 +24,7 @@ impl SlynxHir {
         Ok(())
     }
 
-    pub fn resolve_statment(&mut self, statment: ASTStatment) -> Result<HirStatment, HIRError> {
+    pub fn resolve_statment(&mut self, statment: ASTStatment) -> Result<HirStatment> {
         match statment.kind {
             ASTStatmentKind::Expression(expr) => {
                 let expr = self.resolve_expr(expr, None)?;
