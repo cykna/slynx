@@ -1,5 +1,7 @@
 use std::mem::discriminant;
 
+use color_eyre::eyre::Result;
+
 use crate::{
     hir::{
         HirId, SlynxHir,
@@ -17,7 +19,7 @@ impl SlynxHir {
         ty: &HirType,
         fields: Vec<NamedExpr>,
         span: &Span,
-    ) -> Result<HirExpressionKind, HIRError> {
+    ) -> Result<HirExpressionKind> {
         let HirType::Struct {
             fields: field_types,
         } = ty
@@ -46,7 +48,8 @@ impl SlynxHir {
                         prop_names: missing_fields,
                     },
                     span: span.clone(),
-                });
+                }
+                .into());
             } else {
                 let non_existent_fields = fields
                     .into_iter()
@@ -60,7 +63,8 @@ impl SlynxHir {
                         prop_names: non_existent_fields,
                     },
                     span: span.clone(),
-                });
+                }
+                .into());
             }
         }
         let mut out = Vec::with_capacity(fields.len());
@@ -90,7 +94,8 @@ impl SlynxHir {
                     prop_names: non_recognized_fields,
                 },
                 span: span.clone(),
-            })
+            }
+            .into())
         }
     }
 
@@ -99,7 +104,7 @@ impl SlynxHir {
         &mut self,
         expr: ASTExpression,
         ty: Option<&HirType>,
-    ) -> Result<HirExpression, HIRError> {
+    ) -> Result<HirExpression> {
         match expr.kind {
             ASTExpressionKind::Binary { lhs, op, rhs } => self.resolve_binary(*lhs, op, *rhs, ty),
             ASTExpressionKind::StringLiteral(s) => Ok(HirExpression {
@@ -185,7 +190,8 @@ impl SlynxHir {
                             prop_names: vec![field],
                         },
                         span: expr.span,
-                    })
+                    }
+                    .into())
                 }
             }
         }
@@ -196,7 +202,7 @@ impl SlynxHir {
         op: Operator,
         rhs: ASTExpression,
         ty: Option<&HirType>,
-    ) -> Result<HirExpression, HIRError> {
+    ) -> Result<HirExpression> {
         let mut lhs = self.resolve_expr(lhs, ty)?;
         let mut rhs = self.resolve_expr(rhs, ty)?;
         if discriminant(&lhs.ty) != discriminant(&rhs.ty) {

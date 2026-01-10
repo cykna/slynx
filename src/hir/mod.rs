@@ -5,6 +5,8 @@ mod scope;
 pub mod types;
 use std::{collections::HashMap, sync::atomic::AtomicU64};
 
+use color_eyre::eyre::Result;
+
 use crate::{
     hir::{
         deffinitions::{
@@ -63,7 +65,7 @@ impl SlynxHir {
     }
 
     ///Generates the declarations from the provided `ast`
-    pub fn generate(&mut self, ast: Vec<ASTDeclaration>) -> Result<(), HIRError> {
+    pub fn generate(&mut self, ast: Vec<ASTDeclaration>) -> Result<()> {
         for ast in &ast {
             self.hoist(ast)?;
         }
@@ -73,11 +75,7 @@ impl SlynxHir {
         Ok(())
     }
     ///Retrieves information about the provided `name` going from the current scope to the outer ones, finishing on the global
-    pub fn retrieve_information_of_scoped(
-        &mut self,
-        name: &str,
-        span: &Span,
-    ) -> Result<HirId, HIRError> {
+    pub fn retrieve_information_of_scoped(&mut self, name: &str, span: &Span) -> Result<HirId> {
         let mut idx = self.scopes.len() - 1;
 
         while idx != 0 {
@@ -92,15 +90,19 @@ impl SlynxHir {
         Err(HIRError {
             kind: HIRErrorKind::NameNotRecognized(name.to_string()),
             span: span.clone(),
-        })
+        }
+        .into())
     }
 
     ///Retrieves the hir id of the provided `name` in the global scope
-    pub fn retrieve_hirdid_of(&mut self, name: &str, span: &Span) -> Result<HirId, HIRError> {
-        self.names.get(name).cloned().ok_or(HIRError {
-            kind: HIRErrorKind::NameNotRecognized(name.to_string()),
-            span: span.clone(),
-        })
+    pub fn retrieve_hirdid_of(&mut self, name: &str, span: &Span) -> Result<HirId> {
+        self.names.get(name).cloned().ok_or(
+            HIRError {
+                kind: HIRErrorKind::NameNotRecognized(name.to_string()),
+                span: span.clone(),
+            }
+            .into(),
+        )
     }
 
     fn enter_scope(&mut self) {
@@ -124,7 +126,7 @@ impl SlynxHir {
         &mut self,
         members: Vec<ComponentMemberValue>,
         ty: &HirType,
-    ) -> Result<Vec<ComponentMemberDeclaration>, HIRError> {
+    ) -> Result<Vec<ComponentMemberDeclaration>> {
         let mut out = Vec::with_capacity(members.len());
         let HirType::Component { props } = ty else {
             unreachable!("The type should be a component instead");
@@ -161,7 +163,8 @@ impl SlynxHir {
                         return Err(HIRError {
                             kind: HIRErrorKind::PropertyNotVisible { prop_name },
                             span,
-                        });
+                        }
+                        .into());
                     }
 
                     ComponentMemberDeclaration::Property {
@@ -186,7 +189,8 @@ impl SlynxHir {
                             kind: HIRErrorKind::InvalidChild {
                                 child: Box::new(child),
                             },
-                        });
+                        }
+                        .into());
                     }
                 }
             });
@@ -194,7 +198,7 @@ impl SlynxHir {
         Ok(out)
     }
     ///Hoist the provided `ast` declaration, with so no errors of undefined values because declared later may occurr
-    fn hoist(&mut self, ast: &ASTDeclaration) -> Result<(), HIRError> {
+    fn hoist(&mut self, ast: &ASTDeclaration) -> Result<()> {
         match &ast.kind {
             ASTDeclarationKind::ObjectDeclaration { name, fields } => {
                 self.hoist_object(name, fields)?
@@ -237,7 +241,7 @@ impl SlynxHir {
         }
         Ok(())
     }
-    fn resolve(&mut self, ast: ASTDeclaration) -> Result<(), HIRError> {
+    fn resolve(&mut self, ast: ASTDeclaration) -> Result<()> {
         match ast.kind {
             ASTDeclarationKind::ObjectDeclaration { name, fields } => {
                 self.resolve_object(name, fields, ast.span)?

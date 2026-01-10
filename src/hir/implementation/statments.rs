@@ -1,14 +1,15 @@
+use color_eyre::eyre::Result;
+
 use crate::{
     hir::{
         SlynxHir,
         deffinitions::{HirStatment, HirStatmentKind},
-        error::HIRError,
     },
     parser::ast::{ASTStatment, ASTStatmentKind},
 };
 
 impl SlynxHir {
-    pub fn resolve_statment(&mut self, statment: ASTStatment) -> Result<HirStatment, HIRError> {
+    pub fn resolve_statment(&mut self, statment: ASTStatment) -> Result<HirStatment> {
         match statment.kind {
             ASTStatmentKind::Expression(expr) => {
                 let expr = self.resolve_expr(expr, None)?;
