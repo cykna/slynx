@@ -1,6 +1,6 @@
-use std::{collections::HashMap, path::PathBuf, sync::Arc};
+use std::{collections::HashMap, path::PathBuf, sync::Arc, error::Error};
 
-use color_eyre::{eyre::Result, owo_colors::OwoColorize};
+use color_eyre::{eyre::Result, Report};
 
 use crate::{
     checker::TypeChecker,
@@ -24,7 +24,8 @@ pub enum SlynxErrorType {
     Compilation,
 }
 
-#[derive(Debug)]
+#[derive(Debug, thiserror::Error)]
+#[error("{message}")]
 ///An error that will be shown if something fails
 pub struct SlynxError {
     ty: SlynxErrorType,
@@ -34,11 +35,10 @@ pub struct SlynxError {
     message: String,
     ///The file path the error occuried
     file: String,
-    source: String,
+    source_code: String,
 }
-impl std::error::Error for SlynxError {}
 
-impl std::fmt::Display for SlynxError {
+/*impl std::fmt::Display for SlynxError {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
         let type_error = match self.ty {
             SlynxErrorType::Lexer => "Lexing Error",
@@ -67,7 +67,7 @@ impl std::fmt::Display for SlynxError {
             source_err
         )
     }
-}
+}*/
 
 ///Context that will have all the information needed when erroring or retrieving metadata about the code itself during compilation.
 ///For example, this can be used when erroring to retrieve the correct line where the file errored
@@ -147,23 +147,24 @@ impl SlynxContext {
         self.entry_point.to_string_lossy().to_string()
     }
 
+    
+
     pub fn start_compilation<S: SlynxCompiler>(self, compiler: S) -> Result<()> {
-        use color_eyre::eyre::Context;
         let stream = match Lexer::tokenize(self.get_entry_point_source()) {
             Ok(value) => value,
             Err(e) => match e {
                 LexerError::UnrecognizedChar { index, .. } => {
                     let (line, column, src) = self.get_line_info(&self.entry_point, index);
-                    return Err(SlynxError {
+                    let err = SlynxError {
                         line,
                         ty: SlynxErrorType::Lexer,
                         column_start: column,
                         column_end: column,
                         message: e.to_string(),
                         file: self.entry_point.to_string_lossy().to_string(),
-                        source: src.to_string(),
-                    }
-                    .into());
+                        source_code: src.to_string(),
+                    };
+                    return Err(Report::new(e).wrap_err(err));
                 }
             },
         };
@@ -174,32 +175,32 @@ impl SlynxContext {
                     ParseError::UnexpectedToken(ref token, _) => {
                         let (line, column, src) =
                             self.get_line_info(&self.entry_point, token.span.start);
-                        Err(SlynxError {
+                        let err = SlynxError {
                             line,
                             ty: SlynxErrorType::Parser,
                             column_start: column,
                             column_end: column + (token.span.end - token.span.start),
                             message: e.to_string(),
                             file: self.file_name(),
-                            source: src.to_string(),
-                        }
-                        .into())
+                            source_code: src.to_string(),
+                        };
+                        Err(Report::new(e).wrap_err(err))
                     }
                     ParseError::UnexpectedEndOfInput => {
                         let (line, column, src) = self.get_line_info(
                             &self.entry_point,
                             self.lines.get(&self.entry_point).unwrap().len() - 1,
                         );
-                        Err(SlynxError {
+                        let err = SlynxError {
                             line,
                             ty: SlynxErrorType::Parser,
                             column_start: column,
                             column_end: column,
                             message: e.to_string(),
                             file: self.file_name(),
-                            source: src.to_string(),
-                        }
-                        .into())
+                            source_code: src.to_string(),
+                        };
+                        Err(Report::new(e).wrap_err(err))
                     }
                 };
             }
@@ -208,40 +209,35 @@ impl SlynxContext {
 
         if let Err(e) = hir.generate(decls) {
             let (line, column, src) = self.get_line_info(&self.entry_point, e.span.start);
-            return Err(SlynxError {
+            let err = SlynxError {
                 line,
                 column_start: column,
                 column_end: column + (e.span.end - e.span.start),
                 ty: SlynxErrorType::Hir,
                 message: e.to_string(),
                 file: self.entry_point.to_string_lossy().to_string(),
-                source: src.to_string(),
-            }
-            .into());
+                source_code: src.to_string(),
+            };
+            return Err(Report::new(e).wrap_err(err));
         }
         if let Err(e) = TypeChecker::check(&mut hir) {
             let (line, column, src) = self.get_line_info(&self.entry_point, e.span.start);
-            return Err(SlynxError {
+            let err = SlynxError {
                 line,
                 column_start: column,
                 column_end: column + (e.span.end - e.span.start),
                 ty: SlynxErrorType::Type,
                 message: e.to_string(),
                 file: self.file_name(),
-                source: src.to_string(),
-            }
-            .into());
+                source_code: src.to_string(),
+            };
+            return Err(Report::new(e).wrap_err(err));
         };
         let mut ir = IntermediateRepr::new();
         ir.generate(hir.declarations);
 
         let out = compiler.compile(ir);
-        std::fs::write(self.entry_point.with_extension("js"), out).wrap_err_with(|| {
-            format!(
-                "Failed to write output to {:?}",
-                self.entry_point.with_extension("js")
-            )
-        })?;
+        std::fs::write(self.entry_point.with_extension("js"), out)?;
         Ok(())
     }
 }
