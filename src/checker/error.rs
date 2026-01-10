@@ -53,3 +53,4 @@ impl std::fmt::Display for TypeError {
         write!(f, "{out}")
     }
 }
+impl std::error::Error for TypeError {}

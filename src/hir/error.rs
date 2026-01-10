@@ -100,3 +100,4 @@ impl std::fmt::Display for InvalidTypeReason {
         }
     }
 }
+impl std::error::Error for HIRError {}
