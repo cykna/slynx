@@ -148,6 +148,7 @@ impl SlynxContext {
     }
 
     pub fn start_compilation<S: SlynxCompiler>(self, compiler: S) -> Result<()> {
+        use color_eyre::eyre::Context;
         let stream = match Lexer::tokenize(self.get_entry_point_source()) {
             Ok(value) => value,
             Err(e) => match e {
@@ -235,7 +236,12 @@ impl SlynxContext {
         ir.generate(hir.declarations);
 
         let out = compiler.compile(ir);
-        std::fs::write(self.entry_point.with_extension("js"), out)?;
+        std::fs::write(self.entry_point.with_extension("js"), out).wrap_err_with(|| {
+            format!(
+                "Failed to write output to {:?}",
+                self.entry_point.with_extension("js")
+            )
+        })?;
         Ok(())
     }
 }
