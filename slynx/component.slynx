@@ -15,7 +15,7 @@ component HelloBox {
 
 func main(): Component {
 	HelloBox {
-		seupai: 5.0
+		seupai: 5
 		maria: 12
 		Rect {}
 	}

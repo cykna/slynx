@@ -88,6 +88,8 @@ impl std::fmt::Display for HIRError {
     }
 }
 
+impl std::error::Error for HIRError {}
+
 #[derive(Debug)]
 pub enum InvalidTypeReason {
     MissingGeneric,

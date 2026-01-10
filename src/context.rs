@@ -1,6 +1,7 @@
-use std::{collections::HashMap, path::PathBuf, sync::Arc, error::Error};
+use std::{collections::HashMap, path::PathBuf, sync::Arc};
 
-use color_eyre::{eyre::Result, Report};
+use color_eyre::{eyre::Result, Report, owo_colors::OwoColorize};
+
 
 use crate::{
     checker::TypeChecker,
@@ -24,8 +25,8 @@ pub enum SlynxErrorType {
     Compilation,
 }
 
-#[derive(Debug, thiserror::Error)]
-#[error("{message}")]
+#[derive(Debug)]
+
 ///An error that will be shown if something fails
 pub struct SlynxError {
     ty: SlynxErrorType,
@@ -37,8 +38,9 @@ pub struct SlynxError {
     file: String,
     source_code: String,
 }
+impl std::error::Error for SlynxError {}
 
-/*impl std::fmt::Display for SlynxError {
+impl std::fmt::Display for SlynxError {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
         let type_error = match self.ty {
             SlynxErrorType::Lexer => "Lexing Error",
@@ -47,8 +49,8 @@ pub struct SlynxError {
             SlynxErrorType::Compilation => "Compilation Error",
             SlynxErrorType::Type => "Type Checking Error",
         };
-        let source = format!("{} | {}", self.line, self.source);
-        let mut err = " ".repeat((self.column_end * 2).min(self.source.len()));
+        let source = format!("{} | {}", self.line, self.source_code);
+        let mut err = " ".repeat((self.column_end * 2).min(self.source_code.len()));
 
         err.replace_range(
             self.column_start - 1..err.len(),
@@ -67,7 +69,7 @@ pub struct SlynxError {
             source_err
         )
     }
-}*/
+}
 
 ///Context that will have all the information needed when erroring or retrieving metadata about the code itself during compilation.
 ///For example, this can be used when erroring to retrieve the correct line where the file errored
@@ -164,7 +166,7 @@ impl SlynxContext {
                         file: self.entry_point.to_string_lossy().to_string(),
                         source_code: src.to_string(),
                     };
-                    return Err(Report::new(e).wrap_err(err));
+                    return Err(Report::new(err));
                 }
             },
         };
