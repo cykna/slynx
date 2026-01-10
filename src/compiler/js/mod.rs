@@ -9,9 +9,7 @@ use std::{collections::HashMap, rc::Rc};
 use swc_atoms::Atom;
 use swc_common::{DUMMY_SP, SourceMap, SyntaxContext};
 use swc_ecma_ast::{
-    AssignExpr, AssignOp, AssignTarget, BinExpr, BinaryOp, BindingIdent, CallExpr, Callee, Decl,
-    Expr, ExprOrSpread, ExprStmt, Ident, Lit, Number, Pat, Program, ReturnStmt, Script,
-    SimpleAssignTarget, Stmt, VarDecl, VarDeclKind, VarDeclarator,
+    AssignExpr, AssignOp, AssignPatProp, AssignTarget, AssignTargetPat, BinExpr, BinaryOp, BindingIdent, CallExpr, Callee, Decl, Expr, ExprOrSpread, ExprStmt, Ident, IdentName, KeyValuePatProp, Lit, Number, ObjectPat, ObjectPatProp, Pat, Program, PropName, ReturnStmt, Script, SimpleAssignTarget, Stmt, VarDecl, VarDeclKind, VarDeclarator
 };
 use swc_ecma_codegen::{Config, Emitter, text_writer::JsWriter};
 
@@ -20,7 +18,7 @@ use crate::{
     hir::HirId,
     intermediate::{
         IntermediateRepr, context::IntermediateContext, expr::IntermediateExpr,
-        node::IntermediateInstruction,
+        node::{IntermediateInstruction, IntermediatePlace},
     },
 };
 
@@ -108,21 +106,49 @@ impl SlynxCompiler for WebCompiler {
                         declare: false,
                     })))
                 }
-                IntermediateInstruction::Move { target, value } => Stmt::Expr(ExprStmt {
-                    expr: Box::new(Expr::Assign(AssignExpr {
-                        span: DUMMY_SP,
-                        op: AssignOp::Assign,
-                        left: AssignTarget::Simple(SimpleAssignTarget::Ident(BindingIdent {
-                            id: self.names.get(&ctx.vars[*target]).unwrap().clone(),
-                            type_ann: None,
+                IntermediateInstruction::Move { target, value } => 
+                    match target {
+                        IntermediatePlace::Local(local) => Stmt::Expr(ExprStmt {
+                            expr: Box::new(Expr::Assign(AssignExpr {
+                            span: DUMMY_SP,
+                            op: AssignOp::Assign,
+                            left: AssignTarget::Simple(SimpleAssignTarget::Ident(BindingIdent {
+                                id: self.names.get(&ctx.vars[*local]).unwrap().clone(),
+                                type_ann: None,
+                            })),
+                            right: Box::new({
+                                let expr = self.compile_expression(&ctx.exprs[*value], ctx, ir);
+                                expr
+                            }),
                         })),
-                        right: Box::new({
-                            let expr = self.compile_expression(&ctx.exprs[*value], ctx, ir);
-                            expr
-                        }),
-                    })),
-                    span: DUMMY_SP,
-                }),
+                        span: DUMMY_SP,
+                    }),
+                        IntermediatePlace::Field { parent, field } => {
+                            Stmt::Expr(ExprStmt {
+                                expr: Box::new(Expr::Assign(AssignExpr {
+                                    span: DUMMY_SP,
+                                    op: AssignOp::Assign,
+                                    left: AssignTarget::Pat(AssignTargetPat::Object(ObjectPat{
+                                        span: DUMMY_SP,
+                                        props: vec![ObjectPatProp::KeyValue(KeyValuePatProp{
+                                            key: PropName::Ident(format!("f{field}").into()),
+                                            value: Box::new(Pat::Expr({
+                                                let expr = self.compile_expression(&ctx.exprs[*value], ctx, ir);
+                                                Box::new(expr)
+                                            }))
+                                        })],
+                                        type_ann: None,
+                                        optional: true
+                                    })),
+                                    right: Box::new({
+                                        let expr = self.compile_expression(&ctx.exprs[*value], ctx, ir);
+                                        expr
+                                    }),
+                                })),
+                                span: DUMMY_SP,
+                            })
+                        }
+                },
                 u => unimplemented!("{:?}", u),
             };
             out.push(stmt);
