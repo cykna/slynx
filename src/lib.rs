@@ -29,7 +29,6 @@ pub fn compile_code(path: PathBuf) -> i32 {
     intermediate.generate(hir.declarations);
     let compiler = WebCompiler::new();
     let code = compiler.compile(intermediate);
-    println!("Writing: \n{code:?}");
     std::fs::write(path.with_extension("js"), code).unwrap();
     0
 }
