@@ -1,6 +1,8 @@
 pub mod error;
 use std::collections::HashMap;
 
+use color_eyre::eyre::Result;
+
 use crate::{
     checker::error::{IncompatibleComponentReason, TypeError, TypeErrorKind},
     hir::{
@@ -31,7 +33,7 @@ pub struct TypeChecker {
 impl TypeChecker {
     ///Checks the types of the provided `hir` and mutates them if needed. Any that could not be inferred but, yet is valid, is
     ///at the end, returned as it's default type
-    pub fn check(hir: &mut SlynxHir) -> Result<(), TypeError> {
+    pub fn check(hir: &mut SlynxHir) -> Result<()> {
         let mut inner = Self {
             types: HashMap::new(),
         };
@@ -44,7 +46,7 @@ impl TypeChecker {
         }
         Ok(())
     }
-    fn check_decl(&mut self, decl: &mut HirDeclaration) -> Result<(), TypeError> {
+    fn check_decl(&mut self, decl: &mut HirDeclaration) -> Result<()> {
         self.types.insert(decl.id, decl.ty.clone());
         match decl.kind {
             HirDeclarationKind::Function {
@@ -86,7 +88,7 @@ impl TypeChecker {
     }
 
     ///Resolves recursively the names of the types. If A -> B, B -> int; then we assume that A -> int
-    fn resolve(&self, ty: &HirType) -> Result<HirType, TypeError> {
+    fn resolve(&self, ty: &HirType) -> Result<HirType> {
         match ty {
             HirType::Field(rf, idx) => {
                 if let Some(ty) = self.types.get(rf) {
@@ -100,7 +102,8 @@ impl TypeChecker {
                                 received: HirType::Struct { fields: Vec::new() },
                             },
                             span: Span { start: 0, end: 0 },
-                        })
+                        }
+                        .into())
                     }
                 } else {
                     unreachable!(
@@ -134,18 +137,21 @@ impl TypeChecker {
     }
 
     #[inline]
-    fn get_type_of_name(&self, name: &HirId, span: &Span) -> Result<HirType, TypeError> {
+    fn get_type_of_name(&self, name: &HirId, span: &Span) -> Result<HirType> {
         self.types
             .get(name)
-            .ok_or(TypeError {
-                kind: TypeErrorKind::Unrecognized(*name),
-                span: span.clone(),
-            })
+            .ok_or(
+                TypeError {
+                    kind: TypeErrorKind::Unrecognized(*name),
+                    span: span.clone(),
+                }
+                .into(),
+            )
             .cloned()
     }
 
     ///Tries to unify types `a` and `b` if possible
-    fn unify(&mut self, a: &HirType, b: &HirType, span: &Span) -> Result<HirType, TypeError> {
+    fn unify(&mut self, a: &HirType, b: &HirType, span: &Span) -> Result<HirType> {
         let a = self.resolve(a)?;
         let b = self.resolve(b)?;
 
@@ -169,7 +175,8 @@ impl TypeChecker {
                             },
                         },
                         span: span.clone(),
-                    });
+                    }
+                    .into());
                 }
                 let mut unified_props = Vec::with_capacity(aprops.len());
                 for (prop_a, prop_b) in aprops.iter().zip(aprops.iter()) {
@@ -191,7 +198,8 @@ impl TypeChecker {
                             received: a,
                         },
                         span: span.clone(),
-                    })
+                    }
+                    .into())
                 } else {
                     for idx in 0..f1.len() {
                         self.unify(&f1[idx], &f2[idx], span)?;
@@ -205,16 +213,12 @@ impl TypeChecker {
                     received: a,
                 },
                 span: span.clone(),
-            }),
+            }
+            .into()),
         }
     }
 
-    fn unify_with_ref(
-        &mut self,
-        rf: HirId,
-        ty: &HirType,
-        span: &Span,
-    ) -> Result<HirType, TypeError> {
+    fn unify_with_ref(&mut self, rf: HirId, ty: &HirType, span: &Span) -> Result<HirType> {
         let resolved_ref = self.resolve(&HirType::Reference {
             rf,
             generics: Vec::new(),
@@ -234,7 +238,8 @@ impl TypeChecker {
             return Err(TypeError {
                 kind: TypeErrorKind::CiclicType { ty: ty.clone() },
                 span: span.clone(),
-            });
+            }
+            .into());
         }
         self.substitute(rf, ty.clone());
         Ok(HirType::Reference {
@@ -262,22 +267,18 @@ impl TypeChecker {
         }
     }
 
-    fn resolve_specialized(&mut self, _: &mut SpecializedComponent) -> Result<(), TypeError> {
+    fn resolve_specialized(&mut self, _: &mut SpecializedComponent) -> Result<()> {
         Ok(())
     }
 
-    fn resolve_statments(
-        &mut self,
-        statments: &mut Vec<HirStatment>,
-        ty: &HirType,
-    ) -> Result<(), TypeError> {
+    fn resolve_statments(&mut self, statments: &mut Vec<HirStatment>, ty: &HirType) -> Result<()> {
         let HirType::Function { return_type, .. } = ty else {
             unreachable!();
         };
         for statment in statments {
             match &mut statment.kind {
                 HirStatmentKind::Return { expr } => {
-                    expr.ty = self.unify(&expr.ty, return_type, &statment.span)?
+                    expr.ty = self.unify(&expr.ty, return_type, &statment.span)?;
                 }
                 HirStatmentKind::Expression { expr } => {
                     expr.ty = self.get_type_of_expr(expr, &expr.span.clone())?;
@@ -291,7 +292,7 @@ impl TypeChecker {
         &mut self,
         values: &mut Vec<ComponentMemberDeclaration>,
         mut target: HirType,
-    ) -> Result<HirType, TypeError> {
+    ) -> Result<HirType> {
         let HirType::Component { ref mut props } = target else {
             unreachable!(
                 "The type received when resolving component values should be a component one"
@@ -326,11 +327,7 @@ impl TypeChecker {
         Ok(target)
     }
 
-    fn resolve_object_types(
-        &mut self,
-        ty: HirType,
-        fields: &mut [HirExpression],
-    ) -> Result<(), TypeError> {
+    fn resolve_object_types(&mut self, ty: HirType, fields: &mut [HirExpression]) -> Result<()> {
         let HirType::Struct { fields: fields_tys } = ty else {
             unreachable!("When resolving object types, a type 'struct' should be provided");
         };
@@ -341,11 +338,7 @@ impl TypeChecker {
     }
 
     ///Retrieves the type of the provided `expr`. Returns infer if it could not be inferred.
-    fn get_type_of_expr(
-        &mut self,
-        expr: &mut HirExpression,
-        span: &Span,
-    ) -> Result<HirType, TypeError> {
+    fn get_type_of_expr(&mut self, expr: &mut HirExpression, span: &Span) -> Result<HirType> {
         let expected = expr.ty.clone();
 
         let calc = match expr.kind {
@@ -396,7 +389,7 @@ impl TypeChecker {
         Ok(unified)
     }
 
-    fn default_expr(&mut self, expr: &mut HirExpression) -> Result<(), TypeError> {
+    fn default_expr(&mut self, expr: &mut HirExpression) -> Result<()> {
         match expr.kind {
             HirExpressionKind::StringLiteral(_) => {
                 expr.ty = self.unify(&expr.ty, &HirType::Str, &expr.span)?
@@ -472,11 +465,7 @@ impl TypeChecker {
         Ok(())
     }
 
-    fn default_statment(
-        &mut self,
-        statment: &mut HirStatment,
-        expected: &HirType,
-    ) -> Result<(), TypeError> {
+    fn default_statment(&mut self, statment: &mut HirStatment, expected: &HirType) -> Result<()> {
         match statment.kind {
             HirStatmentKind::Expression { ref mut expr } => self.default_expr(expr)?,
             HirStatmentKind::Return { ref mut expr } => {
@@ -488,7 +477,7 @@ impl TypeChecker {
         Ok(())
     }
 
-    fn set_default(&mut self, decl: &mut HirDeclaration) -> Result<(), TypeError> {
+    fn set_default(&mut self, decl: &mut HirDeclaration) -> Result<()> {
         match decl.kind {
             HirDeclarationKind::Object => {}
             HirDeclarationKind::Function {

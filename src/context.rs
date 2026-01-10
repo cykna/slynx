@@ -3,7 +3,7 @@ use std::{collections::HashMap, path::PathBuf, sync::Arc};
 use color_eyre::{Report, eyre::Result, owo_colors::OwoColorize};
 
 use crate::{
-    checker::TypeChecker,
+    checker::{TypeChecker, error::TypeError},
     compiler::slynx_compiler::SlynxCompiler,
     hir::{SlynxHir, error::HIRError},
     intermediate::IntermediateRepr,
@@ -226,17 +226,22 @@ impl SlynxContext {
             }
         }
         if let Err(e) = TypeChecker::check(&mut hir) {
-            let (line, column, src) = self.get_line_info(&self.entry_point, e.span.start);
-            let err = SlynxError {
-                line,
-                column_start: column,
-                column_end: column + (e.span.end - e.span.start),
-                ty: SlynxErrorType::Type,
-                message: e.to_string(),
-                file: self.file_name(),
-                source_code: src.to_string(),
-            };
-            return Err(Report::new(e).wrap_err(err));
+            match e.downcast_ref::<TypeError>() {
+                Some(err) => {
+                    let (line, column, src) = self.get_line_info(&self.entry_point, err.span.start);
+                    let err = SlynxError {
+                        line,
+                        column_start: column,
+                        column_end: column + (err.span.end - err.span.start),
+                        ty: SlynxErrorType::Type,
+                        message: e.to_string(),
+                        file: self.file_name(),
+                        source_code: src.to_string(),
+                    };
+                    return Err(e.wrap_err(err));
+                }
+                _ => return Err(e),
+            }
         };
         let mut ir = IntermediateRepr::new();
         ir.generate(hir.declarations);
