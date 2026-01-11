@@ -18,18 +18,13 @@ pub use context::*;
 
 pub fn compile_code(path: PathBuf) -> color_eyre::eyre::Result<()> {
     let code = std::fs::read_to_string(&path)?;
-    let tokens = parser::lexer::Lexer::tokenize(&code)
-        .map_err(|e| color_eyre::eyre::eyre!("Lexer error: {:?}", e))?;
+    let tokens = parser::lexer::Lexer::tokenize(&code)?;
     let mut ast = parser::Parser::new(tokens);
-    let decls = ast
-        .parse_declarations()
-        .map_err(|e| color_eyre::eyre::eyre!("Parser error: {:?}", e))?;
+    let decls = ast.parse_declarations()?;
     let mut hir = SlynxHir::new();
 
-    hir.generate(decls)
-        .map_err(|e| color_eyre::eyre::eyre!("HIR generation error: {:?}", e))?;
-    TypeChecker::check(&mut hir)
-        .map_err(|e| color_eyre::eyre::eyre!("Type check error: {:?}", e))?;
+    hir.generate(decls)?;
+    TypeChecker::check(&mut hir)?;
     let mut intermediate = IntermediateRepr::new();
     intermediate.generate(hir.declarations);
     let compiler = WebCompiler::new();
