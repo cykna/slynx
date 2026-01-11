@@ -90,20 +90,17 @@ impl TypeChecker {
         self.types.insert(id, ty);
     }
 
-    ///Returns a reference to a struct based on the provided `id` which is expected to be the id of a VarReference type
+    ///Returns a reference to a struct based on the provided `id` which is expected to be the id of a VarReference type.
+    ///This returns a reference type to an object type.
     fn retrieve_reference_of(&self, id: &HirId, span: &Span) -> Result<HirType, TypeError> {
-        println!("{:?}", self.types);
         if let Some(t) = self.types.get(id) {
             match t {
                 HirType::Reference { .. } => Ok(t.clone()),
                 HirType::VarReference(id) => self.retrieve_reference_of(id, span),
-                r => {
-                    println!("{r:?} gay");
-                    Err(TypeError {
-                        kind: TypeErrorKind::Unrecognized(*id),
-                        span: span.clone(),
-                    })
-                }
+                r => Err(TypeError {
+                    kind: TypeErrorKind::Unrecognized(*id),
+                    span: span.clone(),
+                }),
             }
         } else {
             unreachable!("Type should have been determined");
@@ -339,7 +336,44 @@ impl TypeChecker {
                     expr.ty = self.get_type_of_expr(expr, &expr.span.clone())?;
                 }
                 HirStatmentKind::Assign { lhs, value } => {
+                    let refty = match &lhs.ty {
+                        HirType::Field(FieldMethod::Type(_, _)) => lhs.ty.clone(),
+                        HirType::Field(FieldMethod::Variable(v, name)) => {
+                            let HirType::Reference { rf, .. } =
+                                self.retrieve_reference_of(&v, &lhs.span)?
+                            else {
+                                unreachable!();
+                            };
+                            if let Some(index) = self
+                                .structs
+                                .get(&rf)
+                                .expect("Type should be defined")
+                                .iter()
+                                .position(|f| f == name)
+                            {
+                                let HirExpressionKind::FieldAccess {
+                                    ref mut field_index,
+                                    ..
+                                } = lhs.kind
+                                else {
+                                    unreachable!();
+                                };
+                                *field_index = index;
+                                HirType::Field(FieldMethod::Type(rf, index))
+                            } else {
+                                return Err(TypeError {
+                                    kind: TypeErrorKind::Unrecognized(*v),
+                                    span: lhs.span.clone(),
+                                }
+                                .into());
+                            }
+                        }
+                        _ => unreachable!(),
+                    };
+
                     let ty = self.resolve(&lhs.ty, &statment.span)?;
+                    lhs.ty = refty;
+                    println!("{lhs:?}");
                     value.ty = self.unify(&ty, &value.ty, &value.span)?;
                 }
             }

@@ -1,8 +1,9 @@
 object Pessoa{
-    name: str
+    name: str,
+    age: int
 }
 func p(a:int,b:int,c:int):int {
-    let mut p = Pessoa(name: "John");
-    p.name = "maracutaia";
-    p.name
+    let mut p = Pessoa(name: "John", age:10);
+    p.age = 55;
+    p.age
 }
