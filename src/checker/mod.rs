@@ -97,7 +97,7 @@ impl TypeChecker {
             match t {
                 HirType::Reference { .. } => Ok(t.clone()),
                 HirType::VarReference(id) => self.retrieve_reference_of(id, span),
-                r => Err(TypeError {
+                _ => Err(TypeError {
                     kind: TypeErrorKind::Unrecognized(*id),
                     span: span.clone(),
                 }),
@@ -330,6 +330,39 @@ impl TypeChecker {
                     self.types.insert(*name, ty.clone());
                 }
                 HirStatmentKind::Return { expr } => {
+                    match &mut expr.kind {
+                        HirExpressionKind::FieldAccess { field_index, .. } => {
+                            if *field_index == usize::MAX {
+                                match expr.ty {
+                                    HirType::Field(FieldMethod::Variable(id, ref name)) => {
+                                        let HirType::Reference { rf, .. } =
+                                            self.retrieve_reference_of(&id, &expr.span)?
+                                        else {
+                                            unreachable!();
+                                        };
+                                        if let Some(index) = self
+                                            .structs
+                                            .get(&rf)
+                                            .unwrap()
+                                            .iter()
+                                            .position(|field| field == name)
+                                        {
+                                            *field_index = index;
+                                        } else {
+                                            return Err(TypeError {
+                                                kind: TypeErrorKind::Unrecognized(id),
+                                                span: expr.span.clone(),
+                                            }
+                                            .into());
+                                        }
+                                    }
+
+                                    ref u => unimplemented!("{u:?}"),
+                                };
+                            }
+                        }
+                        _ => {}
+                    }
                     expr.ty = self.unify(&expr.ty, return_type, &statment.span)?;
                 }
                 HirStatmentKind::Expression { expr } => {

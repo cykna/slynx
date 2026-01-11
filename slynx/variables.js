@@ -5,5 +5,5 @@ function f0(p0, p1, p2) {
     f1: 10
   };
   v4.f1 = 55;
-  return v4.f18446744073709551615;
+  return v4.f1;
 }

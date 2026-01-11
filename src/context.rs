@@ -225,6 +225,8 @@ impl SlynxContext {
                 None => return Err(e),
             }
         }
+
+        println!("{:#?}", hir.declarations);
         if let Err(e) = TypeChecker::check(&mut hir) {
             match e.downcast_ref::<TypeError>() {
                 Some(err) => {
@@ -244,6 +246,7 @@ impl SlynxContext {
             }
         };
         let mut ir = IntermediateRepr::new();
+
         ir.generate(hir.declarations);
 
         let out = compiler.compile(ir);
