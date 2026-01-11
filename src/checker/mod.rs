@@ -373,7 +373,6 @@ impl TypeChecker {
 
                     let ty = self.resolve(&lhs.ty, &statment.span)?;
                     lhs.ty = refty;
-                    println!("{lhs:?}");
                     value.ty = self.unify(&ty, &value.ty, &value.span)?;
                 }
             }
