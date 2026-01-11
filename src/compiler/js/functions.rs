@@ -4,10 +4,7 @@ use swc_ecma_ast::{
 };
 
 use crate::{
-    compiler::{
-        js::{WebCompiler, create_ident},
-        slynx_compiler::SlynxCompiler,
-    },
+    compiler::{js::WebCompiler, slynx_compiler::SlynxCompiler},
     intermediate::{
         IntermediateRepr,
         context::{IntermediateContext, IntermediateContextType, IntermediateProperty},
@@ -114,9 +111,9 @@ impl WebCompiler {
             params: args
                 .iter()
                 .enumerate()
-                .map(|(idx, _)| Param {
+                .map(|(idx, id)| Param {
                     pat: Pat::Ident(BindingIdent {
-                        id: create_ident(&format!("p{idx}")),
+                        id: self.map_name(id.1, &format!("p{idx}")),
                         type_ann: None,
                     }),
                     span: DUMMY_SP,

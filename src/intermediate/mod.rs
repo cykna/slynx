@@ -17,6 +17,7 @@ use crate::{
     intermediate::{
         context::{IntermediateContext, IntermediateContextType, IntermediateProperty},
         expr::IntermediateExpr,
+        node::{IntermediateInstruction, IntermediatePlace},
         string::StringPool,
         types::IntermediateType,
     },
@@ -212,10 +213,52 @@ impl IntermediateRepr {
         }
     }
 
+    pub fn generate_var(&mut self, name: HirId, value: HirExpression) -> usize {
+        let idx = self.generate_expr(value);
+        let alloc = self.active_context().allocate(name);
+        self.active_context()
+            .insert_instruction(IntermediateInstruction::Move {
+                target: IntermediatePlace::Local(alloc),
+                value: idx,
+            })
+            .unwrap()
+    }
+
+    fn generate_place(&mut self, lhs: HirExpression) -> IntermediatePlace {
+        match lhs.kind {
+            HirExpressionKind::Identifier(id) => IntermediatePlace::Local(
+                self.active_context()
+                    .vars
+                    .iter()
+                    .rposition(|var| *var == id)
+                    .unwrap(),
+            ),
+            HirExpressionKind::FieldAccess { field_index, expr } => {
+                let _structure_place = self.generate_place(*expr);
+                IntermediatePlace::Field {
+                    parent: 0,
+                    field: field_index,
+                }
+            }
+            _ => panic!("Unsupported expression type for place generation: {lhs:?}"),
+        }
+    }
+
+    pub fn generate_assign(&mut self, lhs: HirExpression, value: HirExpression) -> usize {
+        let idx = self.generate_expr(value);
+        let place = self.generate_place(lhs);
+        self.active_context()
+            .insert_instruction(IntermediateInstruction::Move {
+                target: place,
+                value: idx,
+            })
+            .unwrap()
+    }
+
     ///Creates a new function with the provided `name` `id` and `statments` and returns its id
     pub fn generate_function(
         &mut self,
-        args: Vec<IntermediateType>,
+        args: Vec<(IntermediateType, HirId)>,
         ret: IntermediateType,
         statments: Vec<HirStatment>,
         name: String,
@@ -226,13 +269,19 @@ impl IntermediateRepr {
         self.contexts.push(ctx);
         for statment in statments {
             match statment.kind {
+                HirStatmentKind::Assign { lhs, value } => {
+                    self.generate_assign(lhs, value);
+                }
+                HirStatmentKind::Variable { name, value, .. } => {
+                    self.generate_var(name, value);
+                }
                 HirStatmentKind::Expression { expr } => {
                     self.generate_expr(expr);
                 }
                 HirStatmentKind::Return { expr } => {
                     let id = self.generate_expr(expr);
                     self.active_context()
-                        .insert_node(node::IntermediateInstruction::Ret(id));
+                        .insert_instruction(node::IntermediateInstruction::Ret(id));
                 }
             };
         }
@@ -249,12 +298,24 @@ impl IntermediateRepr {
                     let ty = self.retrieve_complex(&fields);
                     self.types_mapping.insert(decl.id, ty);
                 }
-                HirDeclarationKind::Function { statments, name } => {
-                    let HirType::Function { args, return_type } = &decl.ty else {
+                HirDeclarationKind::Function {
+                    statments,
+                    args,
+                    name,
+                } => {
+                    let HirType::Function {
+                        args: tys,
+                        return_type,
+                    } = &decl.ty
+                    else {
                         unreachable!("Type of function decl should be function")
                     };
 
-                    let args = args.iter().map(|arg| self.get_type(arg)).collect();
+                    let args = args
+                        .iter()
+                        .zip(tys)
+                        .map(|(arg, ty)| (self.get_type(ty), *arg))
+                        .collect();
                     let ret = self.get_type(return_type);
                     self.generate_function(args, ret, statments, name, decl.id);
                 }

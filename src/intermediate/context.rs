@@ -20,7 +20,7 @@ pub enum IntermediateContextType {
     Function {
         name: String,
         instructions: Vec<IntermediateInstruction>,
-        args: Vec<IntermediateType>,
+        args: Vec<(IntermediateType, HirId)>,
         ret: IntermediateType,
     },
     Component {
@@ -34,7 +34,7 @@ pub struct IntermediateContext {
     pub id: HirId,
     pub exprs: Vec<IntermediateExpr>,
     ///A vector of pointer to the expressions
-    pub vars: Vec<usize>,
+    pub vars: Vec<HirId>,
     ///Maps some name to an expression
     pub names: HashMap<HirId, usize>,
     pub ty: IntermediateContextType,
@@ -44,7 +44,7 @@ impl IntermediateContext {
     pub fn new_function(
         id: HirId,
         name: String,
-        args: Vec<IntermediateType>,
+        args: Vec<(IntermediateType, HirId)>,
         ret: IntermediateType,
     ) -> Self {
         Self {
@@ -72,6 +72,14 @@ impl IntermediateContext {
             },
         }
     }
+
+    pub fn allocate(&mut self, id: HirId) -> usize {
+        let out = self.vars.len();
+        self.insert_instruction(IntermediateInstruction::Alloc(id));
+        self.vars.push(id);
+        out
+    }
+
     ///Inserts the provided `expr` on this context and returns it's id
     pub fn insert_expr(&mut self, expr: IntermediateExpr) -> usize {
         let id = self.exprs.len();
@@ -80,7 +88,7 @@ impl IntermediateContext {
     }
     ///Adds on this context instructions, the given `instr`.
     ///Returns the ID of the instruction. Returns None if this isn't a function
-    pub fn insert_node(&mut self, instr: IntermediateInstruction) -> Option<usize> {
+    pub fn insert_instruction(&mut self, instr: IntermediateInstruction) -> Option<usize> {
         match &mut self.ty {
             IntermediateContextType::Function { instructions, .. } => {
                 let id = instructions.len();

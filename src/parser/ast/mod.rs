@@ -54,6 +54,11 @@ pub enum ASTStatmentKind {
         ty: Option<GenericIdentifier>,
         rhs: ASTExpression,
     },
+    Assign {
+        ///The Left hand side of the assign, or, the one that will receive the value of `rhs`
+        lhs: ASTExpression,
+        rhs: ASTExpression,
+    },
     Expression(ASTExpression),
 }
 
@@ -85,4 +90,13 @@ pub enum ASTDeclarationKind {
         return_type: GenericIdentifier,
         body: Vec<ASTStatment>,
     },
+}
+
+impl ASTExpression {
+    pub fn is_assignable(&self) -> bool {
+        matches!(
+            self.kind,
+            ASTExpressionKind::Identifier(_) | ASTExpressionKind::FieldAccess { .. },
+        )
+    }
 }

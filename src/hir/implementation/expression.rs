@@ -7,7 +7,7 @@ use crate::{
         HirId, SlynxHir,
         deffinitions::{HirExpression, HirExpressionKind},
         error::{HIRError, HIRErrorKind},
-        types::HirType,
+        types::{FieldMethod, HirType},
     },
     parser::ast::{ASTExpression, ASTExpressionKind, NamedExpr, Operator, Span},
 };
@@ -118,10 +118,7 @@ impl SlynxHir {
                 Ok(HirExpression {
                     kind: HirExpressionKind::Identifier(id),
                     id: HirId::new(),
-                    ty: HirType::Reference {
-                        rf: id,
-                        generics: Vec::new(),
-                    },
+                    ty: HirType::VarReference(id),
                     span: expr.span,
                 })
             }
@@ -163,35 +160,44 @@ impl SlynxHir {
             ASTExpressionKind::FieldAccess { parent, field } => {
                 let parent = self.resolve_expr(*parent, None)?;
                 let HirExpression { ref ty, .. } = parent;
-                let HirType::Reference { rf, .. } = ty else {
-                    unreachable!(
-                        "Type of parent of field access should be a reference to `struct`"
-                    );
-                };
-                if let Some(index) = self
-                    .objects_deffinitions
-                    .get(rf)
-                    .expect("Object should have been defined")
-                    .iter()
-                    .position(|struct_field| &field == struct_field)
-                {
-                    Ok(HirExpression {
+                match ty {
+                    HirType::Reference { rf, .. } => {
+                        if let Some(index) = self
+                            .objects_deffinitions
+                            .get(rf)
+                            .expect("Object should have been defined")
+                            .iter()
+                            .position(|struct_field| &field == struct_field)
+                        {
+                            Ok(HirExpression {
+                                id: HirId::new(),
+                                ty: HirType::Field(FieldMethod::Type(*rf, index)),
+                                kind: HirExpressionKind::FieldAccess {
+                                    expr: Box::new(parent),
+                                    field_index: index,
+                                },
+                                span: expr.span,
+                            })
+                        } else {
+                            Err(HIRError {
+                                kind: HIRErrorKind::PropertyNotRecognized {
+                                    prop_names: vec![field],
+                                },
+                                span: expr.span,
+                            }
+                            .into())
+                        }
+                    }
+                    HirType::VarReference(rf) => Ok(HirExpression {
                         id: HirId::new(),
-                        ty: HirType::Field(*rf, index),
+                        ty: HirType::Field(FieldMethod::Variable(*rf, field)),
                         kind: HirExpressionKind::FieldAccess {
                             expr: Box::new(parent),
-                            field_index: index,
+                            field_index: usize::MAX,
                         },
                         span: expr.span,
-                    })
-                } else {
-                    Err(HIRError {
-                        kind: HIRErrorKind::PropertyNotRecognized {
-                            prop_names: vec![field],
-                        },
-                        span: expr.span,
-                    }
-                    .into())
+                    }),
+                    u => unreachable!("{u:?}"),
                 }
             }
         }

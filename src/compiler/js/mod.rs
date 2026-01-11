@@ -9,8 +9,9 @@ use std::{collections::HashMap, rc::Rc};
 use swc_atoms::Atom;
 use swc_common::{DUMMY_SP, SourceMap, SyntaxContext};
 use swc_ecma_ast::{
-    BinExpr, BinaryOp, CallExpr, Callee, Expr, ExprOrSpread, Ident, Lit, Number, Program,
-    ReturnStmt, Script, Stmt,
+    AssignExpr, AssignOp, AssignTarget, BinExpr, BinaryOp, BindingIdent, CallExpr, Callee, Decl,
+    Expr, ExprOrSpread, ExprStmt, Ident, Lit, MemberExpr, MemberProp, Number, Pat, Program,
+    ReturnStmt, Script, SimpleAssignTarget, Stmt, VarDecl, VarDeclKind, VarDeclarator,
 };
 use swc_ecma_codegen::{Config, Emitter, text_writer::JsWriter};
 
@@ -18,8 +19,10 @@ use crate::{
     compiler::slynx_compiler::SlynxCompiler,
     hir::HirId,
     intermediate::{
-        IntermediateRepr, context::IntermediateContext, expr::IntermediateExpr,
-        node::IntermediateInstruction,
+        IntermediateRepr,
+        context::IntermediateContext,
+        expr::IntermediateExpr,
+        node::{IntermediateInstruction, IntermediatePlace},
     },
 };
 
@@ -88,7 +91,55 @@ impl SlynxCompiler for WebCompiler {
                         arg: Some(Box::new(expr)),
                     })
                 }
-                _ => unimplemented!(),
+                IntermediateInstruction::Alloc(id) => {
+                    self.names
+                        .insert(*id, format!("v{}", self.names.len()).into());
+                    Stmt::Decl(Decl::Var(Box::new(VarDecl {
+                        span: DUMMY_SP,
+                        ctxt: SyntaxContext::default(),
+                        decls: vec![VarDeclarator {
+                            span: DUMMY_SP,
+                            name: Pat::Ident(BindingIdent {
+                                type_ann: None,
+                                id: self.names.get(id).unwrap().clone(),
+                            }),
+                            init: None,
+                            definite: true,
+                        }],
+                        kind: VarDeclKind::Let,
+                        declare: false,
+                    })))
+                }
+                IntermediateInstruction::Move { target, value } => match target {
+                    IntermediatePlace::Local(local) => Stmt::Expr(ExprStmt {
+                        expr: Box::new(Expr::Assign(AssignExpr {
+                            span: DUMMY_SP,
+                            op: AssignOp::Assign,
+                            left: AssignTarget::Simple(SimpleAssignTarget::Ident(BindingIdent {
+                                id: self.names.get(&ctx.vars[*local]).unwrap().clone(),
+                                type_ann: None,
+                            })),
+                            right: Box::new(self.compile_expression(&ctx.exprs[*value], ctx, ir)),
+                        })),
+                        span: DUMMY_SP,
+                    }),
+                    IntermediatePlace::Field { field, parent } => Stmt::Expr(ExprStmt {
+                        expr: Box::new(Expr::Assign(AssignExpr {
+                            span: DUMMY_SP,
+                            op: AssignOp::Assign,
+                            left: AssignTarget::Simple(SimpleAssignTarget::Member(MemberExpr {
+                                span: DUMMY_SP,
+                                obj: Box::new(Expr::Ident(
+                                    self.names.get(&ctx.vars[*parent]).cloned().unwrap(),
+                                )),
+                                prop: MemberProp::Ident(format!("f{field}").into()),
+                            })),
+                            right: Box::new(self.compile_expression(&ctx.exprs[*value], ctx, ir)),
+                        })),
+                        span: DUMMY_SP,
+                    }),
+                },
+                u => unimplemented!("{:?}", u),
             };
             out.push(stmt);
         }
