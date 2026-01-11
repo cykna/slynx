@@ -5,7 +5,7 @@ component Rect {
 
 component HelloBox {
 	pub prop seupai:float;
-	pub prop maria = 22;
+	pub prop maria = 0;
 	pub prop children;
 	
 	Rect {
