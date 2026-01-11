@@ -330,40 +330,8 @@ impl TypeChecker {
                     self.types.insert(*name, ty.clone());
                 }
                 HirStatmentKind::Return { expr } => {
-                    match &mut expr.kind {
-                        HirExpressionKind::FieldAccess { field_index, .. } => {
-                            if *field_index == usize::MAX {
-                                match expr.ty {
-                                    HirType::Field(FieldMethod::Variable(id, ref name)) => {
-                                        let HirType::Reference { rf, .. } =
-                                            self.retrieve_reference_of(&id, &expr.span)?
-                                        else {
-                                            unreachable!();
-                                        };
-                                        if let Some(index) = self
-                                            .structs
-                                            .get(&rf)
-                                            .unwrap()
-                                            .iter()
-                                            .position(|field| field == name)
-                                        {
-                                            *field_index = index;
-                                        } else {
-                                            return Err(TypeError {
-                                                kind: TypeErrorKind::Unrecognized(id),
-                                                span: expr.span.clone(),
-                                            }
-                                            .into());
-                                        }
-                                    }
-
-                                    ref u => unimplemented!("{u:?}"),
-                                };
-                            }
-                        }
-                        _ => {}
-                    }
-                    expr.ty = self.unify(&expr.ty, return_type, &statment.span)?;
+                    expr.ty = self.get_type_of_expr(expr, &statment.span)?;
+                    expr.ty = self.unify(&expr.ty, &return_type, &statment.span)?;
                 }
                 HirStatmentKind::Expression { expr } => {
                     expr.ty = self.get_type_of_expr(expr, &expr.span.clone())?;
@@ -503,6 +471,44 @@ impl TypeChecker {
                 HirType::Reference {
                     rf: name,
                     generics: Vec::new(),
+                }
+            }
+
+            HirExpressionKind::FieldAccess {
+                ref mut field_index,
+                expr: ref mut e,
+            } => {
+                let span = e.span.clone();
+                self.get_type_of_expr(e, &span)?;
+
+                match expr.ty {
+                    HirType::Field(FieldMethod::Variable(id, ref name)) => {
+                        let HirType::Reference { rf, .. } =
+                            self.retrieve_reference_of(&id, &expr.span)?
+                        else {
+                            unreachable!();
+                        };
+                        if let Some(index) = self
+                            .structs
+                            .get(&rf)
+                            .unwrap()
+                            .iter()
+                            .position(|field| field == name)
+                        {
+                            *field_index = index;
+                            let HirType::Struct { fields } = self.types.get(&rf).unwrap() else {
+                                unreachable!()
+                            };
+                            fields[index].clone()
+                        } else {
+                            return Err(TypeError {
+                                kind: TypeErrorKind::Unrecognized(id),
+                                span: expr.span.clone(),
+                            }
+                            .into());
+                        }
+                    }
+                    ref u => unimplemented!("{u:?}"),
                 }
             }
             ref un => {
