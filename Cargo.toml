@@ -13,5 +13,4 @@ swc_atoms = "9.0.0"
 swc_common = "18.0.1"
 swc_ecma_ast = "19.0.0"
 swc_ecma_codegen = "21.0.0"
-thiserror = "2.0.17"
 

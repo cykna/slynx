@@ -5,7 +5,7 @@ pub mod hir;
 pub mod intermediate;
 pub mod parser;
 
-use std::path::PathBuf;
+use std::{path::PathBuf, process::exit};
 
 use clap::Parser;
 use color_eyre::eyre::Result;
@@ -23,6 +23,14 @@ fn main() -> Result<()> {
     let cli = Cli::parse();
     let path = PathBuf::from(cli.target);
     let ctx = SlynxContext::new(path.into())?;
-    ctx.start_compilation(WebCompiler::new())?;
-    Ok(())
+    if let Err(e) = ctx.start_compilation(WebCompiler::new()) {
+        if !cfg!(debug_assertions) {
+            eprintln!("{e}");
+            exit(1);
+        } else {
+            Err(e)
+        }
+    } else {
+        Ok(())
+    }
 }
