@@ -6,8 +6,8 @@ pub enum IntermediatePlace {
     Local(usize),
     Field {
         parent: usize,
-        field: usize
-    }
+        field: usize,
+    },
 }
 
 #[derive(Debug)]
@@ -15,7 +15,10 @@ pub enum IntermediateInstruction {
     ///Allocates(creates) a new function
     Alloc(HirId),
     ///Moves the expression in `value` into `target`
-    Move { target: IntermediatePlace, value: usize },
+    Move {
+        target: IntermediatePlace,
+        value: usize,
+    },
     ///Reads a variable with provided id
     Read(usize),
     ///Returns with the value on the provided id

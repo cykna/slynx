@@ -92,7 +92,7 @@ pub enum ASTDeclarationKind {
     },
 }
 
-impl ASTExpression{
+impl ASTExpression {
     pub fn is_assignable(&self) -> bool {
         matches!(
             self.kind,

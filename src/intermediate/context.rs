@@ -72,14 +72,14 @@ impl IntermediateContext {
             },
         }
     }
-    
-    pub fn allocate(&mut self, id:HirId) -> usize {
+
+    pub fn allocate(&mut self, id: HirId) -> usize {
         let out = self.vars.len();
         self.insert_instruction(IntermediateInstruction::Alloc(id));
         self.vars.push(id);
         out
     }
-    
+
     ///Inserts the provided `expr` on this context and returns it's id
     pub fn insert_expr(&mut self, expr: IntermediateExpr) -> usize {
         let id = self.exprs.len();

@@ -39,7 +39,7 @@ impl Parser {
             },
             kind: if mutable {
                 ASTStatmentKind::MutableVar {
-                    name: name,
+                    name,
                     ty: vartype,
                     rhs,
                 }
@@ -69,10 +69,7 @@ impl Parser {
                             start: expr.span.start,
                             end: rhs.span.end,
                         },
-                        kind: ASTStatmentKind::Assign {
-                            lhs: expr,
-                            rhs: rhs,
-                        },
+                        kind: ASTStatmentKind::Assign { lhs: expr, rhs },
                     })
                 } else {
                     Ok(ASTStatment {

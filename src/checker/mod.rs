@@ -112,7 +112,7 @@ impl TypeChecker {
         match ty {
             HirType::Field(FieldMethod::Type(rf, index)) => {
                 if let Some(ty) = self.types.get(rf) {
-                    let ty = self.resolve(ty, &span)?;
+                    let ty = self.resolve(ty, span)?;
                     if let HirType::Struct { fields } = ty {
                         Ok(fields[*index].clone())
                     } else {
@@ -139,7 +139,7 @@ impl TypeChecker {
                 if let Some(ty) = self.types.get(&rf)
                     && let Some(s) = self.structs.get(&rf)
                 {
-                    let ty = self.resolve(&ty, span)?;
+                    let ty = self.resolve(ty, span)?;
                     let HirType::Struct { fields } = ty else {
                         unreachable!("Type should be a struct. Fields only happen to structs");
                     };
@@ -331,7 +331,7 @@ impl TypeChecker {
                 }
                 HirStatmentKind::Return { expr } => {
                     expr.ty = self.get_type_of_expr(expr, &statment.span)?;
-                    expr.ty = self.unify(&expr.ty, &return_type, &statment.span)?;
+                    expr.ty = self.unify(&expr.ty, return_type, &statment.span)?;
                 }
                 HirStatmentKind::Expression { expr } => {
                     expr.ty = self.get_type_of_expr(expr, &expr.span.clone())?;
@@ -341,7 +341,7 @@ impl TypeChecker {
                         HirType::Field(FieldMethod::Type(_, _)) => lhs.ty.clone(),
                         HirType::Field(FieldMethod::Variable(v, name)) => {
                             let HirType::Reference { rf, .. } =
-                                self.retrieve_reference_of(&v, &lhs.span)?
+                                self.retrieve_reference_of(v, &lhs.span)?
                             else {
                                 unreachable!();
                             };
@@ -599,7 +599,7 @@ impl TypeChecker {
     fn default_statment(&mut self, statment: &mut HirStatment, expected: &HirType) -> Result<()> {
         match &mut statment.kind {
             HirStatmentKind::Variable { name, value, ty } => {
-                value.ty = self.unify(&value.ty, &ty, &statment.span)?;
+                value.ty = self.unify(&value.ty, ty, &statment.span)?;
                 self.types.insert(*name, value.ty.clone());
             }
             HirStatmentKind::Assign { lhs, value } => {

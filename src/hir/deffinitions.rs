@@ -66,7 +66,7 @@ pub struct HirStatment {
 pub enum HirStatmentKind {
     Assign {
         lhs: HirExpression,
-        value: HirExpression
+        value: HirExpression,
     },
     Variable {
         name: HirId,

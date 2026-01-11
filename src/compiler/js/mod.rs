@@ -9,10 +9,9 @@ use std::{collections::HashMap, rc::Rc};
 use swc_atoms::Atom;
 use swc_common::{DUMMY_SP, SourceMap, SyntaxContext};
 use swc_ecma_ast::{
-    AssignExpr, AssignOp, AssignTarget, AssignTargetPat, BinExpr, BinaryOp, BindingIdent, CallExpr,
-    Callee, Decl, Expr, ExprOrSpread, ExprStmt, Ident, KeyValuePatProp, Lit, MemberExpr,
-    MemberProp, Number, ObjectPat, ObjectPatProp, Pat, Program, PropName, ReturnStmt, Script,
-    SimpleAssignTarget, Stmt, VarDecl, VarDeclKind, VarDeclarator,
+    AssignExpr, AssignOp, AssignTarget, BinExpr, BinaryOp, BindingIdent, CallExpr, Callee, Decl,
+    Expr, ExprOrSpread, ExprStmt, Ident, Lit, MemberExpr, MemberProp, Number, Pat, Program,
+    ReturnStmt, Script, SimpleAssignTarget, Stmt, VarDecl, VarDeclKind, VarDeclarator,
 };
 use swc_ecma_codegen::{Config, Emitter, text_writer::JsWriter};
 
@@ -120,10 +119,7 @@ impl SlynxCompiler for WebCompiler {
                                 id: self.names.get(&ctx.vars[*local]).unwrap().clone(),
                                 type_ann: None,
                             })),
-                            right: Box::new({
-                                let expr = self.compile_expression(&ctx.exprs[*value], ctx, ir);
-                                expr
-                            }),
+                            right: Box::new(self.compile_expression(&ctx.exprs[*value], ctx, ir)),
                         })),
                         span: DUMMY_SP,
                     }),
