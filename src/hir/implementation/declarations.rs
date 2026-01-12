@@ -1,7 +1,7 @@
 use color_eyre::eyre::Result;
 
 use crate::hir::{
-    HirId, SlynxHir,
+    PropertyId, SlynxHir,
     deffinitions::{
         ComponentMemberDeclaration, HirDeclaration, HirDeclarationKind, SpecializedComponent,
     },
@@ -49,7 +49,7 @@ impl SlynxHir {
         };
         self.declarations.push(HirDeclaration {
             kind: HirDeclarationKind::Object,
-            id,
+            id: id.into(),  // Convert HirId to DeclarationId
             ty,
             span,
         });
@@ -151,7 +151,7 @@ impl SlynxHir {
                     } else {
                         HirType::Infer
                     };
-                    let id = HirId::new();
+                    let id = PropertyId::new();  // Changed to PropertyId
                     out.push(ComponentMemberDeclaration::Property {
                         id,
                         index: prop_idx,
@@ -162,7 +162,9 @@ impl SlynxHir {
                         },
                         span: def.span,
                     });
-                    self.last_scope().insert_name(id, name);
+                    // Convert PropertyId to HirId for scope
+                    let hirid = id.into();
+                    self.last_scope().insert_name(hirid, name);
                     prop_idx += 1;
                 }
                 ComponentMemberKind::Child(child) => {

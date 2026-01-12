@@ -180,7 +180,7 @@ impl SlynxHir {
                     }
 
                     ComponentMemberDeclaration::Property {
-                        id: HirId::new(),
+                        id: PropertyId::new(),  // Changed to PropertyId
                         index,
                         value: Some(self.resolve_expr(rhs, Some(&props[index].2))?),
                         span,
@@ -272,9 +272,10 @@ impl SlynxHir {
                 let args = args
                     .into_iter()
                     .map(|arg| {
-                        let id = HirId::new();
-                        self.last_scope().insert_name(id, arg.name);
-                        id
+                        let var_id = VariableId::new();  // Changed to VariableId
+                        let hirid: HirId = var_id.into();  // Convert to HirId for scope
+                        self.last_scope().insert_name(hirid, arg.name);
+                        var_id
                     })
                     .collect();
 
@@ -301,7 +302,7 @@ impl SlynxHir {
                         args,
                         name: name.to_string(),
                     },
-                    id,
+                    id: id.into(),  // Convert HirId to DeclarationId
                     ty: func,
                     span: ast.span,
                 });
@@ -314,7 +315,7 @@ impl SlynxHir {
 
                 let defs = self.resolve_component_defs(members)?;
                 self.declarations.push(HirDeclaration {
-                    id: hir,
+                    id: hir.into(),  // Convert HirId to DeclarationId
                     kind: HirDeclarationKind::ComponentDeclaration { props: defs },
                     ty,
                     span: ast.span,

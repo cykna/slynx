@@ -6,7 +6,7 @@ use color_eyre::eyre::Result;
 use crate::{
     checker::error::{IncompatibleComponentReason, TypeError, TypeErrorKind},
     hir::{
-        HirId, SlynxHir,
+        SlynxHir,
         deffinitions::{
             ComponentMemberDeclaration, HirDeclaration, HirDeclarationKind, HirExpression,
             HirExpressionKind, HirStatment, HirStatmentKind, SpecializedComponent,
@@ -16,24 +16,27 @@ use crate::{
     parser::ast::Span,
 };
 
+#[allow(deprecated)]
+use crate::hir::HirId;
+
 #[derive(Hash, PartialEq, Eq, Debug)]
 pub struct PropRef {
-    ///The id of the owner of the property
+    /// The id of the owner of the property
     owner: HirId,
-    ///It's index inside the owner
+    /// It's index inside the owner
     index: usize,
 }
 
 #[derive(Debug)]
 pub struct TypeChecker {
-    ///The type of everything that is expected to have some
+    /// The type of everything that is expected to have some
     types: HashMap<HirId, HirType>,
     structs: HashMap<HirId, Vec<String>>,
 }
 
 impl TypeChecker {
-    ///Checks the types of the provided `hir` and mutates them if needed. Any that could not be inferred but, yet is valid, is
-    ///at the end, returned as it's default type
+    /// Checks the types of the provided `hir` and mutates them if needed. Any that could not be inferred but, yet is valid, is
+    /// at the end, returned as it's default type
     pub fn check(hir: &mut SlynxHir) -> Result<()> {
         let mut inner = Self {
             types: HashMap::new(),
@@ -43,14 +46,14 @@ impl TypeChecker {
         for decl in &mut hir.declarations {
             inner.check_decl(decl)?;
         }
-        //for the ones that couldn't be inferred, put their default
+        // for the ones that couldn't be inferred, put their default
         for decl in &mut hir.declarations {
             inner.set_default(decl)?;
         }
         Ok(())
     }
     fn check_decl(&mut self, decl: &mut HirDeclaration) -> Result<()> {
-        self.types.insert(decl.id, decl.ty.clone());
+        self.types.insert(decl.id.into(), decl.ty.clone());  // Convert DeclarationId to HirId
         match decl.kind {
             HirDeclarationKind::Function {
                 ref mut statments, ..
@@ -58,7 +61,7 @@ impl TypeChecker {
                 self.resolve_statments(statments, &decl.ty)?;
             }
             HirDeclarationKind::Object => {
-                self.types.insert(decl.id, decl.ty.clone());
+                self.types.insert(decl.id.into(), decl.ty.clone());  // Convert DeclarationId to HirId
             }
 
             HirDeclarationKind::ComponentDeclaration { ref mut props } => {
@@ -90,8 +93,8 @@ impl TypeChecker {
         self.types.insert(id, ty);
     }
 
-    ///Returns a reference to a struct based on the provided `id` which is expected to be the id of a VarReference type.
-    ///This returns a reference type to an object type.
+    /// Returns a reference to a struct based on the provided `id` which is expected to be the id of a VarReference type.
+    /// This returns a reference type to an object type.
     fn retrieve_reference_of(&self, id: &HirId, span: &Span) -> Result<HirType, TypeError> {
         if let Some(t) = self.types.get(id) {
             match t {
@@ -107,7 +110,7 @@ impl TypeChecker {
         }
     }
 
-    ///Resolves recursively the names of the types. If A -> B, B -> int; then we assume that A -> int
+    /// Resolves recursively the names of the types. If A -> B, B -> int; then we assume that A -> int
     fn resolve(&self, ty: &HirType, span: &Span) -> Result<HirType> {
         match ty {
             HirType::Field(FieldMethod::Type(rf, index)) => {
@@ -195,7 +198,7 @@ impl TypeChecker {
             .cloned()
     }
 
-    ///Tries to unify types `a` and `b` if possible
+    /// Tries to unify types `a` and `b` if possible
     fn unify(&mut self, a: &HirType, b: &HirType, span: &Span) -> Result<HirType> {
         let a = self.resolve(a, span)?;
         let b = self.resolve(b, span)?;
@@ -295,7 +298,7 @@ impl TypeChecker {
         })
     }
 
-    ///Checks if the provided `ty` is recursive
+    /// Checks if the provided `ty` is recursive
     fn reccursive_ty(&self, ty_ref: HirId, ty: &HirType) -> bool {
         match ty {
             HirType::Reference { rf, .. } => {
@@ -327,7 +330,7 @@ impl TypeChecker {
                 HirStatmentKind::Variable { value, ty, name } => {
                     value.ty = self.unify(&value.ty, ty, &value.span)?;
                     *ty = value.ty.clone();
-                    self.types.insert(*name, ty.clone());
+                    self.types.insert((*name).into(), ty.clone());  // Convert VariableId to HirId
                 }
                 HirStatmentKind::Return { expr } => {
                     expr.ty = self.get_type_of_expr(expr, &statment.span)?;
@@ -430,7 +433,7 @@ impl TypeChecker {
         Ok(())
     }
 
-    ///Retrieves the type of the provided `expr`. Returns infer if it could not be inferred.
+    /// Retrieves the type of the provided `expr`. Returns infer if it could not be inferred.
     fn get_type_of_expr(&mut self, expr: &mut HirExpression, span: &Span) -> Result<HirType> {
         let expected = expr.ty.clone();
 
@@ -600,7 +603,7 @@ impl TypeChecker {
         match &mut statment.kind {
             HirStatmentKind::Variable { name, value, ty } => {
                 value.ty = self.unify(&value.ty, ty, &statment.span)?;
-                self.types.insert(*name, value.ty.clone());
+                self.types.insert((*name).into(), value.ty.clone());  // Convert VariableId to HirId
             }
             HirStatmentKind::Assign { lhs, value } => {
                 let ty = self.resolve(&lhs.ty, &lhs.span)?;

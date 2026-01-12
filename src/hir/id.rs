@@ -88,6 +88,62 @@ define_hir_id!(
     "Unique ID for custom types (structs, objects, components)"
 );
 
+// Temporary conversion utilities for migration
+// TODO: Remove these once migration is complete
+#[allow(deprecated)]
+mod compat {
+    use super::*;
+    use crate::hir::HirId;
+
+    impl From<HirId> for DeclarationId {
+        fn from(id: HirId) -> Self {
+            DeclarationId::from_raw(id.0)
+        }
+    }
+
+    impl From<DeclarationId> for HirId {
+        fn from(id: DeclarationId) -> Self {
+            HirId(id.as_raw())
+        }
+    }
+
+    impl From<HirId> for VariableId {
+        fn from(id: HirId) -> Self {
+            VariableId::from_raw(id.0)
+        }
+    }
+
+    impl From<VariableId> for HirId {
+        fn from(id: VariableId) -> Self {
+            HirId(id.as_raw())
+        }
+    }
+
+    impl From<HirId> for PropertyId {
+        fn from(id: HirId) -> Self {
+            PropertyId::from_raw(id.0)
+        }
+    }
+
+    impl From<PropertyId> for HirId {
+        fn from(id: PropertyId) -> Self {
+            HirId(id.as_raw())
+        }
+    }
+
+    impl From<HirId> for ExpressionId {
+        fn from(id: HirId) -> Self {
+            ExpressionId::from_raw(id.0)
+        }
+    }
+
+    impl From<ExpressionId> for HirId {
+        fn from(id: ExpressionId) -> Self {
+            HirId(id.as_raw())
+        }
+    }
+}
+
 #[cfg(test)]
 mod tests {
     use super::*;
@@ -112,5 +168,15 @@ mod tests {
         let raw = id.as_raw();
         let reconstructed = VariableId::from_raw(raw);
         assert_eq!(id, reconstructed);
+    }
+
+    #[test]
+    #[allow(deprecated)]
+    fn test_hirid_conversion() {
+        use crate::hir::HirId;
+        let old_id = HirId::new();
+        let new_id: DeclarationId = old_id.into();
+        let back: HirId = new_id.into();
+        assert_eq!(old_id.0, back.0);
     }
 }
