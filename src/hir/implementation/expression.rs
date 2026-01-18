@@ -4,13 +4,16 @@ use color_eyre::eyre::Result;
 
 use crate::{
     hir::{
-        HirId, SlynxHir,
+        ExpressionId, SlynxHir,
         deffinitions::{HirExpression, HirExpressionKind},
         error::{HIRError, HIRErrorKind},
         types::{FieldMethod, HirType},
     },
     parser::ast::{ASTExpression, ASTExpressionKind, NamedExpr, Operator, Span},
 };
+
+#[allow(deprecated)]
+use crate::hir::HirId;
 
 impl SlynxHir {
     pub fn organized_object_fields(
@@ -69,7 +72,7 @@ impl SlynxHir {
         }
         let mut out = Vec::with_capacity(fields.len());
         let mut non_recognized_fields = Vec::with_capacity(fields.len());
-        let cloned_layout = defined_layout.clone(); //resolve isso dps
+        let cloned_layout = defined_layout.clone();
         for field in fields {
             if let Some(field_idx) = cloned_layout
                 .iter()
@@ -99,7 +102,7 @@ impl SlynxHir {
         }
     }
 
-    ///Ty only serves to tell the type of the expression if it's needed to infer and check if it doesnt correspond
+    /// Ty only serves to tell the type of the expression if it's needed to infer and check if it doesnt correspond
     pub fn resolve_expr(
         &mut self,
         expr: ASTExpression,
@@ -108,7 +111,7 @@ impl SlynxHir {
         match expr.kind {
             ASTExpressionKind::Binary { lhs, op, rhs } => self.resolve_binary(*lhs, op, *rhs, ty),
             ASTExpressionKind::StringLiteral(s) => Ok(HirExpression {
-                id: HirId::new(),
+                id: ExpressionId::new(),  // Changed to ExpressionId
                 ty: HirType::Str,
                 kind: HirExpressionKind::StringLiteral(s),
                 span: expr.span,
@@ -117,7 +120,7 @@ impl SlynxHir {
                 let id = self.retrieve_information_of_scoped(&name, &expr.span)?;
                 Ok(HirExpression {
                     kind: HirExpressionKind::Identifier(id),
-                    id: HirId::new(),
+                    id: ExpressionId::new(),  // Changed to ExpressionId
                     ty: HirType::VarReference(id),
                     span: expr.span,
                 })
@@ -125,7 +128,7 @@ impl SlynxHir {
             ASTExpressionKind::IntLiteral(int) => Ok(HirExpression {
                 kind: HirExpressionKind::Int(int),
                 ty: HirType::Int,
-                id: HirId::new(),
+                id: ExpressionId::new(),  // Changed to ExpressionId
                 span: expr.span,
             }),
 
@@ -139,7 +142,7 @@ impl SlynxHir {
                         name: id,
                         values: self.resolve_component_members(component.values, &ty)?,
                     },
-                    id: HirId::new(),
+                    id: ExpressionId::new(),  // Changed to ExpressionId
                     ty,
                     span: expr.span,
                 })
@@ -148,7 +151,7 @@ impl SlynxHir {
                 let (id, ty) = self.retrieve_information_of(&name.identifier, &expr.span)?;
                 let kind = self.organized_object_fields(id, &ty, fields, &expr.span)?;
                 Ok(HirExpression {
-                    id: HirId::new(),
+                    id: ExpressionId::new(),  // Changed to ExpressionId
                     ty: HirType::Reference {
                         rf: id,
                         generics: Vec::new(),
@@ -170,7 +173,7 @@ impl SlynxHir {
                             .position(|struct_field| &field == struct_field)
                         {
                             Ok(HirExpression {
-                                id: HirId::new(),
+                                id: ExpressionId::new(),  // Changed to ExpressionId
                                 ty: HirType::Field(FieldMethod::Type(*rf, index)),
                                 kind: HirExpressionKind::FieldAccess {
                                     expr: Box::new(parent),
@@ -189,7 +192,7 @@ impl SlynxHir {
                         }
                     }
                     HirType::VarReference(rf) => Ok(HirExpression {
-                        id: HirId::new(),
+                        id: ExpressionId::new(),  // Changed to ExpressionId
                         ty: HirType::Field(FieldMethod::Variable(*rf, field)),
                         kind: HirExpressionKind::FieldAccess {
                             expr: Box::new(parent),
@@ -229,7 +232,7 @@ impl SlynxHir {
                 op,
                 rhs: Box::new(rhs),
             },
-            id: HirId::new(),
+            id: ExpressionId::new(),  // Changed to ExpressionId
             span,
         })
     }
