@@ -543,6 +543,9 @@ impl TypeChecker {
 
     fn default_expr(&mut self, expr: &mut HirExpression) -> Result<()> {
         match expr.kind {
+            HirExpressionKind::Bool(_) => {
+                expr.ty = self.unify(&expr.ty, &HirType::Bool, &expr.span)?
+            }
             HirExpressionKind::StringLiteral(_) => {
                 expr.ty = self.unify(&expr.ty, &self.types_module.str_id(), &expr.span)?
             }
