@@ -202,7 +202,8 @@ impl TypeChecker {
         match (&a, &b) {
             (HirType::Int, HirType::Int)
             | (HirType::Float, HirType::Float)
-            | (HirType::Str, HirType::Str) => Ok(a),
+            | (HirType::Str, HirType::Str)
+            | (HirType::Bool, HirType::Bool) => Ok(a),
             (out, HirType::Infer) | (HirType::Infer, out) if !matches!(out, HirType::Infer) => {
                 Ok(out.clone())
             }
@@ -511,6 +512,7 @@ impl TypeChecker {
                     ref u => unimplemented!("{u:?}"),
                 }
             }
+            HirExpressionKind::Bool(_) => HirType::Bool,
             ref un => {
                 unimplemented!("{un:?}")
             }
@@ -522,6 +524,9 @@ impl TypeChecker {
 
     fn default_expr(&mut self, expr: &mut HirExpression) -> Result<()> {
         match expr.kind {
+            HirExpressionKind::Bool(_) => {
+                expr.ty = self.unify(&expr.ty, &HirType::Bool, &expr.span)?
+            }
             HirExpressionKind::StringLiteral(_) => {
                 expr.ty = self.unify(&expr.ty, &HirType::Str, &expr.span)?
             }
