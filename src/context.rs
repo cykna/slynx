@@ -256,7 +256,6 @@ impl SlynxContext {
                 _ => return Err(e),
             }
         };
-        println!("{:#?}", hir.declarations);
         let mut ir = IntermediateRepr::new();
 
         ir.generate(hir.declarations);
