@@ -219,6 +219,7 @@ impl SlynxCompiler for WebCompiler {
                 value: *n as f64,
                 raw: None,
             })),
+            IntermediateExpr::Bool(b) => Expr::Lit(Lit::Bool((*b).into())),
             un => unimplemented!("{un:?}"),
         }
     }
