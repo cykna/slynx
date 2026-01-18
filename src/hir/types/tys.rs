@@ -91,6 +91,7 @@ impl HirType {
         match gener.identifier.as_str() {
             "Component" => Ok(Self::GenericComponent),
             "void" => Ok(Self::Void),
+            "bool" => Ok(Self::Bool),
             "int" => Ok(Self::Int),
             "float" => Ok(Self::Float),
             "str" => Ok(Self::Str),
