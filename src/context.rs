@@ -255,7 +255,6 @@ impl SlynxContext {
             },
             Ok(module) => module,
         };
-
         let mut ir = IntermediateRepr::new();
 
         ir.generate(hir.declarations, module);
