@@ -39,6 +39,8 @@ impl std::fmt::Display for TokenKind {
             Self::Object => "object".to_string(),
             Self::Let => "let".to_string(),
             Self::Mut => "mut".to_string(),
+            Self::True => "true".to_string(),
+            Self::False => "false".to_string(),
             Self::Float(value) => value.to_string(),
             Self::Int(value) => value.to_string(),
             Self::String(value) => value.to_string(),
