@@ -48,25 +48,35 @@ impl std::fmt::Display for SlynxError {
             SlynxErrorType::Compilation => "Compilation Error",
             SlynxErrorType::Type => "Type Checking Error",
         };
-        let source = format!("{} | {}", self.line, self.source_code);
-        let mut err = " ".repeat((self.column_end * 2).min(self.source_code.len()));
+        let source = self.source_code.replace("\t", " ");
+        let before_error = format!("{} |", self.line);
+        let error_with_data = format!("{before_error}{source}");
 
-        err.replace_range(
-            self.column_start - 1..err.len(),
-            &"^".repeat(err.len() - (self.column_start - 1)),
+        let error_points = {
+            let only_space_amount = self
+                .source_code
+                .chars()
+                .filter(|c| c.is_whitespace())
+                .count();
+            let points_offset = " ".repeat(only_space_amount);
+            let points = "^".repeat(self.source_code.trim().len());
+            format!("{before_error}{points_offset}{points}",)
+        };
+
+        let line_and_column = format!(
+            "{}:{}",
+            self.line.blue().bold(),
+            self.column_start.blue().bold()
         );
-        let err = format!("  | {}", err);
-        let source_err = format!("\n{source}\n{err}");
         writeln!(
             f,
-            "{}: {} => {}:{}:{}{}",
+            "{}: {} => {}:{line_and_column}",
             type_error.green().bold(),
             self.message.red(),
-            self.file.bold(),
-            self.line.blue().bold(),
-            self.column_start.blue().bold(),
-            source_err
-        )
+            self.file.bold()
+        )?;
+        writeln!(f, "{}", error_with_data)?;
+        writeln!(f, "{}", error_points)
     }
 }
 
@@ -138,7 +148,11 @@ impl SlynxContext {
                     }
                     column
                 },
-                &source[lines[e - 1] + 1..lines[e]],
+                if e == 0 {
+                    &source[0..lines[e]]
+                } else {
+                    &source[lines[e - 1] + 1..lines[e]]
+                },
             ),
         }
     }
