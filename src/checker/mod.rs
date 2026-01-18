@@ -512,6 +512,7 @@ impl TypeChecker {
                     ref u => unimplemented!("{u:?}"),
                 }
             }
+            HirExpressionKind::Bool(_) => HirType::Bool,
             ref un => {
                 unimplemented!("{un:?}")
             }
