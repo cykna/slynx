@@ -200,6 +200,7 @@ impl SlynxCompiler for WebCompiler {
                 left: Box::new(self.compile_expression(&ctx.exprs[*lhs], ctx, ir)),
                 right: Box::new(self.compile_expression(&ctx.exprs[*rhs], ctx, ir)),
             }),
+            IntermediateExpr::Bool(b) => Expr::Lit(Lit::Bool((*b).into())),
             un => unimplemented!("{un:?}"),
         }
     }
