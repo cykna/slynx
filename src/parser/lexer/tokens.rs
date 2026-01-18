@@ -84,6 +84,8 @@ pub enum TokenKind {
     Object,
     Let,
     Mut,
+    True,
+    False,
 }
 
 impl std::fmt::Display for Token {

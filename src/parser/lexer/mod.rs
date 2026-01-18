@@ -197,6 +197,14 @@ impl Lexer {
                             kind: TokenKind::Prop,
                             span,
                         },
+                        "true" => Token {
+                            kind: TokenKind::True,
+                            span,
+                        },
+                        "false" => Token {
+                            kind: TokenKind::False,
+                            span,
+                        },
                         _ => Token::identifier(&buffer, start, idx),
                     }
                 }
