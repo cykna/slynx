@@ -27,6 +27,7 @@ pub struct IntermediateExpr {
 
 #[derive(Debug, Clone)]
 pub enum IntermediateExprKind {
+    Bool(bool),
     Int(i32),
     Float(f32),
     StringLiteral(StringHandle),
