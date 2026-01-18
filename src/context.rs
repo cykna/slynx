@@ -23,15 +23,24 @@ pub enum SlynxErrorType {
     Type,
     Compilation,
 }
+impl std::fmt::Display for SlynxErrorType {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        match self {
+            SlynxErrorType::Lexer => write!(f, "Lexing Error"),
+            SlynxErrorType::Parser => write!(f, "Parsing Error"),
+            SlynxErrorType::Hir => write!(f, "Name Resolution Error"),
+            SlynxErrorType::Compilation => write!(f, "Compilation Error"),
+            SlynxErrorType::Type => write!(f, "Type Checking Error"),
+        }
+    }
+}
 
 #[derive(Debug)]
-
 ///An error that will be shown if something fails
 pub struct SlynxError {
     ty: SlynxErrorType,
     line: usize,
     column_start: usize,
-    column_end: usize,
     message: String,
     ///The file path the error occuried
     file: String,
@@ -41,32 +50,36 @@ impl std::error::Error for SlynxError {}
 
 impl std::fmt::Display for SlynxError {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
-        let type_error = match self.ty {
-            SlynxErrorType::Lexer => "Lexing Error",
-            SlynxErrorType::Parser => "Parsing Error",
-            SlynxErrorType::Hir => "Name Resolution Error",
-            SlynxErrorType::Compilation => "Compilation Error",
-            SlynxErrorType::Type => "Type Checking Error",
-        };
-        let source = format!("{} | {}", self.line, self.source_code);
-        let mut err = " ".repeat((self.column_end * 2).min(self.source_code.len()));
+        let type_error = self.ty.to_string();
+        let source = self.source_code.replace("\t", " ");
+        let before_error = format!("{} |", self.line);
+        let error_with_data = format!("{before_error}{source}");
 
-        err.replace_range(
-            self.column_start - 1..err.len(),
-            &"^".repeat(err.len() - (self.column_start - 1)),
+        let error_points = {
+            let only_space_amount = self
+                .source_code
+                .chars()
+                .filter(|c| c.is_whitespace())
+                .count();
+            let points_offset = " ".repeat(only_space_amount);
+            let points = "^".repeat(self.source_code.trim().len());
+            format!("{before_error}{points_offset}{points}",)
+        };
+
+        let line_and_column = format!(
+            "{}:{}",
+            self.line.blue().bold(),
+            self.column_start.blue().bold()
         );
-        let err = format!("  | {}", err);
-        let source_err = format!("\n{source}\n{err}");
         writeln!(
             f,
-            "{}: {} => {}:{}:{}{}",
+            "{}: {} => {}:{line_and_column}",
             type_error.green().bold(),
             self.message.red(),
-            self.file.bold(),
-            self.line.blue().bold(),
-            self.column_start.blue().bold(),
-            source_err
-        )
+            self.file.bold()
+        )?;
+        writeln!(f, "{}", error_with_data)?;
+        writeln!(f, "{}", error_points)
     }
 }
 
@@ -138,7 +151,11 @@ impl SlynxContext {
                     }
                     column
                 },
-                &source[lines[e - 1] + 1..lines[e]],
+                if e == 0 {
+                    &source[0..lines[e]]
+                } else {
+                    &source[lines[e - 1] + 1..lines[e]]
+                },
             ),
         }
     }
@@ -158,7 +175,6 @@ impl SlynxContext {
                         line,
                         ty: SlynxErrorType::Lexer,
                         column_start: column,
-                        column_end: column,
                         message: e.to_string(),
                         file: self.entry_point.to_string_lossy().to_string(),
                         source_code: src.to_string(),
@@ -178,7 +194,6 @@ impl SlynxContext {
                             line,
                             ty: SlynxErrorType::Parser,
                             column_start: column,
-                            column_end: column + (token.span.end - token.span.start),
                             message: err.to_string(),
                             file: self.file_name(),
                             source_code: src.to_string(),
@@ -194,7 +209,6 @@ impl SlynxContext {
                             line,
                             ty: SlynxErrorType::Parser,
                             column_start: column,
-                            column_end: column,
                             message: e.to_string(),
                             file: self.file_name(),
                             source_code: src.to_string(),
@@ -214,7 +228,6 @@ impl SlynxContext {
                     let err = SlynxError {
                         line,
                         column_start: column,
-                        column_end: column + (err.span.end - err.span.start),
                         ty: SlynxErrorType::Hir,
                         message: e.to_string(),
                         file: self.entry_point.to_string_lossy().to_string(),
@@ -233,7 +246,6 @@ impl SlynxContext {
                     let err = SlynxError {
                         line,
                         column_start: column,
-                        column_end: column + (err.span.end - err.span.start),
                         ty: SlynxErrorType::Type,
                         message: e.to_string(),
                         file: self.file_name(),
