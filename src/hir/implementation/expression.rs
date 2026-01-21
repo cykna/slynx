@@ -262,7 +262,14 @@ impl SlynxHir {
             end: lhs.span.end,
         };
         Ok(HirExpression {
-            ty: lhs.ty,
+            ty: match op {
+                Operator::Add | Operator::Sub | Operator::Star | Operator::Slash => lhs.ty.clone(),
+                Operator::Equals
+                | Operator::GreaterThan
+                | Operator::GreaterThanOrEqual
+                | Operator::LessThan
+                | Operator::LessThanOrEqual => HirType::Bool,
+            },
             kind: HirExpressionKind::Binary {
                 lhs: Box::new(lhs),
                 op,

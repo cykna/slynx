@@ -33,6 +33,11 @@ pub enum Operator {
     Sub,
     Star,
     Slash,
+    Equals,
+    GreaterThan,
+    GreaterThanOrEqual,
+    LessThan,
+    LessThanOrEqual,
 }
 
 #[derive(Debug)]
@@ -98,5 +103,18 @@ impl ASTExpression {
             self.kind,
             ASTExpressionKind::Identifier(_) | ASTExpressionKind::FieldAccess { .. },
         )
+    }
+}
+
+impl Operator {
+    pub fn is_logical(&self) -> bool {
+        match self {
+            Self::Equals
+            | Self::GreaterThan
+            | Self::GreaterThanOrEqual
+            | Self::LessThan
+            | Self::LessThanOrEqual => true,
+            _ => false,
+        }
     }
 }

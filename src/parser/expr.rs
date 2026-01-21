@@ -243,6 +243,39 @@ impl Parser {
         Ok(lhs)
     }
 
+    ///Parses logical expressions, thus, anything whose value returned is a boolean
+    pub fn parse_logical(&mut self) -> Result<ASTExpression> {
+        let mut lhs = self.parse_additive()?;
+        while let Ok(curr) = self.peek()
+            && matches!(
+                curr.kind,
+                TokenKind::Gt | TokenKind::GtEq | TokenKind::Lt | TokenKind::LtEq | TokenKind::EqEq
+            )
+        {
+            let op = match self.eat()?.kind {
+                TokenKind::EqEq => Operator::Equals,
+                TokenKind::Lt => Operator::LessThan,
+                TokenKind::Gt => Operator::GreaterThan,
+                TokenKind::LtEq => Operator::LessThanOrEqual,
+                TokenKind::GtEq => Operator::GreaterThanOrEqual,
+                _ => unreachable!(),
+            };
+            let rhs = self.parse_additive()?;
+            lhs = ASTExpression {
+                span: Span {
+                    start: lhs.span.start,
+                    end: rhs.span.end,
+                },
+                kind: ASTExpressionKind::Binary {
+                    lhs: Box::new(lhs),
+                    op,
+                    rhs: Box::new(rhs),
+                },
+            };
+        }
+        Ok(lhs)
+    }
+
     ///Parses a postfix that comes after a '.'. This function initializes right after the '.'
     pub fn parse_dot_postfix(&mut self, prefix: ASTExpression) -> Result<ASTExpression> {
         let current = self.eat()?;
@@ -262,7 +295,7 @@ impl Parser {
     }
 
     pub fn parse_expression(&mut self) -> Result<ASTExpression> {
-        let expr = self.parse_additive()?;
+        let expr = self.parse_logical()?;
         Ok(expr)
     }
 }
