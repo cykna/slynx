@@ -24,6 +24,7 @@ use crate::{
         expr::IntermediateExpr,
         node::{IntermediateInstruction, IntermediatePlace},
     },
+    parser::ast::Operator,
 };
 
 #[derive(Debug, Default)]
@@ -194,9 +195,9 @@ impl SlynxCompiler for WebCompiler {
             IntermediateExpr::FieldAccess { parent, field } => {
                 self.compile_field_access(*parent, *field, ctx, ir)
             }
-            IntermediateExpr::Binary { lhs, rhs, .. } => Expr::Bin(BinExpr {
+            IntermediateExpr::Binary { lhs, rhs, operator } => Expr::Bin(BinExpr {
                 span: DUMMY_SP,
-                op: BinaryOp::Add,
+                op: operator.to_binaryop(),
                 left: Box::new(self.compile_expression(&ctx.exprs[*lhs], ctx, ir)),
                 right: Box::new(self.compile_expression(&ctx.exprs[*rhs], ctx, ir)),
             }),
@@ -226,6 +227,22 @@ impl SlynxCompiler for WebCompiler {
             };
             emitter.emit_program(&Program::Script(self.script)).unwrap();
             String::from_utf8(buf).unwrap().into_bytes()
+        }
+    }
+}
+
+impl Operator {
+    pub fn to_binaryop(&self) -> BinaryOp {
+        match self {
+            Self::Add => BinaryOp::Add,
+            Self::Sub => BinaryOp::Sub,
+            Self::Star => BinaryOp::Mul,
+            Self::Slash => BinaryOp::Div,
+            Self::Equals => BinaryOp::EqEqEq,
+            Self::GreaterThan => BinaryOp::Gt,
+            Self::LessThan => BinaryOp::Lt,
+            Self::GreaterThanOrEqual => BinaryOp::GtEq,
+            Self::LessThanOrEqual => BinaryOp::LtEq,
         }
     }
 }
