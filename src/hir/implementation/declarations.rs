@@ -36,7 +36,7 @@ impl SlynxHir {
             }
             out
         };
-        let id = self.retrieve_hirdid_of(&name.to_string(), &name.span)?;
+        let id = self.get_symbol_of(&name.identifier, &name.span)?;
         let HirType::Struct { fields: ty_field } =
             self.retrieve_ref_to_type(&name.identifier, &name.span)?
         else {

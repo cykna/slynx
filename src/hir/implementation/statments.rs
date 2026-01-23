@@ -53,7 +53,7 @@ impl SlynxHir {
                 self.last_scope().set_mutable(id);
                 Ok(HirStatment {
                     kind: HirStatmentKind::Variable {
-                        name: id.into(),  // Convert HirId to VariableId
+                        name: id.into(), // Convert HirId to VariableId
                         value: rhs,
                         ty,
                     },
@@ -73,7 +73,7 @@ impl SlynxHir {
                 let id = self.create_hirid_for(name, ty.clone());
                 Ok(HirStatment {
                     kind: HirStatmentKind::Variable {
-                        name: id.into(),  // Convert HirId to VariableId
+                        name: id.into(), // Convert HirId to VariableId
                         value: rhs,
                         ty,
                     },
