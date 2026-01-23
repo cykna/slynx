@@ -112,15 +112,19 @@ impl Parser {
         let after_identifier = &self.peek_at(1)?.kind;
         match after_identifier {
             TokenKind::Lt => {
-                let ty = self.parse_type()?;
-                if let TokenKind::LBrace = self.peek()?.kind {
-                    let component = self.parse_component_expr_with_name(ty)?;
-                    Ok(Some(ASTExpression {
-                        span: component.span.clone(),
-                        kind: ASTExpressionKind::Component(component),
-                    }))
-                } else {
-                    Err(ParseError::UnexpectedToken(self.eat()?, "'{'".to_string()).into())
+                if let (true, _) = self.is_generic(2)? {
+                    let ty = self.parse_type()?;
+                    if let TokenKind::LBrace = self.peek()?.kind {
+                        let component = self.parse_component_expr_with_name(ty)?;
+                        Ok(Some(ASTExpression {
+                            span: component.span.clone(),
+                            kind: ASTExpressionKind::Component(component),
+                        }))
+                    } else {
+                        Err(ParseError::UnexpectedToken(self.eat()?, "'{'".to_string()).into())
+                    }
+                }else {
+                    Ok(None)
                 }
             }
             TokenKind::LBrace => {
