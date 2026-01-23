@@ -263,8 +263,12 @@ impl SlynxHir {
         };
         Ok(HirExpression {
             ty: match op {
-                Operator::Add | Operator::Sub | Operator::Star | Operator::Slash => lhs.ty.clone(),
+                Operator::LogicAnd | Operator::LogicOr | Operator::Star | Operator::Slash => {
+                    lhs.ty.clone()
+                }
                 Operator::Equals
+                | Operator::Add
+                | Operator::Sub
                 | Operator::GreaterThan
                 | Operator::GreaterThanOrEqual
                 | Operator::LessThan

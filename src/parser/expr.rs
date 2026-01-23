@@ -283,8 +283,8 @@ impl Parser {
             && matches!(curr.kind, TokenKind::And | TokenKind::Or)
         {
             let op = match self.eat()?.kind {
-                TokenKind::And => Operator::Equals,
-                TokenKind::Or => Operator::LessThan,
+                TokenKind::And => Operator::LogicAnd,
+                TokenKind::Or => Operator::LogicOr,
                 _ => unreachable!(),
             };
             let rhs = self.parse_comparison()?;

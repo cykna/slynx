@@ -255,6 +255,8 @@ impl SlynxCompiler for WebCompiler {
 impl Operator {
     pub fn to_binaryop(&self) -> BinaryOp {
         match self {
+            Self::LogicAnd => BinaryOp::LogicalAnd,
+            Self::LogicOr => BinaryOp::LogicalOr,
             Self::Add => BinaryOp::Add,
             Self::Sub => BinaryOp::Sub,
             Self::Star => BinaryOp::Mul,

@@ -38,6 +38,8 @@ pub enum Operator {
     GreaterThanOrEqual,
     LessThan,
     LessThanOrEqual,
+    LogicAnd,
+    LogicOr,
 }
 
 #[derive(Debug)]
