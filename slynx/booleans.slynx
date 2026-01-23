@@ -1,3 +1,3 @@
 func is_bigger(n:int, m:int):bool {
-	m > n
+	m-1 > n * 2 && m > 0
 }
