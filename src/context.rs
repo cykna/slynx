@@ -61,7 +61,7 @@ impl std::fmt::Display for SlynxError {
                 .chars()
                 .filter(|c| c.is_whitespace())
                 .count();
-            let points_offset = " ".repeat(only_space_amount);
+            let points_offset = " ".repeat(1);
             let points = "^".repeat(self.source_code.trim().len());
             format!("{before_error}{points_offset}{points}",)
         };

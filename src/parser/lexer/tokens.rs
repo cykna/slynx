@@ -9,6 +9,10 @@ pub struct Token {
 impl std::fmt::Display for TokenKind {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
         let result = match self {
+            Self::And => "&&".to_string(),
+            Self::Or => "||".to_string(),
+            Self::BitAnd => "&".to_string(),
+            Self::BitOr => "|".to_string(),
             Self::Dot => ".".to_string(),
             Self::LParen => "(".to_string(),
             Self::RParen => ")".to_string(),
@@ -71,6 +75,10 @@ pub enum TokenKind {
     StarEq,
     Slash,
     SlashEq,
+    And,
+    Or,
+    BitAnd,
+    BitOr,
     Arrow,
     Comma,
     Colon,
@@ -97,6 +105,42 @@ impl std::fmt::Display for Token {
 }
 
 impl Token {
+    pub fn bitor(pos: usize) -> Self {
+        Self {
+            kind: TokenKind::BitOr,
+            span: Span {
+                end: pos,
+                start: pos,
+            },
+        }
+    }
+    pub fn bitand(pos: usize) -> Self {
+        Self {
+            kind: TokenKind::BitAnd,
+            span: Span {
+                end: pos,
+                start: pos,
+            },
+        }
+    }
+    pub fn or(pos: usize) -> Self {
+        Self {
+            kind: TokenKind::Or,
+            span: Span {
+                end: pos,
+                start: pos,
+            },
+        }
+    }
+    pub fn and(pos: usize) -> Self {
+        Self {
+            kind: TokenKind::And,
+            span: Span {
+                end: pos,
+                start: pos,
+            },
+        }
+    }
     pub fn dot(pos: usize) -> Self {
         Self {
             kind: TokenKind::Dot,

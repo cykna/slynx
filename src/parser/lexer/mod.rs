@@ -41,6 +41,22 @@ impl Lexer {
         let mut idx = 0;
         while idx < chars.len() {
             let tk = match chars[idx] {
+                '&' => {
+                    if chars[idx + 1] == '&' {
+                        idx += 1;
+                        Token::and(idx)
+                    } else {
+                        Token::bitand(idx)
+                    }
+                }
+                '|' => {
+                    if chars[idx + 1] == '|' {
+                        idx += 1;
+                        Token::or(idx)
+                    } else {
+                        Token::bitor(idx)
+                    }
+                }
                 '.' => Token::dot(idx),
                 '(' => Token::lparen(idx),
                 ')' => Token::rparen(idx),
@@ -71,6 +87,7 @@ impl Lexer {
                         Token::eq(idx)
                     }
                 }
+
                 ':' => Token::colon(idx),
                 ',' => Token::comma(idx),
                 '+' => {
