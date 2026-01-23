@@ -1,7 +1,6 @@
 use crate::{
     hir::{
-        HirId,
-        error::{HIRError, HIRErrorKind, InvalidTypeReason},
+        ExpressionId, TypeId, VariableId, error::{HIRError, HIRErrorKind, InvalidTypeReason}
     },
     parser::ast::{GenericIdentifier, VisibilityModifier},
 };
@@ -19,10 +18,10 @@ pub enum FieldMethod {
     /// }```
     ///
     /// Since `p`'s type is Reference {rf: Person, generics: vec![]}, `p.age` is is Field(FieldMethod(Person, 1))
-    Type(HirId, usize),
+    Type(ExpressionId, usize),
     ///This is the same of the `type` variant, but since the provided `id` is the id of some variable whose type may be a Reference to a type, or
     ///a reference to another variable that references a type, we must store the field being accessed and check it on the type checker
-    Variable(HirId, String),
+    Variable(VariableId, String),
 }
 
 #[derive(Debug, Clone)]
@@ -44,13 +43,13 @@ pub enum HirType {
     ///Here, Name is the reference to the object type 'Name' with generic being 'int'
     Reference {
         ///The reference to the type this type maps to
-        rf: HirId,
+        rf: TypeId,
         ///If its got a generic
         generics: Vec<HirType>,
     },
 
     ///A type that references the type of another value. The provided `id` is the ID of this value
-    VarReference(HirId),
+    VarReference(VariableId),
 
     ///The type of the Nth field on the struct/object with the provided `id`. If the struct is defined as
     /// struct S {a:int, b:str}, then Field(S_ID, 0) == int

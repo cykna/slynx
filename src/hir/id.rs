@@ -59,6 +59,12 @@ macro_rules! define_hir_id {
 // Definition of all specific IDs
 
 define_hir_id!(
+    SymbolID,
+    SYMBOL_COUNTER,
+    "Unique ID to intern strings internally"
+);
+
+define_hir_id!(
     DeclarationId,
     DECLARATION_COUNTER,
     "Unique ID for top-level declarations (functions, components, objects)"
