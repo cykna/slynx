@@ -56,12 +56,7 @@ impl std::fmt::Display for SlynxError {
         let error_with_data = format!("{before_error}{source}");
 
         let error_points = {
-            let only_space_amount = self
-                .source_code
-                .chars()
-                .filter(|c| c.is_whitespace())
-                .count();
-            let points_offset = " ".repeat(1);
+            let points_offset = " ".to_string();
             let points = "^".repeat(self.source_code.trim().len());
             format!("{before_error}{points_offset}{points}",)
         };

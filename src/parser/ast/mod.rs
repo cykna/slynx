@@ -110,13 +110,15 @@ impl ASTExpression {
 
 impl Operator {
     pub fn is_logical(&self) -> bool {
-        match self {
-            Self::Equals
-            | Self::GreaterThan
-            | Self::GreaterThanOrEqual
-            | Self::LessThan
-            | Self::LessThanOrEqual => true,
-            _ => false,
-        }
+        matches!(
+            self,
+            Self::LogicAnd
+                | Self::LogicOr
+                | Self::Equals
+                | Self::GreaterThan
+                | Self::GreaterThanOrEqual
+                | Self::LessThan
+                | Self::LessThanOrEqual
+        )
     }
 }
