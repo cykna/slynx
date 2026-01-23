@@ -2,7 +2,7 @@ use color_eyre::eyre::Result;
 
 use crate::{
     hir::{
-        HirId, SlynxHir,
+        DeclarationId, HirId, SlynxHir, TypeId,
         error::{HIRError, HIRErrorKind},
         types::HirType,
     },
@@ -10,6 +10,11 @@ use crate::{
 };
 
 impl SlynxHir {
+    pub fn create_declaration(&mut self, name: &str, ty: HirType) -> DeclarationId {
+        let function_id = self.declarations_module.create_declaration(name, ty);
+        function_id
+    }
+
     ///Creates an hir id for the provided `value` and `name` on the current scope
     pub fn create_hirid_for(&mut self, name: String, ty: HirType) -> HirId {
         let id = HirId::new();
@@ -17,6 +22,11 @@ impl SlynxHir {
         self.last_scope().insert_name(id, name);
         self.types.insert(id, ty);
         id
+    }
+
+    ///Creates a type with the provided `name` and `ty`. Returns it's ID
+    pub fn assing_type(&mut self, type_id: TypeId, ty: HirType) {
+        self.types.insert(type_id, ty);
     }
 
     ///Retrieves the type of the provided `name` but in the global scope

@@ -49,7 +49,7 @@ impl SlynxHir {
         };
         self.declarations.push(HirDeclaration {
             kind: HirDeclarationKind::Object,
-            id: id.into(),  // Convert HirId to DeclarationId
+            id: id.into(), // Convert HirId to DeclarationId
             ty,
             span,
         });
@@ -63,8 +63,11 @@ impl SlynxHir {
         obj_fields: &[ObjectField],
     ) -> Result<()> {
         let def_fields = obj_fields.iter().map(|f| f.name.name.clone()).collect();
-        let id = self.create_hirid_for(name.to_string(), HirType::Struct { fields: Vec::new() });
-        self.objects_deffinitions.insert(id, def_fields);
+        self.declarations_module.create_object(
+            &name.identifier,
+            HirType::Struct { fields: Vec::new() },
+            def_fields,
+        );
         Ok(())
     }
 
@@ -87,7 +90,7 @@ impl SlynxHir {
             return_type: Box::new(self.retrieve_type_of_name(return_type, &return_type.span)?),
         };
 
-        self.create_hirid_for(name.to_string(), func_ty);
+        self.create_declaration(&name.identifier, func_ty);
         Ok(())
     }
 
@@ -151,7 +154,7 @@ impl SlynxHir {
                     } else {
                         HirType::Infer
                     };
-                    let id = PropertyId::new();  // Changed to PropertyId
+                    let id = PropertyId::new(); // Changed to PropertyId
                     out.push(ComponentMemberDeclaration::Property {
                         id,
                         index: prop_idx,

@@ -1,3 +1,4 @@
+pub mod declarations;
 pub mod deffinitions;
 pub mod error;
 pub mod id; // New module for specific IDs
@@ -11,6 +12,7 @@ use color_eyre::eyre::Result;
 
 use crate::{
     hir::{
+        declarations::DeclarationsModule,
         deffinitions::{
             ComponentMemberDeclaration, HirDeclaration, HirDeclarationKind, HirStatment,
             HirStatmentKind,
@@ -54,11 +56,15 @@ impl HirId {
 
 #[derive(Debug, Default)]
 pub struct SlynxHir {
+    ///The module that will keep track of all declarations on the top level
+    declarations_module: DeclarationsModule,
+
     /// Maps a name N to its ID on the HIR. This is for something like function declaration and function call.
     names: HashMap<String, HirId>,
+
     /// Maps the types of top level things on the current scope to their types.
     /// An example is functions, which contain an HirType.
-    types: HashMap<HirId, HirType>,
+    types: HashMap<TypeId, HirType>,
     /// A hashmap mapping the id of some struct or object to its layout. The 'layout' in case is the name of the property. So something like `object Packet {data: [100]u8, ty: PacketTy} would be simply
     /// id => ['data', 'ty'] to resolve its order correctly if some object expression like Packet(ty:PacketTy::Crypto, data:[100]0) appears
     pub(crate) objects_deffinitions: HashMap<HirId, Vec<String>>,
@@ -76,6 +82,7 @@ impl SlynxHir {
             names: HashMap::new(),
             types: HashMap::new(),
             declarations: Vec::new(),
+            declarations_module: DeclarationsModule::new(),
         }
     }
 
@@ -180,7 +187,7 @@ impl SlynxHir {
                     }
 
                     ComponentMemberDeclaration::Property {
-                        id: PropertyId::new(),  // Changed to PropertyId
+                        id: PropertyId::new(), // Changed to PropertyId
                         index,
                         value: Some(self.resolve_expr(rhs, Some(&props[index].2))?),
                         span,
@@ -246,10 +253,7 @@ impl SlynxHir {
                     }
                     out
                 };
-                self.create_hirid_for(
-                    name.to_string(),
-                    HirType::Component { props },
-                );
+                self.create_declaration(&name.identifier, HirType::Component { props });
             }
         }
         Ok(())
@@ -272,8 +276,8 @@ impl SlynxHir {
                 let args = args
                     .into_iter()
                     .map(|arg| {
-                        let var_id = VariableId::new();  // Changed to VariableId
-                        let hirid: HirId = var_id.into();  // Convert to HirId for scope
+                        let var_id = VariableId::new(); // Changed to VariableId
+                        let hirid: HirId = var_id.into(); // Convert to HirId for scope
                         self.last_scope().insert_name(hirid, arg.name);
                         var_id
                     })
@@ -302,7 +306,7 @@ impl SlynxHir {
                         args,
                         name: name.to_string(),
                     },
-                    id: id.into(),  // Convert HirId to DeclarationId
+                    id: id.into(), // Convert HirId to DeclarationId
                     ty: func,
                     span: ast.span,
                 });
@@ -315,7 +319,7 @@ impl SlynxHir {
 
                 let defs = self.resolve_component_defs(members)?;
                 self.declarations.push(HirDeclaration {
-                    id: hir.into(),  // Convert HirId to DeclarationId
+                    id: hir.into(), // Convert HirId to DeclarationId
                     kind: HirDeclarationKind::ComponentDeclaration { props: defs },
                     ty,
                     span: ast.span,
