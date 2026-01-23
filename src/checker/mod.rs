@@ -13,7 +13,7 @@ use crate::{
         },
         types::{FieldMethod, HirType},
     },
-    parser::ast::Span,
+    parser::ast::{Operator, Span},
 };
 
 #[derive(Hash, PartialEq, Eq, Debug)]
@@ -466,9 +466,11 @@ impl TypeChecker {
             HirExpressionKind::Binary {
                 ref mut lhs,
                 ref mut rhs,
-                ..
+                ref op,
             } => {
-                if matches!(expr.ty, HirType::Bool) {
+                if matches!(expr.ty, HirType::Bool)
+                    || matches!(op, Operator::LogicAnd | Operator::LogicOr)
+                {
                     return Ok(HirType::Bool);
                 }
                 let lhs_ty = self.get_type_of_expr(lhs, &lhs.span.clone())?;
