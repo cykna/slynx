@@ -18,13 +18,20 @@ impl TypesModule {
         }
     }
 
-    pub fn retrieve_id(&self, name: &SymbolPointer) -> Option<&TypeId> {
+    pub fn get_id(&self, name: &SymbolPointer) -> Option<&TypeId> {
         self.type_names.get(name)
     }
-    pub fn retrieve_type(&self, id: &TypeId) -> Option<&HirType> {
+    pub fn get_type(&self, id: &TypeId) -> Option<&HirType> {
         self.types.get(id)
     }
-    pub fn retrieve_type_from_name(&self, name: &SymbolPointer) -> Option<&HirType> {
+    pub fn get_type_from_name(&self, name: &SymbolPointer) -> Option<&HirType> {
         self.type_names.get(name).and_then(|id| self.types.get(id))
+    }
+        
+    pub fn get_type_mut(&mut self, id: &TypeId) -> Option<&mut HirType> {
+        self.types.get_mut(id)
+    }
+    pub fn get_type_from_name_mut(&mut self, name: &SymbolPointer) -> Option<&mut HirType> {
+        self.type_names.get(name).and_then(|id| self.types.get_mut(id))
     }
 }
