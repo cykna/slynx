@@ -3,7 +3,9 @@ pub mod deffinitions;
 pub mod error;
 pub mod id; // New module for specific IDs
 mod implementation;
+pub mod names;
 mod scope;
+pub mod symbols;
 pub mod types;
 
 use std::{collections::HashMap, sync::atomic::AtomicU64};
@@ -19,7 +21,8 @@ use crate::{
         },
         error::{HIRError, HIRErrorKind},
         scope::HIRScope,
-        types::HirType,
+        symbols::{SymbolsModule},
+        types::{HirType, TypesModule},
     },
     parser::ast::{
         ASTDeclaration, ASTDeclarationKind, ASTStatmentKind, ComponentMemberKind,
@@ -58,9 +61,8 @@ impl HirId {
 pub struct SlynxHir {
     ///The module that will keep track of all declarations on the top level
     declarations_module: DeclarationsModule,
-
-    /// Maps a name N to its ID on the HIR. This is for something like function declaration and function call.
-    names: HashMap<String, HirId>,
+    symbols_module: SymbolsModule,
+    types_module: TypesModule,
 
     /// Maps the types of top level things on the current scope to their types.
     /// An example is functions, which contain an HirType.
@@ -79,10 +81,11 @@ impl SlynxHir {
         Self {
             scopes: vec![HIRScope::new()],
             objects_deffinitions: HashMap::new(),
-            names: HashMap::new(),
             types: HashMap::new(),
             declarations: Vec::new(),
             declarations_module: DeclarationsModule::new(),
+            symbols_module: SymbolsModule::new(),
+            types_module: TypesModule::new(),
         }
     }
 
@@ -115,17 +118,6 @@ impl SlynxHir {
             span: span.clone(),
         }
         .into())
-    }
-
-    /// Retrieves the hir id of the provided `name` in the global scope
-    pub fn retrieve_hirdid_of(&mut self, name: &str, span: &Span) -> Result<HirId> {
-        self.names.get(name).cloned().ok_or(
-            HIRError {
-                kind: HIRErrorKind::NameNotRecognized(name.to_string()),
-                span: span.clone(),
-            }
-            .into(),
-        )
     }
 
     fn enter_scope(&mut self) {
