@@ -1,7 +1,11 @@
 use crate::{
-    hir::{HirId, types::HirType},
+    hir::{DeclarationId, ExpressionId, PropertyId, VariableId, types::HirType},
     parser::ast::{Operator, Span},
 };
+
+// Keep HirId import for references (will be replaced with TypeId later)
+#[allow(deprecated)]
+use crate::hir::HirId;
 
 #[derive(Debug)]
 pub enum SpecializedComponent {
@@ -17,7 +21,7 @@ pub enum SpecializedComponent {
 #[repr(C)]
 pub struct HirDeclaration {
     pub kind: HirDeclarationKind,
-    pub id: HirId,
+    pub id: DeclarationId,  // Changed from HirId
     pub ty: HirType,
     pub span: Span,
 }
@@ -25,10 +29,10 @@ pub struct HirDeclaration {
 #[derive(Debug)]
 #[repr(C)]
 pub enum HirDeclarationKind {
-    Object, //just to define this is an object, the actual deffinition of it will be on its type.
+    Object,
     Function {
         statments: Vec<HirStatment>,
-        args: Vec<HirId>,
+        args: Vec<VariableId>,  // Changed from HirId - function arguments are variables
         name: String,
     },
     ComponentDeclaration {
@@ -40,14 +44,14 @@ pub enum HirDeclarationKind {
 #[repr(C)]
 pub enum ComponentMemberDeclaration {
     Property {
-        id: HirId,
-        ///The index of the property on the component
+        id: PropertyId,  // Changed from HirId
+        /// The index of the property on the component
         index: usize,
         value: Option<HirExpression>,
         span: Span,
     },
     Child {
-        name: HirId,
+        name: HirId,  // Still HirId - reference to a component declaration
         values: Vec<ComponentMemberDeclaration>,
         span: Span,
     },
@@ -69,7 +73,7 @@ pub enum HirStatmentKind {
         value: HirExpression,
     },
     Variable {
-        name: HirId,
+        name: VariableId,  // Changed from HirId
         value: HirExpression,
         ty: HirType,
     },
@@ -84,7 +88,7 @@ pub enum HirStatmentKind {
 #[derive(Debug)]
 #[repr(C)]
 pub struct HirExpression {
-    pub id: HirId,
+    pub id: ExpressionId,  // Changed from HirId
     pub ty: HirType,
     pub kind: HirExpressionKind,
     pub span: Span,
@@ -93,7 +97,7 @@ pub struct HirExpression {
 impl HirExpression {
     pub fn float(f: f32, span: Span) -> Self {
         Self {
-            id: HirId::new(),
+            id: ExpressionId::new(),  // Changed from HirId::new()
             ty: HirType::Float,
             kind: HirExpressionKind::Float(f),
             span,
@@ -112,15 +116,14 @@ pub enum HirExpressionKind {
         op: Operator,
         rhs: Box<HirExpression>,
     },
-    Identifier(HirId),
+    Identifier(HirId),  // Still HirId - reference to a variable or declaration
     Specialized(SpecializedComponent),
     Component {
-        name: HirId,
-        ///reference to a type
+        name: HirId,  // Still HirId - reference to a component type
         values: Vec<ComponentMemberDeclaration>,
     },
     Object {
-        name: HirId,
+        name: HirId,  // Still HirId - reference to an object type
         fields: Vec<HirExpression>,
     },
     FieldAccess {
@@ -128,35 +131,38 @@ pub enum HirExpressionKind {
         field_index: usize,
     },
 }
+
 impl HirExpression {
-    ///Creates a int expression that must be infered.
+    /// Creates an int expression that must be inferred.
     pub fn int(i: i32, span: Span) -> Self {
         Self {
             kind: HirExpressionKind::Int(i),
-            id: HirId::new(),
+            id: ExpressionId::new(),  // Changed from HirId::new()
             ty: HirType::Infer,
             span,
         }
     }
 }
+
 impl HirStatmentKind {
-    ///Creates a int expression that must be infered.
+    /// Creates an int expression that must be inferred.
     pub fn int(i: i32, span: Span) -> Self {
         Self::Expression {
             expr: HirExpression {
                 kind: HirExpressionKind::Int(i),
-                id: HirId::new(),
+                id: ExpressionId::new(),  // Changed from HirId::new()
                 ty: HirType::Infer,
                 span,
             },
         }
     }
-    ///Creates a float expression.
+    
+    /// Creates a float expression.
     pub fn float(float: f32, span: Span) -> Self {
         Self::Expression {
             expr: HirExpression {
                 kind: HirExpressionKind::Float(float),
-                id: HirId::new(),
+                id: ExpressionId::new(),  // Changed from HirId::new()
                 ty: HirType::Float,
                 span,
             },

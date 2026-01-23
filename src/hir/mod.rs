@@ -1,8 +1,10 @@
 pub mod deffinitions;
 pub mod error;
+pub mod id; // New module for specific IDs
 mod implementation;
 mod scope;
 pub mod types;
+
 use std::{collections::HashMap, sync::atomic::AtomicU64};
 
 use color_eyre::eyre::Result;
@@ -23,15 +25,27 @@ use crate::{
     },
 };
 
+// Re-export new ID types for convenience
+pub use id::{DeclarationId, ExpressionId, PropertyId, TypeId, VariableId};
+
+// Keep old HirId temporarily for backward compatibility during migration
 static ACCUMULATOR: AtomicU64 = AtomicU64::new(0);
+
 #[derive(Debug, Clone, Copy, Hash, PartialEq, Eq, PartialOrd, Ord)]
-///An ID for name resolution on the HIR
+#[deprecated(
+    since = "0.1.0",
+    note = "Use specific ID types (DeclarationId, ExpressionId, etc.) instead"
+)]
+/// An ID for name resolution on the HIR
+/// DEPRECATED: Use specific ID types instead
 pub struct HirId(pub u64);
+
 impl Default for HirId {
     fn default() -> Self {
         HirId::new()
     }
 }
+
 impl HirId {
     pub fn new() -> Self {
         Self(ACCUMULATOR.fetch_add(1, std::sync::atomic::Ordering::Relaxed))
@@ -40,15 +54,15 @@ impl HirId {
 
 #[derive(Debug, Default)]
 pub struct SlynxHir {
-    ///Maps a name N to it's ID on the HIR. This is for something like function declaration and function call.
+    /// Maps a name N to its ID on the HIR. This is for something like function declaration and function call.
     names: HashMap<String, HirId>,
-    ///Maps the types of top level things on the current scope to their types.
-    ///An example is functions, which contain an HirType.
+    /// Maps the types of top level things on the current scope to their types.
+    /// An example is functions, which contain an HirType.
     types: HashMap<HirId, HirType>,
-    ///A hashmap mapping the id of some struct or object to its layout. The 'layout' in case is the name of the property. So something like `object Packet {data: [100]u8, ty: PacketTy} would be simply
-    ///id => ['data', 'ty'] to resolve its order correctly if some object expression like Packet(ty:PacketTy::Crypto, data:[100]0) appears
+    /// A hashmap mapping the id of some struct or object to its layout. The 'layout' in case is the name of the property. So something like `object Packet {data: [100]u8, ty: PacketTy} would be simply
+    /// id => ['data', 'ty'] to resolve its order correctly if some object expression like Packet(ty:PacketTy::Crypto, data:[100]0) appears
     pub(crate) objects_deffinitions: HashMap<HirId, Vec<String>>,
-    ///The scopes of this HIR. On the final it's expected to have only one, which is the global one
+    /// The scopes of this HIR. On the final it's expected to have only one, which is the global one
     scopes: Vec<HIRScope>,
 
     pub declarations: Vec<HirDeclaration>,
@@ -65,7 +79,7 @@ impl SlynxHir {
         }
     }
 
-    ///Generates the declarations from the provided `ast`
+    /// Generates the declarations from the provided `ast`
     pub fn generate(&mut self, ast: Vec<ASTDeclaration>) -> Result<()> {
         for ast in &ast {
             self.hoist(ast)?;
@@ -75,7 +89,8 @@ impl SlynxHir {
         }
         Ok(())
     }
-    ///Retrieves information about the provided `name` going from the current scope to the outer ones, finishing on the global
+
+    /// Retrieves information about the provided `name` going from the current scope to the outer ones, finishing on the global
     pub fn retrieve_information_of_scoped(&mut self, name: &str, span: &Span) -> Result<HirId> {
         let mut idx = self.scopes.len() - 1;
 
@@ -95,7 +110,7 @@ impl SlynxHir {
         .into())
     }
 
-    ///Retrieves the hir id of the provided `name` in the global scope
+    /// Retrieves the hir id of the provided `name` in the global scope
     pub fn retrieve_hirdid_of(&mut self, name: &str, span: &Span) -> Result<HirId> {
         self.names.get(name).cloned().ok_or(
             HIRError {
@@ -109,20 +124,17 @@ impl SlynxHir {
     fn enter_scope(&mut self) {
         self.scopes.push(HIRScope::new());
     }
+
     fn exit_scope(&mut self) {
         self.scopes.pop();
     }
-
-    // fn scope_at(&mut self, idx: usize) -> &mut HIRScope {
-    //     &mut self.scopes[idx]
-    // }
 
     fn last_scope(&mut self) -> &mut HIRScope {
         let idx = self.scopes.len() - 1;
         &mut self.scopes[idx]
     }
 
-    ///Resolves the provided values on a component. The `ty`is the type of the component we are resolving it
+    /// Resolves the provided values on a component. The `ty` is the type of the component we are resolving it
     fn resolve_component_members(
         &mut self,
         members: Vec<ComponentMemberValue>,
@@ -147,7 +159,6 @@ impl SlynxHir {
                     rhs,
                     span,
                 } => {
-                    //later change to 'NotRecognizedProperty {name, component_name}'
                     let index =
                         props
                             .iter()
@@ -169,7 +180,7 @@ impl SlynxHir {
                     }
 
                     ComponentMemberDeclaration::Property {
-                        id: HirId::new(),
+                        id: PropertyId::new(),  // Changed to PropertyId
                         index,
                         value: Some(self.resolve_expr(rhs, Some(&props[index].2))?),
                         span,
@@ -198,7 +209,8 @@ impl SlynxHir {
         }
         Ok(out)
     }
-    ///Hoist the provided `ast` declaration, with so no errors of undefined values because declared later may occurr
+
+    /// Hoist the provided `ast` declaration, so no errors of undefined values because declared later may occur
     fn hoist(&mut self, ast: &ASTDeclaration) -> Result<()> {
         match &ast.kind {
             ASTDeclarationKind::ObjectDeclaration { name, fields } => {
@@ -235,13 +247,14 @@ impl SlynxHir {
                     out
                 };
                 self.create_hirid_for(
-                    name.to_string(), //add support for generic identifier
+                    name.to_string(),
                     HirType::Component { props },
                 );
             }
         }
         Ok(())
     }
+
     fn resolve(&mut self, ast: ASTDeclaration) -> Result<()> {
         match ast.kind {
             ASTDeclarationKind::ObjectDeclaration { name, fields } => {
@@ -253,15 +266,16 @@ impl SlynxHir {
                 mut body,
                 ..
             } => {
-                let (id, func) = self.retrieve_information_of(&name.to_string(), &ast.span)?; //modify later to accept the generic identifier instead
+                let (id, func) = self.retrieve_information_of(&name.to_string(), &ast.span)?;
 
                 self.enter_scope();
                 let args = args
                     .into_iter()
                     .map(|arg| {
-                        let id = HirId::new();
-                        self.last_scope().insert_name(id, arg.name);
-                        id
+                        let var_id = VariableId::new();  // Changed to VariableId
+                        let hirid: HirId = var_id.into();  // Convert to HirId for scope
+                        self.last_scope().insert_name(hirid, arg.name);
+                        var_id
                     })
                     .collect();
 
@@ -288,7 +302,7 @@ impl SlynxHir {
                         args,
                         name: name.to_string(),
                     },
-                    id,
+                    id: id.into(),  // Convert HirId to DeclarationId
                     ty: func,
                     span: ast.span,
                 });
@@ -297,11 +311,11 @@ impl SlynxHir {
             ASTDeclarationKind::ComponentDeclaration { members, name } => {
                 self.enter_scope();
 
-                let (hir, ty) = self.retrieve_information_of(&name.to_string(), &ast.span)?; //modify later to accept the generic identifier instead
+                let (hir, ty) = self.retrieve_information_of(&name.to_string(), &ast.span)?;
 
                 let defs = self.resolve_component_defs(members)?;
                 self.declarations.push(HirDeclaration {
-                    id: hir,
+                    id: hir.into(),  // Convert HirId to DeclarationId
                     kind: HirDeclarationKind::ComponentDeclaration { props: defs },
                     ty,
                     span: ast.span,
