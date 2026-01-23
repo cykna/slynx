@@ -123,7 +123,7 @@ impl Parser {
                     } else {
                         Err(ParseError::UnexpectedToken(self.eat()?, "'{'".to_string()).into())
                     }
-                }else {
+                } else {
                     Ok(None)
                 }
             }
