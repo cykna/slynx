@@ -1,11 +1,7 @@
 use crate::{
-    hir::{DeclarationId, ExpressionId, PropertyId, VariableId, types::HirType},
+    hir::{DeclarationId, ExpressionId, PropertyId, TypeId, VariableId, types::HirType},
     parser::ast::{Operator, Span},
 };
-
-// Keep HirId import for references (will be replaced with TypeId later)
-#[allow(deprecated)]
-use crate::hir::HirId;
 
 #[derive(Debug)]
 pub enum SpecializedComponent {
@@ -51,7 +47,7 @@ pub enum ComponentMemberDeclaration {
         span: Span,
     },
     Child {
-        name: HirId,  // Still HirId - reference to a component declaration
+        name: TypeId,  // Still HirId - reference to a component declaration
         values: Vec<ComponentMemberDeclaration>,
         span: Span,
     },
@@ -116,14 +112,14 @@ pub enum HirExpressionKind {
         op: Operator,
         rhs: Box<HirExpression>,
     },
-    Identifier(HirId),  // Still HirId - reference to a variable or declaration
+    Identifier(VariableId),  // Still HirId - reference to a variable or declaration
     Specialized(SpecializedComponent),
     Component {
-        name: HirId,  // Still HirId - reference to a component type
+        name: TypeId,  // Still HirId - reference to a component type
         values: Vec<ComponentMemberDeclaration>,
     },
     Object {
-        name: HirId,  // Still HirId - reference to an object type
+        name: TypeId,  // Still HirId - reference to an object type
         fields: Vec<HirExpression>,
     },
     FieldAccess {
