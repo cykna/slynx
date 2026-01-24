@@ -111,6 +111,7 @@ pub enum HirExpressionKind {
     Int(i32),
     StringLiteral(String),
     Float(f32),
+    Bool(bool),
     Binary {
         lhs: Box<HirExpression>,
         op: Operator,

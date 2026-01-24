@@ -13,7 +13,7 @@ use crate::{
         },
         types::{FieldMethod, HirType},
     },
-    parser::ast::Span,
+    parser::ast::{Operator, Span},
 };
 
 #[allow(deprecated)]
@@ -56,8 +56,19 @@ impl TypeChecker {
         self.types.insert(decl.id.into(), decl.ty.clone());  // Convert DeclarationId to HirId
         match decl.kind {
             HirDeclarationKind::Function {
-                ref mut statments, ..
+                ref mut statments,
+                ref args,
+                ..
             } => {
+                let HirType::Function {
+                    args: args_types, ..
+                } = &decl.ty
+                else {
+                    unreachable!();
+                };
+                for (index, arg) in args.iter().enumerate() {
+                    self.types.insert(*arg, args_types[index].clone());
+                }
                 self.resolve_statments(statments, &decl.ty)?;
             }
             HirDeclarationKind::Object => {
@@ -164,7 +175,7 @@ impl TypeChecker {
                 if let Some(ty) = self.types.get(rf) {
                     Ok(self.resolve(ty, span)?)
                 } else {
-                    Ok(ty.clone())
+                    unreachable!("Variable type should be defined here");
                 }
             }
             HirType::Component { props } => {
@@ -202,13 +213,26 @@ impl TypeChecker {
     fn unify(&mut self, a: &HirType, b: &HirType, span: &Span) -> Result<HirType> {
         let a = self.resolve(a, span)?;
         let b = self.resolve(b, span)?;
+
         match (&a, &b) {
             (HirType::Int, HirType::Int)
             | (HirType::Float, HirType::Float)
-            | (HirType::Str, HirType::Str) => Ok(a),
+            | (HirType::Str, HirType::Str)
+            | (HirType::Bool, HirType::Bool) => Ok(a),
+            (HirType::VarReference(id_a), HirType::VarReference(id_b)) => {
+                if id_a == id_b {
+                    Ok(a)
+                } else {
+                    println!("{a:?} ?== {b:?}");
+                    let a = self.resolve(&a, span)?;
+                    let b = self.resolve(&b, span)?;
+                    self.unify(&a, &b, span)
+                }
+            }
             (out, HirType::Infer) | (HirType::Infer, out) if !matches!(out, HirType::Infer) => {
                 Ok(out.clone())
             }
+
             (HirType::Reference { rf, .. }, b) | (b, HirType::Reference { rf, .. }) => {
                 self.unify_with_ref(*rf, b, span)
             }
@@ -334,6 +358,7 @@ impl TypeChecker {
                 }
                 HirStatmentKind::Return { expr } => {
                     expr.ty = self.get_type_of_expr(expr, &statment.span)?;
+                    println!("{:?}\n", expr.ty);
                     expr.ty = self.unify(&expr.ty, return_type, &statment.span)?;
                 }
                 HirStatmentKind::Expression { expr } => {
@@ -444,8 +469,13 @@ impl TypeChecker {
             HirExpressionKind::Binary {
                 ref mut lhs,
                 ref mut rhs,
-                ..
+                ref op,
             } => {
+                if matches!(expr.ty, HirType::Bool)
+                    || matches!(op, Operator::LogicAnd | Operator::LogicOr)
+                {
+                    return Ok(HirType::Bool);
+                }
                 let lhs_ty = self.get_type_of_expr(lhs, &lhs.span.clone())?;
                 let rhs_ty = self.get_type_of_expr(rhs, &rhs.span.clone())?;
                 self.unify(&lhs_ty, &rhs_ty, span)?
@@ -514,6 +544,7 @@ impl TypeChecker {
                     ref u => unimplemented!("{u:?}"),
                 }
             }
+            HirExpressionKind::Bool(_) => HirType::Bool,
             ref un => {
                 unimplemented!("{un:?}")
             }
@@ -525,6 +556,9 @@ impl TypeChecker {
 
     fn default_expr(&mut self, expr: &mut HirExpression) -> Result<()> {
         match expr.kind {
+            HirExpressionKind::Bool(_) => {
+                expr.ty = self.unify(&expr.ty, &HirType::Bool, &expr.span)?
+            }
             HirExpressionKind::StringLiteral(_) => {
                 expr.ty = self.unify(&expr.ty, &HirType::Str, &expr.span)?
             }
@@ -537,11 +571,15 @@ impl TypeChecker {
             HirExpressionKind::Binary {
                 ref mut lhs,
                 ref mut rhs,
-                ..
+                op,
             } => {
                 self.default_expr(rhs)?;
                 self.default_expr(lhs)?;
-                expr.ty = self.unify(&rhs.ty, &lhs.ty, &expr.span)?;
+                if op.is_logical() {
+                    expr.ty = HirType::Bool;
+                } else {
+                    expr.ty = self.unify(&rhs.ty, &lhs.ty, &expr.span)?;
+                }
             }
             HirExpressionKind::Identifier(_) => {
                 expr.ty = self.resolve(&expr.ty, &expr.span)?;

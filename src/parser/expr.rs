@@ -112,15 +112,19 @@ impl Parser {
         let after_identifier = &self.peek_at(1)?.kind;
         match after_identifier {
             TokenKind::Lt => {
-                let ty = self.parse_type()?;
-                if let TokenKind::LBrace = self.peek()?.kind {
-                    let component = self.parse_component_expr_with_name(ty)?;
-                    Ok(Some(ASTExpression {
-                        span: component.span.clone(),
-                        kind: ASTExpressionKind::Component(component),
-                    }))
+                if let (true, _) = self.is_generic(2)? {
+                    let ty = self.parse_type()?;
+                    if let TokenKind::LBrace = self.peek()?.kind {
+                        let component = self.parse_component_expr_with_name(ty)?;
+                        Ok(Some(ASTExpression {
+                            span: component.span.clone(),
+                            kind: ASTExpressionKind::Component(component),
+                        }))
+                    } else {
+                        Err(ParseError::UnexpectedToken(self.eat()?, "'{'".to_string()).into())
+                    }
                 } else {
-                    Err(ParseError::UnexpectedToken(self.eat()?, "'{'".to_string()).into())
+                    Ok(None)
                 }
             }
             TokenKind::LBrace => {
@@ -166,6 +170,10 @@ impl Parser {
                 }),
                 TokenKind::String(s) => Ok(ASTExpression {
                     kind: ASTExpressionKind::StringLiteral(s),
+                    span: current.span,
+                }),
+                k @ (TokenKind::True | TokenKind::False) => Ok(ASTExpression {
+                    kind: ASTExpressionKind::Boolean(matches!(k, TokenKind::True)),
                     span: current.span,
                 }),
                 TokenKind::LParen => {
@@ -239,6 +247,65 @@ impl Parser {
         Ok(lhs)
     }
 
+    ///Parses comparison expressions, thus, anything whose value returned is a boolean
+    pub fn parse_comparison(&mut self) -> Result<ASTExpression> {
+        let mut lhs = self.parse_additive()?;
+        while let Ok(curr) = self.peek()
+            && matches!(
+                curr.kind,
+                TokenKind::Gt | TokenKind::GtEq | TokenKind::Lt | TokenKind::LtEq | TokenKind::EqEq
+            )
+        {
+            let op = match self.eat()?.kind {
+                TokenKind::EqEq => Operator::Equals,
+                TokenKind::Lt => Operator::LessThan,
+                TokenKind::Gt => Operator::GreaterThan,
+                TokenKind::LtEq => Operator::LessThanOrEqual,
+                TokenKind::GtEq => Operator::GreaterThanOrEqual,
+                _ => unreachable!(),
+            };
+            let rhs = self.parse_additive()?;
+            lhs = ASTExpression {
+                span: Span {
+                    start: lhs.span.start,
+                    end: rhs.span.end,
+                },
+                kind: ASTExpressionKind::Binary {
+                    lhs: Box::new(lhs),
+                    op,
+                    rhs: Box::new(rhs),
+                },
+            };
+        }
+        Ok(lhs)
+    }
+
+    ///Parses logical expressions, thus, anything whose value returned is a boolean
+    pub fn parse_logical(&mut self) -> Result<ASTExpression> {
+        let mut lhs = self.parse_comparison()?;
+        while let Ok(curr) = self.peek()
+            && matches!(curr.kind, TokenKind::And | TokenKind::Or)
+        {
+            let op = match self.eat()?.kind {
+                TokenKind::And => Operator::LogicAnd,
+                TokenKind::Or => Operator::LogicOr,
+                _ => unreachable!(),
+            };
+            let rhs = self.parse_comparison()?;
+            lhs = ASTExpression {
+                span: Span {
+                    start: lhs.span.start,
+                    end: rhs.span.end,
+                },
+                kind: ASTExpressionKind::Binary {
+                    lhs: Box::new(lhs),
+                    op,
+                    rhs: Box::new(rhs),
+                },
+            };
+        }
+        Ok(lhs)
+    }
     ///Parses a postfix that comes after a '.'. This function initializes right after the '.'
     pub fn parse_dot_postfix(&mut self, prefix: ASTExpression) -> Result<ASTExpression> {
         let current = self.eat()?;
@@ -258,7 +325,7 @@ impl Parser {
     }
 
     pub fn parse_expression(&mut self) -> Result<ASTExpression> {
-        let expr = self.parse_additive()?;
+        let expr = self.parse_logical()?;
         Ok(expr)
     }
 }

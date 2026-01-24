@@ -21,6 +21,7 @@ pub struct NativeComponent {
 
 #[derive(Debug, Clone)]
 pub enum IntermediateExpr {
+    Bool(bool),
     Int(i32),
     Float(f32),
     StringLiteral(StringHandle),

@@ -20,6 +20,7 @@ pub enum ASTExpressionKind {
     IntLiteral(i32),
     StringLiteral(String),
     FloatLiteral(f32),
+    Boolean(bool),
     Binary {
         lhs: Box<ASTExpression>,
         op: Operator,
