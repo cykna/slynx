@@ -5,7 +5,7 @@ use crate::hir::scopes::scope::HIRScope;
 mod scope;
 #[derive(Debug, Default)]
 ///A module made with the intent of managing data inside scopes. Note that everything on this scope will have affect on the last defined scope.
-///So when entering a new scope, it means all functions will have effect on this new scope
+///So when entering a new scope, it means all functions will have effect on this new scope. This struct always derefs to the last active scope
 pub struct ScopeModule {
     scopes: Vec<HIRScope>,
 }
@@ -16,16 +16,16 @@ impl ScopeModule {
         out.enter_scope();
         out
     }
-    
+
     ///Retrieves how many scopes there are
     pub fn len(&mut self) -> usize {
         self.scopes.len()
     }
-    
+
     pub fn retrieve_last_scope(&mut self) -> &mut HIRScope {
         self.scopes.last_mut().unwrap()
     }
-    
+
     ///Enter a new scope and returns a mutable reference to it.
     pub fn enter_scope(&mut self) -> &mut HIRScope {
         self.scopes.push(HIRScope::new());

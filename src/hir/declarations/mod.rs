@@ -1,4 +1,4 @@
-use crate::hir::{DeclarationId, symbols::SymbolPointer, types::HirType};
+use crate::hir::{DeclarationId, TypeId, symbols::SymbolPointer, types::HirType};
 use std::collections::HashMap;
 
 /// A top level module that keeps track of all the declarations on the Hir.
@@ -7,7 +7,7 @@ use std::collections::HashMap;
 pub struct DeclarationsModule {
     decls: HashMap<SymbolPointer, DeclarationId>,
     ///The types of the declarations. Use a vec because we can access the type based on the inner value of the ID
-    declaration_types: Vec<HirType>,
+    declaration_types: Vec<TypeId>,
     objects: HashMap<DeclarationId, Vec<SymbolPointer>>,
 }
 
@@ -19,7 +19,7 @@ impl DeclarationsModule {
             declaration_types: Vec::new(),
         }
     }
-    pub fn create_declaration(&mut self, name: SymbolPointer, ty: HirType) -> DeclarationId {
+    pub fn create_declaration(&mut self, name: SymbolPointer, ty: TypeId) -> DeclarationId {
         let id = DeclarationId::new();
         self.decls.insert(name, id);
         self.declaration_types.push(ty);
@@ -29,7 +29,7 @@ impl DeclarationsModule {
     pub fn create_object(
         &mut self,
         name: SymbolPointer,
-        ty: HirType,
+        ty: TypeId,
         fields: Vec<SymbolPointer>,
     ) -> DeclarationId {
         let id = DeclarationId::new();
@@ -37,5 +37,24 @@ impl DeclarationsModule {
         self.declaration_types.push(ty);
         self.objects.insert(id, fields);
         id
+    }
+
+    ///Returns the informations of a declaration with the provided `symbol`. The informations are its ID and its type. Returns none if it doesn't exist
+    pub fn retrieve_declaration_data_by_name(
+        &self,
+        symbol: &SymbolPointer,
+    ) -> Option<(DeclarationId, TypeId)> {
+        self.decls
+            .get(symbol)
+            .and_then(|decl| Some((*decl, self.declaration_types[decl.as_raw() as usize])))
+    }
+
+    pub fn retrieve_declaration_type(&self, id: DeclarationId) -> TypeId {
+        self.declaration_types[id.as_raw() as usize]
+    }
+
+    ///Retrieves the body of the object with provided `id`
+    pub fn retrieve_object_body(&self, id: DeclarationId) -> Option<&[SymbolPointer]> {
+        self.objects.get(&id).map(|v| &**v)
     }
 }

@@ -140,7 +140,7 @@ impl SlynxHir {
                     rhs,
                     span,
                 } => {
-                    let t = self.types_module.get_type(&ty).unwrap();
+                    let t = self.types_module.get_type(&ty);
                     let HirType::Component { props } = t else {
                         unreachable!("The type should be a component instead");
                     };
@@ -166,7 +166,7 @@ impl SlynxHir {
                     ComponentMemberDeclaration::Property {
                         id: PropertyId::new(), // Changed to PropertyId
                         index,
-                        value: Some(self.resolve_expr(rhs, Some(&props[index].2.clone()))?),
+                        value: Some(self.resolve_expr(rhs, Some(props[index].2))?),
                         span,
                     }
                 }
@@ -230,7 +230,7 @@ impl SlynxHir {
                                         *self
                                             .get_typeid_of_name(&generic.identifier, &member.span)?
                                     } else {
-                                        HirType::infer_id()
+                                        self.types_module.infer_id()
                                     },
                                 ));
                             }

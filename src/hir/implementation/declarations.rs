@@ -23,7 +23,9 @@ impl SlynxHir {
         let mut fields = {
             let mut out = Vec::with_capacity(fields.len());
             for field in &fields {
-                if field.name.kind.to_string() == name.to_string() {
+                if self.symbols_module.intern(&field.name.name)
+                    == self.symbols_module.intern(&name.identifier)
+                {
                     return Err(HIRError {
                         kind: HIRErrorKind::RecursiveType {
                             ty: name.to_string(),
@@ -36,21 +38,28 @@ impl SlynxHir {
             }
             out
         };
-        let id = self.get_symbol_of(&name.identifier, &name.span)?;
-        let HirType::Struct { fields: ty_field } =
-            self.retrieve_ref_to_type(&name.identifier, &name.span)?
-        else {
+        let symbol = self.get_symbol_of(&name.identifier, &name.span)?;
+        let (decl, declty) = if let Some(data) = self
+            .declarations_module
+            .retrieve_declaration_data_by_name(&symbol)
+        {
+            data
+        } else {
+            return Err(HIRError {
+                kind: HIRErrorKind::NameNotRecognized(name.identifier),
+                span: name.span,
+            }
+            .into());
+        };
+        let HirType::Struct { fields: ty_field } = self.types_module.get_type_mut(&declty) else {
             unreachable!("WTF. Type of object should be a Struct ty");
         };
 
         ty_field.append(&mut fields);
-        let ty = HirType::Struct {
-            fields: ty_field.clone(),
-        };
         self.declarations.push(HirDeclaration {
             kind: HirDeclarationKind::Object,
-            id: id.into(), // Convert HirId to DeclarationId
-            ty,
+            id: decl,
+            ty: declty,
             span,
         });
 
@@ -62,12 +71,17 @@ impl SlynxHir {
         name: &GenericIdentifier,
         obj_fields: &[ObjectField],
     ) -> Result<()> {
-        let def_fields = obj_fields.iter().map(|f| f.name.name.clone()).collect();
-        self.declarations_module.create_object(
-            &name.identifier,
-            HirType::Struct { fields: Vec::new() },
-            def_fields,
-        );
+        let name = self.symbols_module.intern(&name.identifier);
+        let def_fields = obj_fields
+            .iter()
+            .map(|f| self.symbols_module.intern(&f.name.name))
+            .collect();
+
+        let ty = self
+            .types_module
+            .insert_type(name, HirType::Struct { fields: Vec::new() });
+
+        self.declarations_module.create_object(name, ty, def_fields);
         Ok(())
     }
 
@@ -80,14 +94,14 @@ impl SlynxHir {
         let args = {
             let mut vec = Vec::with_capacity(args.len());
             for arg in args {
-                let ty = self.retrieve_type_of_name(&arg.kind, &arg.span)?;
-                vec.push(ty);
+                let (id, _) = self.retrieve_information_of_type(&arg.kind.identifier, &arg.span)?;
+                vec.push(id);
             }
             vec
         };
         let func_ty = HirType::Function {
             args,
-            return_type: Box::new(self.retrieve_type_of_name(return_type, &return_type.span)?),
+            return_type: *self.get_typeid_of_name(&return_type.identifier, &return_type.span)?,
         };
 
         self.create_declaration(&name.identifier, func_ty);

@@ -1,6 +1,7 @@
 use crate::{
     hir::{
-        ExpressionId, TypeId, VariableId, error::{HIRError, HIRErrorKind, InvalidTypeReason}
+        ExpressionId, TypeId, VariableId,
+        error::{HIRError, HIRErrorKind, InvalidTypeReason},
     },
     parser::ast::{GenericIdentifier, VisibilityModifier},
 };
@@ -27,11 +28,11 @@ pub enum FieldMethod {
 #[derive(Debug, Clone)]
 pub enum HirType {
     Struct {
-        fields: Vec<HirType>,
+        fields: Vec<TypeId>,
     },
 
     Vector {
-        ty: Box<HirType>,
+        ty: TypeId,
     },
     ///This reference type can be understood better explained like
     ///object Name<T> {
@@ -79,23 +80,9 @@ pub enum HirType {
     Infer,
 }
 
+//On modificating some of the type ids, please check before on TypesModule, to see how the
 
 impl HirType {
-    pub fn int_id() -> TypeId {
-        TypeId::from_raw(0)
-    }
-    pub fn float_id() -> TypeId {
-        TypeId::from_raw(1)
-    }
-    pub fn str_id() -> TypeId {
-        TypeId::from_raw(2)
-    }
-    pub fn void_id() -> TypeId {
-        TypeId::from_raw(3)
-    }
-    pub fn infer_id() -> TypeId {
-        TypeId::from_raw(4)
-    }
     ///Tries to retrieve a value from its `gener`(ic) type
     pub fn new(gener: &GenericIdentifier) -> Result<Self, HIRError> {
         match gener.identifier.as_str() {
@@ -104,18 +91,6 @@ impl HirType {
             "int" => Ok(Self::Int),
             "float" => Ok(Self::Float),
             "str" => Ok(Self::Str),
-            "Vector" => {
-                let generic_ty = gener.generic.as_ref().ok_or(HIRError {
-                    kind: HIRErrorKind::InvalidType {
-                        ty: gener.to_string(),
-                        reason: InvalidTypeReason::MissingGeneric,
-                    },
-                    span: gener.span.clone(),
-                })?;
-                Ok(Self::Vector {
-                    ty: Box::new(Self::new(&generic_ty[0])?),
-                })
-            }
             _ => Err(HIRError {
                 kind: HIRErrorKind::TypeNotRecognized(gener.to_string()),
                 span: gener.span.clone(),

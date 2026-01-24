@@ -15,7 +15,7 @@ impl SlynxHir {
                 self.check_existance(parent)?;
             }
             ASTExpressionKind::Identifier(name) => {
-                self.last_scope().retrieve_name(name, &expr.span)?;
+                self.get_variable(name, &expr.span)?;
             }
             _ => {}
         }
@@ -41,8 +41,8 @@ impl SlynxHir {
             }
             ASTStatmentKind::MutableVar { name, ty, rhs } => {
                 let (ty, rhs) = if let Some(ty) = ty {
-                    let ty = self.retrieve_type_of_name(&ty, &statment.span)?;
-                    let rhs = self.resolve_expr(rhs, Some(&ty))?;
+                    let (id, ty) = self.retrieve_information_of_type(&ty, &statment.span)?;
+                    let rhs = self.resolve_expr(rhs, Some(id))?;
                     (ty, rhs)
                 } else {
                     let rhs = self.resolve_expr(rhs, None)?;
