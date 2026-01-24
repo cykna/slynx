@@ -1,5 +1,5 @@
 use crate::{
-    hir::{DeclarationId, ExpressionId, PropertyId, TypeId, VariableId, types::HirType},
+    hir::{DeclarationId, ExpressionId, PropertyId, TypeId, VariableId},
     parser::ast::{Operator, Span},
 };
 

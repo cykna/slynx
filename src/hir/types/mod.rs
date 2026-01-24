@@ -50,12 +50,8 @@ impl TypesModule {
     }
 
     ///Inserts a new variable on this module
-    pub fn insert_variable(&mut self, varid: VariableId, ty: HirType) -> TypeId {
-        let raw = self.types.len() as u64;
-        let v = TypeId::from_raw(raw);
-        self.types.push(ty);
-        self.variables.insert(varid, v);
-        v
+    pub fn insert_variable(&mut self, varid: VariableId, ty: TypeId) {
+        self.variables.insert(varid, ty);
     }
 
     ///Inserts the provided `ty` to have the provided `name`
@@ -65,6 +61,13 @@ impl TypesModule {
         self.type_names.insert(name, v);
         self.types.push(ty);
         v
+    }
+
+    ///Simply inserts the provided `ty` inside this module. Doesn't map it to anything
+    pub fn insert_unnamed_type(&mut self, ty: HirType) -> TypeId {
+        let id = TypeId::from_raw(self.types.len() as u64);
+        self.types.push(ty);
+        id
     }
 
     pub fn get_id(&self, name: &SymbolPointer) -> Option<&TypeId> {

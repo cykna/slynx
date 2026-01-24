@@ -1,4 +1,4 @@
-use crate::hir::{DeclarationId, TypeId, symbols::SymbolPointer, types::HirType};
+use crate::hir::{DeclarationId, TypeId, symbols::SymbolPointer};
 use std::collections::HashMap;
 
 /// A top level module that keeps track of all the declarations on the Hir.
@@ -8,7 +8,7 @@ pub struct DeclarationsModule {
     decls: HashMap<SymbolPointer, DeclarationId>,
     ///The types of the declarations. Use a vec because we can access the type based on the inner value of the ID
     declaration_types: Vec<TypeId>,
-    objects: HashMap<DeclarationId, Vec<SymbolPointer>>,
+    objects: HashMap<TypeId, Vec<SymbolPointer>>,
 }
 
 impl DeclarationsModule {
@@ -35,7 +35,7 @@ impl DeclarationsModule {
         let id = DeclarationId::new();
         self.decls.insert(name, id);
         self.declaration_types.push(ty);
-        self.objects.insert(id, fields);
+        self.objects.insert(ty, fields);
         id
     }
 
@@ -54,7 +54,7 @@ impl DeclarationsModule {
     }
 
     ///Retrieves the body of the object with provided `id`
-    pub fn retrieve_object_body(&self, id: DeclarationId) -> Option<&[SymbolPointer]> {
+    pub fn retrieve_object_body(&self, id: TypeId) -> Option<&[SymbolPointer]> {
         self.objects.get(&id).map(|v| &**v)
     }
 }

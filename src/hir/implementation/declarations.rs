@@ -34,7 +34,13 @@ impl SlynxHir {
                     }
                     .into());
                 }
-                out.push(self.retrieve_type_of_name(&field.name.kind, &field.name.span)?);
+                out.push(
+                    self.retrieve_information_of_type(
+                        &field.name.kind.identifier,
+                        &field.name.span,
+                    )?
+                    .0,
+                );
             }
             out
         };
@@ -103,8 +109,9 @@ impl SlynxHir {
             args,
             return_type: *self.get_typeid_of_name(&return_type.identifier, &return_type.span)?,
         };
-
-        self.create_declaration(&name.identifier, func_ty);
+        let symbol = self.symbols_module.intern(&name.identifier);
+        let id = self.define_type(symbol, func_ty);
+        self.create_declaration(&name.identifier, id);
         Ok(())
     }
 
@@ -164,24 +171,23 @@ impl SlynxHir {
             match def.kind {
                 ComponentMemberKind::Property { ty, rhs, name, .. } => {
                     let ty = if let Some(ty) = ty {
-                        self.retrieve_type_of_name(&ty, &ty.span)?
+                        self.retrieve_information_of_type(&ty.identifier, &ty.span)?
+                            .0
                     } else {
-                        HirType::Infer
+                        self.types_module.infer_id()
                     };
-                    let id = PropertyId::new(); // Changed to PropertyId
+
                     out.push(ComponentMemberDeclaration::Property {
-                        id,
+                        id: PropertyId::new(),
                         index: prop_idx,
                         value: if let Some(rhs) = rhs {
-                            Some(self.resolve_expr(rhs, Some(&ty))?)
+                            Some(self.resolve_expr(rhs, Some(ty))?)
                         } else {
                             None
                         },
                         span: def.span,
                     });
-                    // Convert PropertyId to HirId for scope
-                    let hirid = id.into();
-                    self.last_scope().insert_name(hirid, name);
+                    self.create_variable(&name, ty, true);
                     prop_idx += 1;
                 }
                 ComponentMemberKind::Child(child) => {
@@ -191,9 +197,11 @@ impl SlynxHir {
                             out.push(ComponentMemberDeclaration::Specialized(text));
                         }
                         _ => {
-                            let (id, ty) =
-                                self.retrieve_information_of(&child.name.identifier, &child.span)?;
-                            let values = self.resolve_component_members(child.values, &ty)?;
+                            let (id, _) = self.retrieve_information_of_type(
+                                &child.name.identifier,
+                                &child.span,
+                            )?;
+                            let values = self.resolve_component_members(child.values, id)?;
                             out.push(ComponentMemberDeclaration::Child {
                                 name: id,
                                 values,

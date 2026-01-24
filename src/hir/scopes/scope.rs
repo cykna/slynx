@@ -1,11 +1,6 @@
-use std::collections::{HashMap, HashSet};
+use std::collections::HashMap;
 
-use crate::{
-    hir::{
-        HirId, VariableId, error::{HIRError, HIRErrorKind}, symbols::SymbolPointer
-    },
-    parser::ast::Span,
-};
+use crate::hir::{VariableId, symbols::SymbolPointer};
 
 #[derive(Debug)]
 pub struct HIRScope {
@@ -21,11 +16,13 @@ impl HIRScope {
             names: HashMap::new(),
         }
     }
-    
+
     ///Inserts the provided `symbol` on this scope
     pub fn insert_name(&mut self, symbol: SymbolPointer, var: VariableId, mutable: bool) {
         self.names.insert(symbol, var);
-        if mutable {self.mutables.push(var);}
+        if mutable {
+            self.mutables.push(var);
+        }
     }
 
     ///Retrieves the id of the provided `name` on the scope

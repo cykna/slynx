@@ -41,10 +41,11 @@ impl SlynxHir {
     }
 
     ///Creates a new variable with the provided `name` on the current scope and returns its id
-    pub fn create_variable(&mut self, name: &str) -> VariableId {
+    pub fn create_variable(&mut self, name: &str, ty: TypeId, mutable: bool) -> VariableId {
         let ptr = self.symbols_module.intern(name);
         let v = VariableId::new();
-        self.scope_module.insert_name(ptr, v, false);
+        self.scope_module.insert_name(ptr, v, mutable);
+        self.types_module.insert_variable(v, ty);
         v
     }
     ///Tries to retrieve a variable with the provided `name` on the current active scope

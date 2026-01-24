@@ -40,42 +40,35 @@ impl SlynxHir {
                 })
             }
             ASTStatmentKind::MutableVar { name, ty, rhs } => {
-                let (ty, rhs) = if let Some(ty) = ty {
-                    let (id, ty) = self.retrieve_information_of_type(&ty, &statment.span)?;
-                    let rhs = self.resolve_expr(rhs, Some(id))?;
-                    (ty, rhs)
-                } else {
-                    let rhs = self.resolve_expr(rhs, None)?;
-                    (rhs.ty.clone(), rhs)
-                };
+                let typeid = ty.and_then(|t| {
+                    self.retrieve_information_of_type(&t.identifier, &statment.span)
+                        .ok()
+                        .map(|inner| inner.0)
+                });
+                let rhs = self.resolve_expr(rhs, typeid)?;
 
-                let id = self.create_hirid_for(name, ty.clone());
-                self.last_scope().set_mutable(id);
+                let id = self.create_variable(&name, rhs.ty, true);
                 Ok(HirStatment {
                     kind: HirStatmentKind::Variable {
-                        name: id.into(), // Convert HirId to VariableId
+                        name: id,
                         value: rhs,
-                        ty,
                     },
                     span: statment.span,
                 })
             }
             ASTStatmentKind::Var { name, ty, rhs } => {
-                let (ty, rhs) = if let Some(ty) = ty {
-                    let ty = self.retrieve_type_of_name(&ty, &statment.span)?;
-                    let rhs = self.resolve_expr(rhs, Some(&ty))?;
-                    (ty, rhs)
-                } else {
-                    let rhs = self.resolve_expr(rhs, None)?;
-                    (rhs.ty.clone(), rhs)
-                };
+                let typeid = ty.and_then(|t| {
+                    self.retrieve_information_of_type(&t.identifier, &statment.span)
+                        .ok()
+                        .map(|inner| inner.0)
+                });
+                let rhs = self.resolve_expr(rhs, typeid)?;
 
-                let id = self.create_hirid_for(name, ty.clone());
+                let id = self.create_variable(&name, rhs.ty, false);
                 Ok(HirStatment {
                     kind: HirStatmentKind::Variable {
-                        name: id.into(), // Convert HirId to VariableId
+                        name: id,
                         value: rhs,
-                        ty,
                     },
                     span: statment.span,
                 })

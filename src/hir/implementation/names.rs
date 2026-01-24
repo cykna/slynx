@@ -22,11 +22,7 @@ impl SlynxHir {
     }
 
     ///Retrieves the type of the provided `name` but in the global scope
-    pub fn retrieve_type_of_name(
-        &mut self,
-        name: &GenericIdentifier,
-        span: &Span,
-    ) -> Result<HirType> {
+    pub fn retrieve_type_of_name(&self, name: &GenericIdentifier, span: &Span) -> Result<HirType> {
         match HirType::new(name) {
             Ok(value) => Ok(value),
             Err(_) => {
@@ -49,7 +45,7 @@ impl SlynxHir {
     }
     ///Tries to retrieve the type and `TypeId` of the provided `name` in the global scope
     pub fn retrieve_information_of_type(
-        &mut self,
+        &self,
         name: &str,
         span: &Span,
     ) -> Result<(TypeId, &HirType)> {
@@ -69,11 +65,7 @@ impl SlynxHir {
     ///Retrieves the type of the provided `name` but in the global scope. The difference of a 'named' to a 'name' is that this function
     ///tries to the the provided `name` as some identifier to something, and the name version does so after checking if the provided name itself
     ///is a type
-    pub fn retrieve_type_of_named(
-        &mut self,
-        name: &str,
-        span: &Span,
-    ) -> Result<&HirType, HIRError> {
+    pub fn retrieve_type_of_named(&self, name: &str, span: &Span) -> Result<&HirType, HIRError> {
         if let Some(name_id) = self.symbols_module.retrieve(name)
             && let Some(ty) = self.types_module.get_type_from_name(name_id)
         {

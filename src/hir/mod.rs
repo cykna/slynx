@@ -20,7 +20,6 @@ use crate::{
             HirStatmentKind,
         },
         error::{HIRError, HIRErrorKind},
-        scope::HIRScope,
         scopes::ScopeModule,
         symbols::SymbolsModule,
         types::{HirType, TypesModule},
@@ -37,27 +36,6 @@ pub use id::{DeclarationId, ExpressionId, PropertyId, TypeId, VariableId};
 // Keep old HirId temporarily for backward compatibility during migration
 static ACCUMULATOR: AtomicU64 = AtomicU64::new(0);
 
-#[derive(Debug, Clone, Copy, Hash, PartialEq, Eq, PartialOrd, Ord)]
-#[deprecated(
-    since = "0.1.0",
-    note = "Use specific ID types (DeclarationId, ExpressionId, etc.) instead"
-)]
-/// An ID for name resolution on the HIR
-/// DEPRECATED: Use specific ID types instead
-pub struct HirId(pub u64);
-
-impl Default for HirId {
-    fn default() -> Self {
-        HirId::new()
-    }
-}
-
-impl HirId {
-    pub fn new() -> Self {
-        Self(ACCUMULATOR.fetch_add(1, std::sync::atomic::Ordering::Relaxed))
-    }
-}
-
 #[derive(Debug, Default)]
 pub struct SlynxHir {
     ///The module that will keep track of all declarations on the top level
@@ -69,9 +47,7 @@ pub struct SlynxHir {
     /// Maps the types of top level things on the current scope to their types.
     /// An example is functions, which contain an HirType.
     types: HashMap<TypeId, HirType>,
-    /// A hashmap mapping the id of some struct or object to its layout. The 'layout' in case is the name of the property. So something like `object Packet {data: [100]u8, ty: PacketTy} would be simply
-    /// id => ['data', 'ty'] to resolve its order correctly if some object expression like Packet(ty:PacketTy::Crypto, data:[100]0) appears
-    pub(crate) objects_deffinitions: HashMap<HirId, Vec<String>>,
+
     /// The scopes of this HIR. On the final it's expected to have only one, which is the global one
     pub declarations: Vec<HirDeclaration>,
 }
@@ -80,7 +56,6 @@ impl SlynxHir {
     pub fn new() -> Self {
         Self {
             scope_module: ScopeModule::new(),
-            objects_deffinitions: HashMap::new(),
             types: HashMap::new(),
             declarations: Vec::new(),
             declarations_module: DeclarationsModule::new(),
@@ -239,7 +214,11 @@ impl SlynxHir {
                     }
                     out
                 };
-                self.create_declaration(&name.identifier, HirType::Component { props });
+                let symbol = self.symbols_module.intern(&name.identifier);
+                let tyid = self
+                    .types_module
+                    .insert_type(symbol, HirType::Component { props });
+                self.declarations_module.create_declaration(symbol, tyid);
             }
         }
         Ok(())
@@ -272,10 +251,18 @@ impl SlynxHir {
                 };
 
                 self.scope_module.enter_scope();
+
                 let args = args
                     .into_iter()
-                    .map(|arg| self.create_variable(&arg.name))
-                    .collect();
+                    .map(|arg| {
+                        match self
+                            .retrieve_information_of_type(&arg.kind.identifier, &arg.kind.span)
+                        {
+                            Ok((ty, _)) => Ok(self.create_variable(&arg.name, ty.clone(), false)),
+                            Err(e) => Err(e),
+                        }
+                    })
+                    .collect::<Result<Vec<_>, _>>()?;
 
                 let statments = if let Some(last) = body.pop() {
                     let mut statments = Vec::with_capacity(body.len());

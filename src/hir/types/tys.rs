@@ -1,7 +1,7 @@
 use crate::{
     hir::{
         ExpressionId, TypeId, VariableId,
-        error::{HIRError, HIRErrorKind, InvalidTypeReason},
+        error::{HIRError, HIRErrorKind},
     },
     parser::ast::{GenericIdentifier, VisibilityModifier},
 };
