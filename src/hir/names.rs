@@ -2,9 +2,7 @@ use color_eyre::eyre::Result;
 
 use crate::{
     hir::{
-        SlynxHir,
-        error::{HIRError, HIRErrorKind},
-        symbols::SymbolPointer,
+        SlynxHir, TypeId, VariableId, error::{HIRError, HIRErrorKind}, symbols::SymbolPointer, types::HirType
     },
     parser::ast::Span,
 };
@@ -23,5 +21,28 @@ impl SlynxHir {
             }
             .into(),
         )
+    }
+    
+    pub fn get_typeid_of_name(&self, name:&str, span: &Span) -> Result<&TypeId> {
+        let temp = self.symbols_module.retrieve(name).and_then(|id| {
+            self.types_module.get_id(id)
+        });
+        temp.ok_or(HIRError {
+            kind: HIRErrorKind::NameNotRecognized(name.to_string()),
+            span:span.clone()
+        }.into())
+    }
+    
+    
+    ///Creates a new variable with the provided `name` on the current scope and returns its id
+    pub fn create_variable(&mut self, name: &str) -> VariableId {
+        let ptr = self.symbols_module.intern(name);
+        let v = VariableId::new();
+        self.scope_module.insert_name(ptr, v, false);
+        v
+    }
+    
+    pub fn define_type(&mut self, name: SymbolPointer, ty: HirType) -> TypeId {
+        self.types_module.insert_type(name, ty)
     }
 }

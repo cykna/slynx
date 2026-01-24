@@ -10,12 +10,37 @@ pub struct TypesModule {
     types:HashMap<TypeId, HirType>,
 }
 
+macro_rules! hashmap {
+    () => {
+        HashMap::new()
+    };
+    ($($key:expr => $value:expr),*$(,)?) => ({
+        let mut map =HashMap::new();
+        $(map.insert($key, $value);)+
+        map
+    })
+}
 impl TypesModule {
+    
+    
     pub fn new() -> Self {
         Self {
-            types: HashMap::new(),
             type_names: HashMap::new(),
+            types: hashmap! {
+                HirType::int_id() => HirType::Int,
+                HirType::float_id() => HirType::Float,
+                HirType::str_id() => HirType::Str,
+                HirType::void_id() => HirType::Void,
+                HirType::infer_id() => HirType::Infer,
+            },
         }
+    }
+    
+    pub fn insert_type(&mut self, name: SymbolPointer, ty: HirType) -> TypeId {
+        let v = TypeId::new();
+        self.type_names.insert(name, v);
+        self.types.insert(v, ty);
+        v
     }
 
     pub fn get_id(&self, name: &SymbolPointer) -> Option<&TypeId> {

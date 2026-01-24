@@ -45,7 +45,7 @@ pub enum HirType {
         ///The reference to the type this type maps to
         rf: TypeId,
         ///If its got a generic
-        generics: Vec<HirType>,
+        generics: Vec<TypeId>,
     },
 
     ///A type that references the type of another value. The provided `id` is the ID of this value
@@ -56,8 +56,8 @@ pub enum HirType {
     Field(FieldMethod),
 
     Function {
-        args: Vec<HirType>,
-        return_type: Box<HirType>,
+        args: Vec<TypeId>,
+        return_type: TypeId,
     },
     ///A type used for floats. This is by default the type of js.
     Float,
@@ -71,7 +71,7 @@ pub enum HirType {
     GenericComponent,
     ///A type specific for components
     Component {
-        props: Vec<(VisibilityModifier, String, HirType)>,
+        props: Vec<(VisibilityModifier, String, TypeId)>,
     },
     ///A type that represents no value
     Void,
@@ -79,7 +79,23 @@ pub enum HirType {
     Infer,
 }
 
+
 impl HirType {
+    pub fn int_id() -> TypeId {
+        TypeId::from_raw(0)
+    }
+    pub fn float_id() -> TypeId {
+        TypeId::from_raw(1)
+    }
+    pub fn str_id() -> TypeId {
+        TypeId::from_raw(2)
+    }
+    pub fn void_id() -> TypeId {
+        TypeId::from_raw(3)
+    }
+    pub fn infer_id() -> TypeId {
+        TypeId::from_raw(4)
+    }
     ///Tries to retrieve a value from its `gener`(ic) type
     pub fn new(gener: &GenericIdentifier) -> Result<Self, HIRError> {
         match gener.identifier.as_str() {
