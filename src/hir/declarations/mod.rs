@@ -8,7 +8,7 @@ pub struct DeclarationsModule {
     decls: HashMap<SymbolPointer, DeclarationId>,
     ///The types of the declarations. Use a vec because we can access the type based on the inner value of the ID
     declaration_types: Vec<TypeId>,
-    objects: HashMap<TypeId, Vec<SymbolPointer>>,
+    pub(crate) objects: HashMap<TypeId, Vec<SymbolPointer>>,
 }
 
 impl DeclarationsModule {

@@ -216,9 +216,9 @@ impl SlynxHir {
                         }
                     }
                     HirType::VarReference(rf) => {
-                        let ty = self
-                            .types_module
-                            .insert_unnamed_type(HirType::Field(FieldMethod::Variable(*rf, field)));
+                        let ty = self.types_module.insert_unnamed_type(HirType::Field(
+                            FieldMethod::Variable(*rf, self.symbols_module.intern(&field)),
+                        ));
                         Ok(HirExpression {
                             id: ExpressionId::new(), // Changed to ExpressionId
                             ty,

@@ -238,9 +238,8 @@ impl SlynxContext {
                 None => return Err(e),
             }
         }
-
-        if let Err(e) = TypeChecker::check(&mut hir) {
-            match e.downcast_ref::<TypeError>() {
+        let module = match TypeChecker::check(&mut hir) {
+            Err(e) => match e.downcast_ref::<TypeError>() {
                 Some(err) => {
                     let (line, column, src) = self.get_line_info(&self.entry_point, err.span.start);
                     let err = SlynxError {
@@ -254,12 +253,13 @@ impl SlynxContext {
                     return Err(e.wrap_err(err));
                 }
                 _ => return Err(e),
-            }
+            },
+            Ok(module) => module,
         };
-        println!("{:#?}", hir.declarations);
+
         let mut ir = IntermediateRepr::new();
 
-        ir.generate(hir.declarations);
+        ir.generate(hir.declarations, module);
 
         let out = compiler.compile(ir);
         std::fs::write(self.entry_point.with_extension("js"), out)?;

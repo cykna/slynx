@@ -39,9 +39,9 @@ static ACCUMULATOR: AtomicU64 = AtomicU64::new(0);
 #[derive(Debug, Default)]
 pub struct SlynxHir {
     ///The module that will keep track of all declarations on the top level
-    declarations_module: DeclarationsModule,
+    pub(crate) declarations_module: DeclarationsModule,
     symbols_module: SymbolsModule,
-    types_module: TypesModule,
+    pub(crate) types_module: TypesModule,
     scope_module: ScopeModule,
 
     /// Maps the types of top level things on the current scope to their types.

@@ -7,6 +7,7 @@ use std::collections::HashMap;
 
 use crate::{
     hir::{
+        TypeId,
         deffinitions::{
             ComponentMemberDeclaration, HirDeclaration, HirDeclarationKind, HirExpression,
             HirExpressionKind, HirStatment, HirStatmentKind, SpecializedComponent,
@@ -22,15 +23,12 @@ use crate::{
     },
 };
 
-#[allow(deprecated)]
-use crate::hir::HirId;
-
 #[derive(Debug, Default)]
 /// Struct used to represent the intermediate representation of Slynx. Will be used when being compiled. This contains the monomorfization of types
 /// and flat values of everything in the source code. It can be understood as the context itself of the IR
 pub struct IntermediateRepr {
     pub contexts: Vec<IntermediateContext>,
-    pub types_mapping: HashMap<HirId, IntermediateType>,
+    pub types_mapping: HashMap<TypeId, IntermediateType>,
     pub strings: StringPool,
 }
 
@@ -115,7 +113,7 @@ impl IntermediateRepr {
             }
         }
     }
-    
+
     /// Creates a new child on the current context and returns the component expression and the child id
     fn generate_child(&mut self, name: HirId, values: Vec<ComponentMemberDeclaration>) -> usize {
         let mut props = Vec::new();
@@ -123,7 +121,9 @@ impl IntermediateRepr {
 
         for value in values {
             match value {
-                ComponentMemberDeclaration::Property { index, value, id, .. } => {
+                ComponentMemberDeclaration::Property {
+                    index, value, id, ..
+                } => {
                     let out = value.map(|value| self.generate_expr(value));
                     for _ in 0..index - props.len() {
                         props.push(None);
@@ -202,7 +202,7 @@ impl IntermediateRepr {
                 ComponentMemberDeclaration::Property { value, id, .. } => {
                     let default_value = value.map(|value| self.generate_expr(value));
                     self.active_context().insert_property(IntermediateProperty {
-                        id: id.into(),  // Convert PropertyId to HirId
+                        id: id.into(), // Convert PropertyId to HirId
                         default_value,
                         ty: tys[idx].clone(),
                     });
@@ -277,7 +277,7 @@ impl IntermediateRepr {
                     self.generate_assign(lhs, value);
                 }
                 HirStatmentKind::Variable { name, value, .. } => {
-                    self.generate_var(name.into(), value);  // Convert VariableId to HirId
+                    self.generate_var(name.into(), value); // Convert VariableId to HirId
                 }
                 HirStatmentKind::Expression { expr } => {
                     self.generate_expr(expr);
@@ -300,7 +300,7 @@ impl IntermediateRepr {
                         unreachable!("Type of a object declaration should be 'struct'");
                     };
                     let ty = self.retrieve_complex(&fields);
-                    self.types_mapping.insert(decl.id.into(), ty);  // Convert DeclarationId to HirId
+                    self.types_mapping.insert(decl.id.into(), ty); // Convert DeclarationId to HirId
                 }
                 HirDeclarationKind::Function {
                     statments,
@@ -318,10 +318,10 @@ impl IntermediateRepr {
                     let args = args
                         .iter()
                         .zip(tys)
-                        .map(|(arg, ty)| (self.get_type(ty), (*arg).into()))  // Convert VariableId to HirId
+                        .map(|(arg, ty)| (self.get_type(ty), (*arg).into())) // Convert VariableId to HirId
                         .collect();
                     let ret = self.get_type(return_type);
-                    self.generate_function(args, ret, statments, name, decl.id.into());  // Convert DeclarationId to HirId
+                    self.generate_function(args, ret, statments, name, decl.id.into()); // Convert DeclarationId to HirId
                 }
                 HirDeclarationKind::ComponentDeclaration { props } => {
                     let mut tys = Vec::new();
@@ -333,9 +333,9 @@ impl IntermediateRepr {
                         tys.push(typ);
                     }
 
-                    self.generate_component(decl.id.into(), props, &tys);  // Convert DeclarationId to HirId
+                    self.generate_component(decl.id.into(), props, &tys); // Convert DeclarationId to HirId
                     self.types_mapping
-                        .insert(decl.id.into(), IntermediateType::Complex(tys));  // Convert DeclarationId to HirId
+                        .insert(decl.id.into(), IntermediateType::Complex(tys)); // Convert DeclarationId to HirId
                 }
             }
         }

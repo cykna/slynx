@@ -1,7 +1,4 @@
-use crate::{
-    hir::{HirId, types::HirType},
-    parser::ast::Span,
-};
+use crate::{hir::types::HirType, parser::ast::Span};
 
 #[derive(Debug)]
 pub enum IncompatibleComponentReason {
@@ -30,7 +27,7 @@ pub enum TypeErrorKind {
         expected: HirType,
         received: HirType,
     },
-    Unrecognized(HirId),
+    Unrecognized,
 }
 
 impl std::fmt::Display for TypeError {
@@ -48,7 +45,7 @@ impl std::fmt::Display for TypeError {
             TypeErrorKind::IncompatibleTypes { expected, received } => format!(
                 "Incompatible types. Was expecting to receive type '{expected:?}' instead got type '{received:?}'"
             ),
-            TypeErrorKind::Unrecognized(_) => "Tem que fazer".to_string(),
+            TypeErrorKind::Unrecognized => "Tem que fazer".to_string(),
         };
         write!(f, "{out}")
     }
