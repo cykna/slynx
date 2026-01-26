@@ -23,18 +23,19 @@ pub enum IntermediateType {
 
 impl IntermediateRepr {
     ////Creates a new complex type from the provided `tys` and returns it
-    pub fn retrieve_complex(&mut self, tys: &[HirType], module: &TypesModule) -> IntermediateType {
+    pub fn retrieve_complex(&mut self, tys: &[TypeId], module: &TypesModule) -> IntermediateType {
         IntermediateType::Complex(tys.iter().map(|t| self.get_type(t, module)).collect())
     }
 
-    pub fn get_type(&self, ty: &HirType, module: &TypesModule) -> IntermediateType {
-        match ty {
+    pub fn get_type(&self, ty: &TypeId, module: &TypesModule) -> IntermediateType {
+        match module.get_type(ty) {
             HirType::Int => IntermediateType::Int,
             HirType::Float => IntermediateType::Float,
             HirType::Str => IntermediateType::Str,
             HirType::Void => IntermediateType::Void,
             HirType::Vector { ty } => {
-                IntermediateType::Vector(Box::new(self.get_type(module.get_type(ty), module)))
+                let vecty = self.get_type(ty, module);
+                IntermediateType::Vector(Box::new(vecty))
             }
             HirType::GenericComponent => IntermediateType::Component,
             HirType::Reference { rf, .. } => IntermediateType::Reference(*rf),

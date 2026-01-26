@@ -8,7 +8,7 @@ mod scopes;
 pub mod symbols;
 pub mod types;
 
-use std::{collections::HashMap, sync::atomic::AtomicU64};
+use std::collections::HashMap;
 
 use color_eyre::eyre::Result;
 
@@ -32,9 +32,6 @@ use crate::{
 
 // Re-export new ID types for convenience
 pub use id::{DeclarationId, ExpressionId, PropertyId, TypeId, VariableId};
-
-// Keep old HirId temporarily for backward compatibility during migration
-static ACCUMULATOR: AtomicU64 = AtomicU64::new(0);
 
 #[derive(Debug, Default)]
 pub struct SlynxHir {

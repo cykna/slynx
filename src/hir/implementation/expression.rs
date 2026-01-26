@@ -243,7 +243,9 @@ impl SlynxHir {
     ) -> Result<HirExpression> {
         let mut lhs = self.resolve_expr(lhs, ty)?;
         let mut rhs = self.resolve_expr(rhs, ty)?;
-        if discriminant(&lhs.ty) != discriminant(&rhs.ty) {
+        if discriminant(self.types_module.get_type(&lhs.ty))
+            != discriminant(self.types_module.get_type(&rhs.ty))
+        {
             if lhs.ty == self.types_module.infer_id() {
                 lhs.ty = rhs.ty.clone();
             } else if rhs.ty == self.types_module.infer_id() {

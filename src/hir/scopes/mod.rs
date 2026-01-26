@@ -22,10 +22,6 @@ impl ScopeModule {
         self.scopes.len()
     }
 
-    pub fn retrieve_last_scope(&mut self) -> &mut HIRScope {
-        self.scopes.last_mut().unwrap()
-    }
-
     ///Enter a new scope and returns a mutable reference to it.
     pub fn enter_scope(&mut self) -> &mut HIRScope {
         self.scopes.push(HIRScope::new());

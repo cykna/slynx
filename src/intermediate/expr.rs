@@ -1,69 +1,142 @@
-use crate::{hir::HirId, intermediate::string::StringHandle, parser::ast::Operator};
+use crate::{
+    hir::VariableId,
+    intermediate::{
+        id::{GlobalId, TyId, ValueId},
+        string::StringHandle,
+    },
+    parser::ast::Operator,
+};
 
 ///A Native component that is not user-defined
 #[derive(Debug, Clone)]
 pub enum NativeComponentKind {
-    Text {
-        ///Pointer to the expression
-        text: usize,
-    },
-    Rect {
-        children: Vec<usize>,
-    },
+    Text { text: ValueId },
+    Rect { children: Vec<ValueId> },
 }
 
 #[derive(Debug, Clone)]
 
 pub struct NativeComponent {
     pub kind: NativeComponentKind,
-    pub props: Vec<Option<usize>>,
+    pub props: Vec<Option<ValueId>>,
 }
 
 #[derive(Debug, Clone)]
-pub enum IntermediateExpr {
+pub struct IntermediateExpr {
+    pub id: GlobalId,
+    pub kind: IntermediateExprKind,
+}
+
+#[derive(Debug, Clone)]
+pub enum IntermediateExprKind {
     Int(i32),
     Float(f32),
     StringLiteral(StringHandle),
     Struct {
-        id: HirId,
-        exprs: Vec<usize>,
+        id: TyId,
+        exprs: Vec<ValueId>,
     },
     FieldAccess {
-        parent: usize,
+        parent: ValueId,
+        ///The field index being accessed
         field: usize,
     },
     Binary {
         ///Inside the IntermediateRepr, the index of the lhs expression
-        lhs: usize,
+        lhs: ValueId,
         ///Inside the IntermediateRepr, the index of the rhs expression
-        rhs: usize,
+        rhs: ValueId,
         operator: Operator,
     },
-    Identifier(HirId),
+    Identifier(VariableId),
     ///An component expresssion. The props are the public children that may require some input. A None value will result in passing to them undefined
     ///and a Some(idx) will pass to them the expression on the `idx` of the current context
     ///The children are the children for this component, so, an array of indices for more component expressions inside the ccurrent context
     Component {
-        id: HirId,
-        props: Vec<Option<usize>>,
-        children: Vec<usize>,
+        id: TyId,
+        props: Vec<Option<ValueId>>,
+        children: Vec<ValueId>,
     },
     Native(NativeComponent),
 }
 
 impl IntermediateExpr {
     ///Creates a native `text` component with the provided `text`
-    pub fn native_text(text: usize, props: Vec<Option<usize>>) -> Self {
-        Self::Native(NativeComponent {
-            kind: NativeComponentKind::Text { text },
-            props,
-        })
+    pub fn native_text(text: ValueId, props: Vec<Option<ValueId>>) -> Self {
+        Self {
+            id: GlobalId::new(),
+            kind: IntermediateExprKind::Native(NativeComponent {
+                kind: NativeComponentKind::Text { text },
+                props,
+            }),
+        }
     }
     ///Creates a native `rect` component with the provided `children`
-    pub fn native_rect(children: Vec<usize>, props: Vec<Option<usize>>) -> Self {
-        Self::Native(NativeComponent {
-            kind: NativeComponentKind::Rect { children },
-            props,
-        })
+    pub fn native_rect(children: Vec<ValueId>, props: Vec<Option<ValueId>>) -> Self {
+        Self {
+            id: GlobalId::new(),
+            kind: IntermediateExprKind::Native(NativeComponent {
+                kind: NativeComponentKind::Rect { children },
+                props,
+            }),
+        }
+    }
+    pub fn field(expr: ValueId, field: usize) -> Self {
+        Self {
+            id: GlobalId::new(),
+            kind: IntermediateExprKind::FieldAccess {
+                parent: expr,
+                field,
+            },
+        }
+    }
+    pub fn strct(ty: TyId, fields: Vec<ValueId>) -> Self {
+        Self {
+            id: GlobalId::new(),
+            kind: IntermediateExprKind::Struct {
+                id: ty,
+                exprs: fields,
+            },
+        }
+    }
+    pub fn component(id: TyId, props: Vec<Option<ValueId>>, children: Vec<ValueId>) -> Self {
+        Self {
+            id: GlobalId::new(),
+            kind: IntermediateExprKind::Component {
+                id,
+                props,
+                children,
+            },
+        }
+    }
+    pub fn identifier(varid: VariableId) -> Self {
+        Self {
+            id: GlobalId::new(),
+            kind: IntermediateExprKind::Identifier(varid),
+        }
+    }
+    pub fn int(int: i32) -> Self {
+        Self {
+            id: GlobalId::new(),
+            kind: IntermediateExprKind::Int(int),
+        }
+    }
+    pub fn float(float: f32) -> Self {
+        Self {
+            id: GlobalId::new(),
+            kind: IntermediateExprKind::Float(float),
+        }
+    }
+    pub fn str(handle: StringHandle) -> Self {
+        Self {
+            id: GlobalId::new(),
+            kind: IntermediateExprKind::StringLiteral(handle),
+        }
+    }
+    pub fn bin(lhs: ValueId, rhs: ValueId, operator: Operator) -> Self {
+        Self {
+            id: GlobalId::new(),
+            kind: IntermediateExprKind::Binary { lhs, rhs, operator },
+        }
     }
 }

@@ -17,19 +17,19 @@ use swc_ecma_codegen::{Config, Emitter, text_writer::JsWriter};
 
 use crate::{
     compiler::slynx_compiler::SlynxCompiler,
-    hir::HirId,
     intermediate::{
         IntermediateRepr,
         context::IntermediateContext,
-        expr::IntermediateExpr,
-        node::{IntermediateInstruction, IntermediatePlace},
+        expr::{IntermediateExpr, IntermediateExprKind},
+        id::GlobalId,
+        node::{IntermediateInstruction, IntermediateInstructionKind, IntermediatePlace},
     },
 };
 
 #[derive(Debug, Default)]
 pub struct WebCompiler {
     script: Script,
-    names: HashMap<HirId, Ident>,
+    names: HashMap<GlobalId, Ident>,
     next_component_index: usize,
 }
 
@@ -46,19 +46,19 @@ impl WebCompiler {
         }
     }
     ///Creates the new component name, binds it to be the name of the provided `id` and returns it
-    pub fn retrieve_next_component_name(&mut self, id: HirId) -> Ident {
+    pub fn retrieve_next_component_name(&mut self, id: GlobalId) -> Ident {
         let name = format!("c{}", self.next_component_index);
         self.next_component_index += 1;
         self.names.insert(id, create_ident(&name));
         self.names.get(&id).cloned().unwrap()
     }
 
-    pub fn get_name(&self, id: &HirId) -> &Ident {
+    pub fn get_name(&self, id: &GlobalId) -> &Ident {
         self.names.get(id).expect("'get_name' should have returned, this is a bug where a name wasn't hoisted. Please check what's happening")
     }
 
     ///Creates the new func name, binds it to be the name of the provided `id` and returns it
-    pub fn retrieve_next_func_name(&mut self, id: HirId) -> Ident {
+    pub fn retrieve_next_func_name(&mut self, id: GlobalId) -> Ident {
         let name = format!("f{}", self.next_component_index);
         self.next_component_index += 1;
         self.names.insert(id, create_ident(&name));
@@ -66,7 +66,7 @@ impl WebCompiler {
     }
 
     ///Maps the provided `id` to the provided `name` and returns it's indent
-    pub fn map_name(&mut self, id: HirId, name: &str) -> Ident {
+    pub fn map_name(&mut self, id: GlobalId, name: &str) -> Ident {
         self.names.insert(id, create_ident(name));
         self.names.get(&id).cloned().unwrap()
     }
@@ -83,17 +83,17 @@ impl SlynxCompiler for WebCompiler {
     ) -> Vec<Self::StatmentType> {
         let mut out = Vec::with_capacity(instructions.len());
         for inst in instructions {
-            let stmt = match inst {
-                IntermediateInstruction::Ret(id) => {
+            let stmt = match &inst.kind {
+                IntermediateInstructionKind::Ret(id) => {
                     let expr = self.compile_expression(&ctx.exprs[*id], ctx, ir);
                     Stmt::Return(ReturnStmt {
                         span: DUMMY_SP,
                         arg: Some(Box::new(expr)),
                     })
                 }
-                IntermediateInstruction::Alloc(id) => {
+                IntermediateInstructionKind::Alloc(_) => {
                     self.names
-                        .insert(*id, format!("v{}", self.names.len()).into());
+                        .insert(inst.id, format!("v{}", self.names.len()).into());
                     Stmt::Decl(Decl::Var(Box::new(VarDecl {
                         span: DUMMY_SP,
                         ctxt: SyntaxContext::default(),
@@ -101,7 +101,7 @@ impl SlynxCompiler for WebCompiler {
                             span: DUMMY_SP,
                             name: Pat::Ident(BindingIdent {
                                 type_ann: None,
-                                id: self.names.get(id).unwrap().clone(),
+                                id: self.names.get(&inst.id).unwrap().clone(),
                             }),
                             init: None,
                             definite: true,
@@ -110,27 +110,27 @@ impl SlynxCompiler for WebCompiler {
                         declare: false,
                     })))
                 }
-                IntermediateInstruction::Move { target, value } => match target {
-                    IntermediatePlace::Local(local) => Stmt::Expr(ExprStmt {
+                IntermediateInstructionKind::Move { target, value } => match target {
+                    IntermediatePlace::Local(_) => Stmt::Expr(ExprStmt {
                         expr: Box::new(Expr::Assign(AssignExpr {
                             span: DUMMY_SP,
                             op: AssignOp::Assign,
                             left: AssignTarget::Simple(SimpleAssignTarget::Ident(BindingIdent {
-                                id: self.names.get(&ctx.vars[*local]).unwrap().clone(),
+                                id: self.names.get(&inst.id).unwrap().clone(),
                                 type_ann: None,
                             })),
                             right: Box::new(self.compile_expression(&ctx.exprs[*value], ctx, ir)),
                         })),
                         span: DUMMY_SP,
                     }),
-                    IntermediatePlace::Field { field, parent } => Stmt::Expr(ExprStmt {
+                    IntermediatePlace::Field { field, .. } => Stmt::Expr(ExprStmt {
                         expr: Box::new(Expr::Assign(AssignExpr {
                             span: DUMMY_SP,
                             op: AssignOp::Assign,
                             left: AssignTarget::Simple(SimpleAssignTarget::Member(MemberExpr {
                                 span: DUMMY_SP,
                                 obj: Box::new(Expr::Ident(
-                                    self.names.get(&ctx.vars[*parent]).cloned().unwrap(),
+                                    self.names.get(&inst.id).cloned().unwrap(),
                                 )),
                                 prop: MemberProp::Ident(format!("f{field}").into()),
                             })),
@@ -151,16 +151,18 @@ impl SlynxCompiler for WebCompiler {
         ctx: &IntermediateContext,
         ir: &IntermediateRepr,
     ) -> Self::ExpressionType {
-        match expr {
-            IntermediateExpr::Identifier(i) => Expr::Ident(self.names.get(i).unwrap().clone()),
-            IntermediateExpr::Int(int) => Expr::Lit(Lit::Num(Number {
+        match &expr.kind {
+            IntermediateExprKind::Identifier(_) => {
+                Expr::Ident(self.names.get(&expr.id).unwrap().clone())
+            }
+            IntermediateExprKind::Int(int) => Expr::Lit(Lit::Num(Number {
                 span: DUMMY_SP,
                 value: *int as f64,
                 raw: None,
             })),
-            IntermediateExpr::StringLiteral(s) => Expr::Lit(Lit::Str(ir.strings[s].into())),
-            IntermediateExpr::Component { id, props, .. } => {
-                let callee = Callee::Expr(Box::new(Expr::Ident(self.get_name(id).clone())));
+            IntermediateExprKind::StringLiteral(s) => Expr::Lit(Lit::Str(ir.strings[s].into())),
+            IntermediateExprKind::Component { props, .. } => {
+                let callee = Callee::Expr(Box::new(Expr::Ident(self.get_name(&expr.id).clone())));
                 let args = {
                     if props.iter().all(|v| v.is_none()) {
                         Vec::new()
@@ -190,11 +192,11 @@ impl SlynxCompiler for WebCompiler {
                     type_args: None,
                 })
             }
-            IntermediateExpr::Struct { id, exprs } => self.compile_struct(id, exprs, ctx, ir),
-            IntermediateExpr::FieldAccess { parent, field } => {
+            IntermediateExprKind::Struct { exprs, .. } => self.compile_struct(&exprs, ctx, ir),
+            IntermediateExprKind::FieldAccess { parent, field } => {
                 self.compile_field_access(*parent, *field, ctx, ir)
             }
-            IntermediateExpr::Binary { lhs, rhs, .. } => Expr::Bin(BinExpr {
+            IntermediateExprKind::Binary { lhs, rhs, .. } => Expr::Bin(BinExpr {
                 span: DUMMY_SP,
                 op: BinaryOp::Add,
                 left: Box::new(self.compile_expression(&ctx.exprs[*lhs], ctx, ir)),
