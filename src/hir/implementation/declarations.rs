@@ -107,7 +107,7 @@ impl SlynxHir {
         };
         let func_ty = HirType::Function {
             args,
-            return_type: *self.get_typeid_of_name(&return_type.identifier, &return_type.span)?,
+            return_type: self.get_typeid_of_name(&return_type.identifier, &return_type.span)?,
         };
         let symbol = self.symbols_module.intern(&name.identifier);
         let id = self.define_type(symbol, func_ty);

@@ -199,8 +199,7 @@ impl SlynxHir {
                                     modifier.clone(),
                                     name.clone(),
                                     if let Some(generic) = ty {
-                                        *self
-                                            .get_typeid_of_name(&generic.identifier, &member.span)?
+                                        self.get_typeid_of_name(&generic.identifier, &member.span)?
                                     } else {
                                         self.types_module.infer_id()
                                     },

@@ -26,18 +26,27 @@ impl SlynxHir {
         )
     }
 
-    pub fn get_typeid_of_name(&self, name: &str, span: &Span) -> Result<&TypeId> {
-        let temp = self
-            .symbols_module
-            .retrieve(name)
-            .and_then(|id| self.types_module.get_id(id));
-        temp.ok_or(
-            HIRError {
-                kind: HIRErrorKind::NameNotRecognized(name.to_string()),
-                span: span.clone(),
+    pub fn get_typeid_of_name(&self, name: &str, span: &Span) -> Result<TypeId> {
+        match name {
+            "Component" => Ok(self.types_module.generic_component_id()),
+            "void" => Ok(self.types_module.void_id()),
+            "int" => Ok(self.types_module.int_id()),
+            "float" => Ok(self.types_module.float_id()),
+            "str" => Ok(self.types_module.str_id()),
+            _ => {
+                let temp = self
+                    .symbols_module
+                    .retrieve(name)
+                    .and_then(|id| self.types_module.get_id(id).cloned());
+                temp.ok_or(
+                    HIRError {
+                        kind: HIRErrorKind::NameNotRecognized(name.to_string()),
+                        span: span.clone(),
+                    }
+                    .into(),
+                )
             }
-            .into(),
-        )
+        }
     }
 
     ///Creates a new variable with the provided `name` on the current scope and returns its id
