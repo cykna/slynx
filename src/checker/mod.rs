@@ -48,7 +48,6 @@ impl TypeChecker {
             declarations: Vec::new(),
             expressions: HashMap::new(),
         };
-        //println!("{:#?}", inner.types_module);
         for decl in &mut hir.declarations {
             inner.check_decl(decl)?;
         }
@@ -225,6 +224,8 @@ impl TypeChecker {
                 let concrete_b = self.types_module.get_type(b).clone();
 
                 match (&concrete_a, &concrete_b) {
+                    (_, HirType::Infer) => Ok(*a),
+                    (HirType::Infer, _) => Ok(*b),
                     (HirType::Reference { rf, .. }, _) => self.unify_with_ref(*rf, *b, span),
                     (_, HirType::Reference { rf, .. }) => self.unify_with_ref(*rf, *b, span),
                     (

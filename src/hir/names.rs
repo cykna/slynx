@@ -54,7 +54,6 @@ impl SlynxHir {
         let ptr = self.symbols_module.intern(name);
         let v = VariableId::new();
         self.scope_module.insert_name(ptr, v, mutable);
-        println!("Inserindo {v:?} -> {ty:?}");
         self.types_module.insert_variable(v, ty);
         v
     }
