@@ -49,17 +49,21 @@ impl SlynxHir {
         name: &str,
         span: &Span,
     ) -> Result<(TypeId, &HirType)> {
-        if let Some(name_id) = self.symbols_module.retrieve(name)
-            && let Some(id) = self.types_module.get_id(name_id)
-        {
-            let ty = self.types_module.get_type(id);
-            Ok((*id, ty))
+        if let Ok(id) = self.get_typeid_of_name(name, &span) {
+            Ok((id, self.types_module.get_type(&id)))
         } else {
-            Err(HIRError {
-                kind: HIRErrorKind::NameNotRecognized(name.to_string()),
-                span: span.clone(),
+            if let Some(name_id) = self.symbols_module.retrieve(name)
+                && let Some(id) = self.types_module.get_id(name_id)
+            {
+                let ty = self.types_module.get_type(id);
+                Ok((*id, ty))
+            } else {
+                Err(HIRError {
+                    kind: HIRErrorKind::NameNotRecognized(name.to_string()),
+                    span: span.clone(),
+                }
+                .into())
             }
-            .into())
         }
     }
     ///Retrieves the type of the provided `name` but in the global scope. The difference of a 'named' to a 'name' is that this function
