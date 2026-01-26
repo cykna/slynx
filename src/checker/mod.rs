@@ -30,7 +30,7 @@ pub struct TypeChecker {
     ///A an array of declaration types
     declarations: Vec<TypeId>,
     expressions: HashMap<ExpressionId, TypeId>,
-    variables: HashMap<VariableId, TypeId>,
+
     types_module: TypesModule,
     /// The type of everything that is expected to have some
     types: HashMap<TypeId, HirType>,
@@ -47,9 +47,8 @@ impl TypeChecker {
             types_module: std::mem::take(&mut hir.types_module),
             declarations: Vec::new(),
             expressions: HashMap::new(),
-            variables: HashMap::new(),
         };
-
+        //println!("{:#?}", inner.types_module);
         for decl in &mut hir.declarations {
             inner.check_decl(decl)?;
         }
@@ -57,6 +56,7 @@ impl TypeChecker {
         for decl in &mut hir.declarations {
             inner.set_default(decl)?;
         }
+
         Ok(inner.types_module)
     }
     fn check_decl(&mut self, decl: &mut HirDeclaration) -> Result<()> {
@@ -104,7 +104,7 @@ impl TypeChecker {
     /// Returns a reference to a struct based on the provided `id` which is expected to be the id of a VarReference type.
     /// This returns a reference type to an object type.
     fn retrieve_reference_of(&self, id: &VariableId, span: &Span) -> Result<HirType, TypeError> {
-        if let Some(v) = self.variables.get(id)
+        if let Some(v) = self.types_module.get_variable(id)
             && let Some(t) = self.types.get(v)
         {
             match t {
@@ -167,7 +167,7 @@ impl TypeChecker {
             }
             HirType::Reference { .. } => Ok(ty.clone()),
             HirType::VarReference(rf) => {
-                if let Some(ty) = self.variables.get(&rf).cloned() {
+                if let Some(ty) = self.types_module.get_variable(&rf).cloned() {
                     Ok(self.resolve(&ty, span)?)
                 } else {
                     Ok(ty.clone())
@@ -223,6 +223,7 @@ impl TypeChecker {
             (a, b) => {
                 let concrete_a = self.types_module.get_type(a).clone();
                 let concrete_b = self.types_module.get_type(b).clone();
+
                 match (&concrete_a, &concrete_b) {
                     (HirType::Reference { rf, .. }, _) => self.unify_with_ref(*rf, *b, span),
                     (_, HirType::Reference { rf, .. }) => self.unify_with_ref(*rf, *b, span),
@@ -271,6 +272,15 @@ impl TypeChecker {
                             }
                             Ok(*a)
                         }
+                    }
+                    (HirType::VarReference(rf1), HirType::VarReference(rf2)) => {
+                        let Some(rf1) = self.types_module.get_variable(rf1).cloned() else {
+                            unreachable!("Variable should have already been declared")
+                        };
+                        let Some(rf2) = self.types_module.get_variable(rf2).cloned() else {
+                            unreachable!("Variable2 should have already been declared")
+                        };
+                        self.unify(&rf1, &rf2, span)
                     }
 
                     (_, _) => Err(TypeError {
@@ -350,7 +360,6 @@ impl TypeChecker {
             match &mut statment.kind {
                 HirStatmentKind::Variable { value, name } => {
                     value.ty = self.unify(&value.ty, ty, &value.span)?;
-                    self.variables.insert(*name, *ty);
                 }
                 HirStatmentKind::Return { expr } => {
                     expr.ty = self.get_type_of_expr(expr, &statment.span)?;
@@ -534,6 +543,7 @@ impl TypeChecker {
                 unimplemented!("{un:?}")
             }
         };
+
         let unified = self.unify(&expected, &calc, span)?;
         expr.ty = unified.clone();
         Ok(unified)
@@ -629,7 +639,6 @@ impl TypeChecker {
         match &mut statment.kind {
             HirStatmentKind::Variable { name, value } => {
                 value.ty = self.unify(&value.ty, expected, &statment.span)?;
-                self.variables.insert(*name, value.ty);
             }
             HirStatmentKind::Assign { lhs, value } => {
                 let ty = self.resolve(&lhs.ty, &lhs.span)?;

@@ -124,7 +124,6 @@ impl SlynxHir {
                 let tyid = self
                     .types_module
                     .insert_type(self.symbols_module.intern(&name), HirType::VarReference(id));
-                self.types_module.insert_variable(id, tyid);
                 Ok(HirExpression {
                     kind: HirExpressionKind::Identifier(id),
                     id: ExpressionId::new(), // Changed to ExpressionId

@@ -9,7 +9,7 @@ pub struct TypesModule {
     ///A hashmap that maps a name of a global name to its type. This is not for variables, but only for global types, such as structs, functions and components
     type_names: HashMap<SymbolPointer, TypeId>,
     ///Maps a variable to it's type
-    variables: HashMap<VariableId, TypeId>,
+    pub variables: HashMap<VariableId, TypeId>,
 
     types: Vec<HirType>,
 }
@@ -78,6 +78,9 @@ impl TypesModule {
     }
     pub fn get_type(&self, id: &TypeId) -> &HirType {
         &self.types[id.as_raw() as usize]
+    }
+    pub fn get_variable(&self, id: &VariableId) -> Option<&TypeId> {
+        self.variables.get(id)
     }
     pub fn get_type_from_name(&self, name: &SymbolPointer) -> Option<&HirType> {
         self.type_names.get(name).map(|id| self.get_type(id))

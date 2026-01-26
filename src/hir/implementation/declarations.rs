@@ -187,6 +187,7 @@ impl SlynxHir {
                         },
                         span: def.span,
                     });
+
                     self.create_variable(&name, ty, true);
                     prop_idx += 1;
                 }

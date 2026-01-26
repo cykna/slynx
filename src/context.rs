@@ -220,7 +220,6 @@ impl SlynxContext {
             }
         };
         let mut hir = SlynxHir::new();
-
         if let Err(e) = hir.generate(decls) {
             match e.downcast_ref::<HIRError>() {
                 Some(err) => {

@@ -48,6 +48,7 @@ impl SlynxHir {
                 let rhs = self.resolve_expr(rhs, typeid)?;
 
                 let id = self.create_variable(&name, rhs.ty, true);
+
                 Ok(HirStatment {
                     kind: HirStatmentKind::Variable {
                         name: id,
@@ -65,6 +66,7 @@ impl SlynxHir {
                 let rhs = self.resolve_expr(rhs, typeid)?;
 
                 let id = self.create_variable(&name, rhs.ty, false);
+
                 Ok(HirStatment {
                     kind: HirStatmentKind::Variable {
                         name: id,
