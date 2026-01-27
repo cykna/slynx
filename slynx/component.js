@@ -1,12 +1,9 @@
-function component0(A){
-  const out = {prop0:A??5}
-  return out;
+function c0(a0 = 5) {
+  ;
 }
-function component1(A,B,C){
-  const out = {prop0:A,prop1:B??22,prop2:C}
-  return out;
+function c1(a0, a1 = 0) {
+  ;
 }
-function main(){
-  return component1(5,12,[component0()])
+function f2() {
+  return c3(5, 12);
 }
-main();

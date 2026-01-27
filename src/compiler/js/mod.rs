@@ -17,6 +17,7 @@ use swc_ecma_codegen::{Config, Emitter, text_writer::JsWriter};
 
 use crate::{
     compiler::slynx_compiler::SlynxCompiler,
+    hir::VariableId,
     intermediate::{
         IntermediateRepr,
         context::IntermediateContext,
@@ -30,6 +31,7 @@ use crate::{
 pub struct WebCompiler {
     script: Script,
     names: HashMap<GlobalId, Ident>,
+    variables: HashMap<VariableId, Ident>,
     next_component_index: usize,
 }
 
@@ -41,6 +43,7 @@ impl WebCompiler {
     pub fn new() -> Self {
         Self {
             names: HashMap::new(),
+            variables: HashMap::new(),
             script: Script::default(),
             next_component_index: 0,
         }
@@ -54,6 +57,7 @@ impl WebCompiler {
     }
 
     pub fn get_name(&self, id: &GlobalId) -> &Ident {
+        println!("{id:?}");
         self.names.get(id).expect("'get_name' should have returned, this is a bug where a name wasn't hoisted. Please check what's happening")
     }
 
@@ -91,9 +95,10 @@ impl SlynxCompiler for WebCompiler {
                         arg: Some(Box::new(expr)),
                     })
                 }
-                IntermediateInstructionKind::Alloc(_) => {
-                    self.names
-                        .insert(inst.id, format!("v{}", self.names.len()).into());
+                IntermediateInstructionKind::Alloc(v) => {
+                    let ident: Ident = format!("v{}", self.names.len()).into();
+                    self.names.insert(inst.id, ident.clone());
+                    self.variables.insert(*v, ident);
                     Stmt::Decl(Decl::Var(Box::new(VarDecl {
                         span: DUMMY_SP,
                         ctxt: SyntaxContext::default(),
@@ -152,8 +157,8 @@ impl SlynxCompiler for WebCompiler {
         ir: &IntermediateRepr,
     ) -> Self::ExpressionType {
         match &expr.kind {
-            IntermediateExprKind::Identifier(_) => {
-                Expr::Ident(self.names.get(&expr.id).unwrap().clone())
+            IntermediateExprKind::Identifier(name) => {
+                Expr::Ident(self.variables.get(name).unwrap().clone())
             }
             IntermediateExprKind::Int(int) => Expr::Lit(Lit::Num(Number {
                 span: DUMMY_SP,
@@ -162,7 +167,9 @@ impl SlynxCompiler for WebCompiler {
             })),
             IntermediateExprKind::StringLiteral(s) => Expr::Lit(Lit::Str(ir.strings[s].into())),
             IntermediateExprKind::Component { props, .. } => {
-                let callee = Callee::Expr(Box::new(Expr::Ident(self.get_name(&expr.id).clone())));
+                let callee = Callee::Expr(Box::new(Expr::Ident(
+                    self.retrieve_next_component_name(expr.id).clone(),
+                )));
                 let args = {
                     if props.iter().all(|v| v.is_none()) {
                         Vec::new()
@@ -202,12 +209,18 @@ impl SlynxCompiler for WebCompiler {
                 left: Box::new(self.compile_expression(&ctx.exprs[*lhs], ctx, ir)),
                 right: Box::new(self.compile_expression(&ctx.exprs[*rhs], ctx, ir)),
             }),
+            IntermediateExprKind::Float(n) => Expr::Lit(Lit::Num(Number {
+                span: DUMMY_SP,
+                value: *n as f64,
+                raw: None,
+            })),
             un => unimplemented!("{un:?}"),
         }
     }
 
     ///The flattener has everything it's required
     fn compile(mut self, ir: IntermediateRepr) -> Vec<u8> {
+        println!("{ir:#?}");
         for ctx in ir.contexts.iter() {
             self.hoist_ctx(ctx);
         }

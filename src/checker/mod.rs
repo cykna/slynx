@@ -164,7 +164,7 @@ impl TypeChecker {
                     .into())
                 }
             }
-            HirType::Reference { .. } => Ok(ty.clone()),
+            HirType::Reference { rf, .. } => Ok(rf),
             HirType::VarReference(rf) => {
                 if let Some(ty) = self.types_module.get_variable(&rf).cloned() {
                     Ok(self.resolve(&ty, span)?)
@@ -173,17 +173,19 @@ impl TypeChecker {
                 }
             }
             HirType::Component { props } => {
-                let resolved_props = {
+                let mut resolved_props = {
                     let mut tys = Vec::with_capacity(props.len());
                     for prop in props {
                         tys.push((prop.0.clone(), prop.1.clone(), self.resolve(&prop.2, span)?));
                     }
                     tys
                 };
-                let id = self.types_module.insert_unnamed_type(HirType::Component {
-                    props: resolved_props,
-                });
-                Ok(id)
+                let HirType::Component { props } = self.types_module.get_type_mut(&ty) else {
+                    unreachable!();
+                };
+                props.clear();
+                props.append(&mut resolved_props);
+                Ok(*ty)
             }
 
             _ => Ok(ty.clone()),
@@ -249,6 +251,16 @@ impl TypeChecker {
                             let unified_prop = self.unify(&prop_a.2, &prop_b.2, span)?;
                             unified_props.push((prop_a.0.clone(), prop_a.1.clone(), unified_prop));
                         }
+                        let HirType::Component { props } = self.types_module.get_type_mut(a) else {
+                            unreachable!()
+                        };
+                        props.clear();
+                        props.extend_from_slice(&unified_props);
+                        let HirType::Component { props } = self.types_module.get_type_mut(a) else {
+                            unreachable!()
+                        };
+                        props.clear();
+                        props.extend_from_slice(&unified_props);
                         let ty = self.types_module.insert_unnamed_type(HirType::Component {
                             props: unified_props,
                         });
@@ -606,8 +618,9 @@ impl TypeChecker {
                         } => {
                             if let Some(value) = value {
                                 let ty = self.get_type_of_expr(value, span)?;
+                                let resolved = self.resolve(&expr.ty, &expr.span)?;
                                 let HirType::Component { props } =
-                                    self.types_module.get_type(&expr.ty).clone()
+                                    self.types_module.get_type(&resolved)
                                 else {
                                     unreachable!(
                                         "Component expression should be of type component"
@@ -615,8 +628,9 @@ impl TypeChecker {
                                 };
                                 let propty = props[*index].2;
                                 let ty = self.unify(&propty, &ty, span)?;
+                                println!("{:?}", self.types_module.get_type_mut(&resolved));
                                 let HirType::Component { props } =
-                                    self.types_module.get_type_mut(&expr.ty)
+                                    self.types_module.get_type_mut(&resolved)
                                 else {
                                     unreachable!(
                                         "Component expression should be of type component"
