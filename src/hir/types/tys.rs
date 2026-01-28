@@ -20,7 +20,7 @@ pub enum FieldMethod {
     /// }```
     ///
     /// Since `p`'s type is Reference {rf: Person, generics: vec![]}, `p.age` is is Field(FieldMethod(Person, 1))
-    Type(ExpressionId, usize),
+    Type(TypeId, usize),
     ///This is the same of the `type` variant, but since the provided `id` is the id of some variable whose type may be a Reference to a type, or
     ///a reference to another variable that references a type, we must store the field being accessed and check it on the type checker
     Variable(VariableId, SymbolPointer),

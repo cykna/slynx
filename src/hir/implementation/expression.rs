@@ -180,7 +180,7 @@ impl SlynxHir {
             }
             ASTExpressionKind::FieldAccess { parent, field } => {
                 let parent = self.resolve_expr(*parent, None)?;
-                let HirExpression { ref ty, id, .. } = parent;
+                let HirExpression { ref ty, .. } = parent;
                 match self.types_module.get_type(ty) {
                     HirType::Reference { rf, .. } => {
                         if let Some(index) = self
@@ -194,7 +194,7 @@ impl SlynxHir {
                         {
                             let ty = self
                                 .types_module
-                                .insert_unnamed_type(HirType::Field(FieldMethod::Type(id, index)));
+                                .insert_unnamed_type(HirType::Field(FieldMethod::Type(*ty, index)));
                             Ok(HirExpression {
                                 id: ExpressionId::new(), // Changed to ExpressionId
                                 ty,

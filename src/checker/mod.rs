@@ -48,6 +48,7 @@ impl TypeChecker {
             declarations: Vec::new(),
             expressions: HashMap::new(),
         };
+        println!("{:#?}", hir.declarations);
         for decl in &mut hir.declarations {
             inner.check_decl(decl)?;
         }
@@ -103,11 +104,10 @@ impl TypeChecker {
     /// Returns a reference to a struct based on the provided `id` which is expected to be the id of a VarReference type.
     /// This returns a reference type to an object type.
     fn retrieve_reference_of(&self, id: &VariableId, span: &Span) -> Result<HirType, TypeError> {
-        if let Some(v) = self.types_module.get_variable(id)
-            && let Some(t) = self.types.get(v)
-        {
-            match t {
-                HirType::Reference { .. } => Ok(t.clone()),
+        if let Some(v) = self.types_module.get_variable(id) {
+            let ty = self.types_module.get_type(v);
+            match ty {
+                HirType::Reference { .. } => Ok(ty.clone()),
                 HirType::VarReference(id) => self.retrieve_reference_of(id, span),
                 _ => Err(TypeError {
                     kind: TypeErrorKind::Unrecognized,
@@ -124,24 +124,18 @@ impl TypeChecker {
         let referedty = self.types_module.get_type(ty).clone();
         match referedty {
             HirType::Field(FieldMethod::Type(rf, index)) => {
-                if let Some(ty) = self.expressions.get(&rf).cloned() {
-                    let ty = self.resolve(&ty, span)?;
-                    if let HirType::Struct { fields } = self.types_module.get_type(&ty) {
-                        Ok(fields[index])
-                    } else {
-                        Err(TypeError {
-                            kind: TypeErrorKind::IncompatibleTypes {
-                                expected: self.types_module.get_type(&ty).clone(),
-                                received: HirType::Struct { fields: Vec::new() },
-                            },
-                            span: Span { start: 0, end: 0 },
-                        }
-                        .into())
-                    }
+                let ty = self.resolve(&rf, span)?;
+                if let HirType::Struct { fields } = self.types_module.get_type(&ty) {
+                    Ok(fields[index])
                 } else {
-                    unreachable!(
-                        "Not implemented when a reference doenst point nothing. This is unreacheable because probably this wont be achieved never"
-                    )
+                    Err(TypeError {
+                        kind: TypeErrorKind::IncompatibleTypes {
+                            expected: self.types_module.get_type(&ty).clone(),
+                            received: HirType::Struct { fields: Vec::new() },
+                        },
+                        span: Span { start: 0, end: 0 },
+                    }
+                    .into())
                 }
             }
             HirType::Field(FieldMethod::Variable(rf, n)) => {
@@ -287,17 +281,14 @@ impl TypeChecker {
                         self.unify(&rf1, &rf2, span)
                     }
 
-                    (_, _) => {
-                        println!("{concrete_a:?} :=: {concrete_b:?}");
-                        Err(TypeError {
-                            kind: TypeErrorKind::IncompatibleTypes {
-                                expected: concrete_b,
-                                received: concrete_a,
-                            },
-                            span: span.clone(),
-                        }
-                        .into())
+                    (_, _) => Err(TypeError {
+                        kind: TypeErrorKind::IncompatibleTypes {
+                            expected: concrete_b,
+                            received: concrete_a,
+                        },
+                        span: span.clone(),
                     }
+                    .into()),
                 }
             }
         }
@@ -366,7 +357,7 @@ impl TypeChecker {
         for statment in statments {
             match &mut statment.kind {
                 HirStatmentKind::Variable { value, .. } => {
-                    value.ty = self.unify(&value.ty, &return_type, &value.span)?;
+                    value.ty = self.get_type_of_expr(value, &value.span.clone())?;
                 }
                 HirStatmentKind::Return { expr } => {
                     expr.ty = self.get_type_of_expr(expr, &statment.span)?;
@@ -399,10 +390,9 @@ impl TypeChecker {
                                     unreachable!();
                                 };
                                 *field_index = index;
-
-                                self.types_module.insert_unnamed_type(HirType::Field(
-                                    FieldMethod::Type(lhs.id, index),
-                                ))
+                                *self.types_module.get_type_mut(&lhs.ty) =
+                                    HirType::Field(FieldMethod::Type(rf, index));
+                                lhs.ty
                             } else {
                                 return Err(TypeError {
                                     kind: TypeErrorKind::Unrecognized,
@@ -531,7 +521,7 @@ impl TypeChecker {
                             .position(|field| field == name)
                         {
                             *field_index = index;
-                            let HirType::Struct { fields } = self.types.get(&rf).unwrap() else {
+                            let HirType::Struct { fields } = self.types_module.get_type(&rf) else {
                                 unreachable!()
                             };
                             fields[index].clone()
@@ -647,7 +637,7 @@ impl TypeChecker {
     fn default_statment(&mut self, statment: &mut HirStatment, expected: &TypeId) -> Result<()> {
         match &mut statment.kind {
             HirStatmentKind::Variable { value, .. } => {
-                value.ty = self.unify(&value.ty, expected, &statment.span)?;
+                value.ty = self.resolve(&value.ty, &statment.span)?;
             }
             HirStatmentKind::Assign { lhs, value } => {
                 let ty = self.resolve(&lhs.ty, &lhs.span)?;

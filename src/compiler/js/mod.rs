@@ -49,7 +49,6 @@ impl WebCompiler {
     }
     ///Creates the new component name, binds it to be the name of the provided `id` and returns it
     pub fn retrieve_next_component_name(&mut self, handle: ContextHandle) {
-        println!("{handle:?} {:?}", self.context_names);
         assert!(handle.0 == self.context_names.len());
         let name = format!("c{}", handle.0);
         self.context_names.push(create_ident(&name));
@@ -108,10 +107,10 @@ impl SlynxCompiler for WebCompiler {
                             span: DUMMY_SP,
                             op: AssignOp::Assign,
                             left: AssignTarget::Simple(SimpleAssignTarget::Ident(BindingIdent {
-                                id: self.contexts[handle.0]
-                                    .retrieve_varname(*n)
-                                    .unwrap()
-                                    .clone(),
+                                id: {
+                                    let ctx = &mut self.contexts[handle.0];
+                                    ctx.retrieve_varname(*n).unwrap().clone()
+                                },
                                 type_ann: None,
                             })),
                             right: Box::new(self.compile_expression(
@@ -129,12 +128,16 @@ impl SlynxCompiler for WebCompiler {
                             op: AssignOp::Assign,
                             left: AssignTarget::Simple(SimpleAssignTarget::Member(MemberExpr {
                                 span: DUMMY_SP,
-                                obj: Box::new(Expr::Ident(
+                                obj: Box::new(Expr::Ident({
+                                    println!(
+                                        "{parent:?} {:?}",
+                                        self.contexts[handle.0].variable_ids
+                                    );
                                     self.contexts[handle.0]
                                         .retrieve_varname(*parent)
                                         .cloned()
-                                        .unwrap(),
-                                )),
+                                        .unwrap()
+                                })),
                                 prop: MemberProp::Ident(format!("f{field}").into()),
                             })),
                             right: Box::new(self.compile_expression(
@@ -230,6 +233,7 @@ impl SlynxCompiler for WebCompiler {
     fn compile(mut self, ir: IntermediateRepr) -> Vec<u8> {
         for ctx in ir.contexts.iter() {
             let mut context = JsFunction::new(ctx.id);
+            println!("{ctx:#?}");
             self.hoist_ctx(ctx, &mut context);
             self.contexts.push(context);
         }

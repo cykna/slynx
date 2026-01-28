@@ -228,6 +228,9 @@ impl IntermediateRepr {
     pub fn generate_var(&mut self, name: VarId, value: HirExpression) -> usize {
         let idx = self.generate_expr(value);
         self.active_context()
+            .insert_instruction(IntermediateInstruction::alloc(name))
+            .unwrap();
+        self.active_context()
             .insert_instruction(IntermediateInstruction::mov(
                 IntermediatePlace::Local(name),
                 idx,
@@ -241,9 +244,18 @@ impl IntermediateRepr {
                 IntermediatePlace::Local(self.vars.get(&id).unwrap().clone())
             }
             HirExpressionKind::FieldAccess { field_index, expr } => {
-                let _structure_place = self.generate_place(*expr);
+                let expr = self.generate_expr(*expr);
+                let id = VarId::new();
+                self.active_context()
+                    .insert_instruction(IntermediateInstruction::alloc(id))
+                    .unwrap();
+                self.active_context()
+                    .insert_instruction(IntermediateInstruction::mov(
+                        IntermediatePlace::Local(id),
+                        expr,
+                    ));
                 IntermediatePlace::Field {
-                    parent: VarId::new(),
+                    parent: id,
                     field: field_index,
                 }
             }
@@ -294,7 +306,6 @@ impl IntermediateRepr {
     }
 
     pub fn generate(&mut self, decls: Vec<HirDeclaration>, module: TypesModule) {
-        println!("{decls:#?}");
         for decl in decls {
             match decl.kind {
                 HirDeclarationKind::Object => {
