@@ -2,11 +2,10 @@ use swc_ecma_ast::Ident;
 
 use crate::{
     compiler::js::WebCompiler,
-    hir::VariableId,
     intermediate::{
         IntermediateRepr,
         context::{IntermediateContext, IntermediateContextType},
-        id::{ContextHandle, PropId},
+        id::{ContextHandle, PropId, VarId},
     },
 };
 
@@ -14,7 +13,7 @@ use crate::{
 ///A Function, also refered as 'context' is simply something that might have a scope to run something
 pub struct JsFunction {
     pub handle: ContextHandle,
-    pub variable_ids: Vec<VariableId>,
+    pub variable_ids: Vec<VarId>,
     pub variables: Vec<Ident>,
     pub properties: Vec<PropId>,
 }
@@ -28,7 +27,7 @@ impl JsFunction {
             properties: Vec::new(),
         }
     }
-    pub fn create_variable(&mut self, id: VariableId, name: &str) -> &Ident {
+    pub fn create_variable(&mut self, id: VarId, name: &str) -> &Ident {
         self.variables.push(name.into());
         self.variable_ids.push(id);
         self.variables.last().unwrap()
@@ -38,7 +37,7 @@ impl JsFunction {
         self.properties.push(id);
         self.variables.last().unwrap()
     }
-    pub fn retrieve_varname(&self, id: VariableId) -> Option<&Ident> {
+    pub fn retrieve_varname(&self, id: VarId) -> Option<&Ident> {
         self.variable_ids
             .iter()
             .rposition(|vid| *vid == id)

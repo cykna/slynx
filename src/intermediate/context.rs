@@ -4,7 +4,7 @@ use crate::{
     hir::VariableId,
     intermediate::{
         expr::IntermediateExpr,
-        id::{ContextHandle, PropId, ValueId},
+        id::{ContextHandle, PropId, ValueId, VarId},
         node::IntermediateInstruction,
         types::IntermediateType,
     },
@@ -23,7 +23,7 @@ pub enum IntermediateContextType {
     Function {
         name: String,
         instructions: Vec<IntermediateInstruction>,
-        args: Vec<(IntermediateType, VariableId)>,
+        args: Vec<(IntermediateType, VarId)>,
         ret: IntermediateType,
     },
     Component {
@@ -37,9 +37,9 @@ pub struct IntermediateContext {
     pub id: ContextHandle,
     pub exprs: Vec<IntermediateExpr>,
     ///A vector of pointer to the expressions
-    pub vars: Vec<VariableId>,
+    pub vars: Vec<VarId>,
     ///Maps some name to an expression
-    pub names: HashMap<VariableId, usize>,
+    pub names: HashMap<VarId, usize>,
     pub ty: IntermediateContextType,
 }
 
@@ -47,7 +47,7 @@ impl IntermediateContext {
     pub fn new_function(
         id: ContextHandle,
         name: String,
-        args: Vec<(IntermediateType, VariableId)>,
+        args: Vec<(IntermediateType, VarId)>,
         ret: IntermediateType,
     ) -> Self {
         Self {
@@ -76,7 +76,7 @@ impl IntermediateContext {
         }
     }
 
-    pub fn allocate(&mut self, id: VariableId) -> usize {
+    pub fn allocate(&mut self, id: VarId) -> usize {
         let out = self.vars.len();
         self.insert_instruction(IntermediateInstruction::alloc(id));
         self.vars.push(id);

@@ -1,7 +1,6 @@
 use crate::{
-    hir::VariableId,
     intermediate::{
-        id::{ContextHandle, TyId, ValueId},
+        id::{ContextHandle, TyId, ValueId, VarId},
         string::StringHandle,
     },
     parser::ast::Operator,
@@ -47,7 +46,7 @@ pub enum IntermediateExprKind {
         rhs: ValueId,
         operator: Operator,
     },
-    Identifier(VariableId),
+    Identifier(VarId),
     ///An component expresssion. The props are the public children that may require some input. A None value will result in passing to them undefined
     ///and a Some(value) will pass to them the expression on the `value` of the current context
     ///The children are the children for this component, so, an array of indices for more component expressions inside the ccurrent context
@@ -107,7 +106,7 @@ impl IntermediateExpr {
             },
         }
     }
-    pub fn identifier(varid: VariableId) -> Self {
+    pub fn identifier(varid: VarId) -> Self {
         Self {
             kind: IntermediateExprKind::Identifier(varid),
         }

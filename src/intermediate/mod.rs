@@ -8,7 +8,7 @@ use std::collections::HashMap;
 
 use crate::{
     hir::{
-        TypeId, VariableId,
+        PropertyId, TypeId, VariableId,
         deffinitions::{
             ComponentMemberDeclaration, HirDeclaration, HirDeclarationKind, HirExpression,
             HirExpressionKind, HirStatment, HirStatmentKind, SpecializedComponent,
@@ -16,9 +16,9 @@ use crate::{
         types::{HirType, TypesModule},
     },
     intermediate::{
-        context::{IntermediateContext, IntermediateContextType, IntermediateProperty},
+        context::{IntermediateContext, IntermediateContextType},
         expr::IntermediateExpr,
-        id::{ContextHandle, TyId, ValueId},
+        id::{ContextHandle, TyId, ValueId, VarId},
         node::{IntermediateInstruction, IntermediatePlace},
         string::StringPool,
         types::IntermediateType,
@@ -31,6 +31,8 @@ pub struct IntermediateRepr {
     pub contexts: Vec<IntermediateContext>,
     pub context_mapping: HashMap<TyId, ContextHandle>,
     pub types_mapping: HashMap<TyId, IntermediateType>,
+    pub vars: HashMap<VariableId, VarId>,
+    pub props: HashMap<PropertyId, VarId>,
     ///Mapping of high level types to low level types
     pub types: HashMap<TypeId, TyId>,
     pub strings: StringPool,
@@ -39,11 +41,13 @@ pub struct IntermediateRepr {
 impl IntermediateRepr {
     pub fn new() -> Self {
         Self {
+            props: HashMap::new(),
             context_mapping: HashMap::new(),
             types: HashMap::new(),
             contexts: Vec::new(),
             types_mapping: HashMap::new(),
             strings: StringPool::new(),
+            vars: HashMap::new(),
         }
     }
 
@@ -73,9 +77,16 @@ impl IntermediateRepr {
                 self.active_context()
                     .insert_expr(IntermediateExpr::bin(lhs, rhs, op))
             }
-            HirExpressionKind::Identifier(name) => self
-                .active_context()
-                .insert_expr(IntermediateExpr::identifier(name)),
+            HirExpressionKind::Identifier(name) => {
+                let varid = self
+                    .vars
+                    .get(&name)
+                    .or_else(|| self.props.get(&PropertyId::from_raw(name.as_raw())))
+                    .cloned()
+                    .unwrap();
+                self.active_context()
+                    .insert_expr(IntermediateExpr::identifier(varid))
+            }
             HirExpressionKind::Component { name, values, .. } => {
                 let name = self.types.get(&name).unwrap().clone();
                 let eidx = self.generate_child(name, values);
@@ -195,10 +206,12 @@ impl IntermediateRepr {
         self.contexts.push(expr);
         for (idx, prop) in props.into_iter().enumerate() {
             match prop {
-                ComponentMemberDeclaration::Property { value, .. } => {
+                ComponentMemberDeclaration::Property { value, id, .. } => {
                     let default_value = value.map(|value| self.generate_expr(value));
+
                     self.active_context()
                         .insert_property(default_value, tys[idx].clone());
+                    self.props.insert(id, VarId::new());
                 }
                 ComponentMemberDeclaration::Specialized(spec) => {
                     self.generate_specialized(spec);
@@ -212,7 +225,7 @@ impl IntermediateRepr {
         handle
     }
 
-    pub fn generate_var(&mut self, name: crate::hir::VariableId, value: HirExpression) -> usize {
+    pub fn generate_var(&mut self, name: VarId, value: HirExpression) -> usize {
         let idx = self.generate_expr(value);
         self.active_context()
             .insert_instruction(IntermediateInstruction::mov(
@@ -224,18 +237,13 @@ impl IntermediateRepr {
 
     fn generate_place(&mut self, lhs: HirExpression) -> IntermediatePlace {
         match lhs.kind {
-            HirExpressionKind::Identifier(id) => IntermediatePlace::Local(
-                *self
-                    .active_context()
-                    .vars
-                    .iter()
-                    .find(|var| **var == id)
-                    .unwrap(),
-            ),
+            HirExpressionKind::Identifier(id) => {
+                IntermediatePlace::Local(self.vars.get(&id).unwrap().clone())
+            }
             HirExpressionKind::FieldAccess { field_index, expr } => {
                 let _structure_place = self.generate_place(*expr);
                 IntermediatePlace::Field {
-                    parent: VariableId::new(),
+                    parent: VarId::new(),
                     field: field_index,
                 }
             }
@@ -254,7 +262,7 @@ impl IntermediateRepr {
     /// Creates a new function with the provided `name` `id` and `statments` and returns its id
     pub fn generate_function(
         &mut self,
-        args: Vec<(IntermediateType, VariableId)>,
+        args: Vec<(IntermediateType, VarId)>,
         ret: IntermediateType,
         statments: Vec<HirStatment>,
         name: String,
@@ -268,7 +276,9 @@ impl IntermediateRepr {
                     self.generate_assign(lhs, value);
                 }
                 HirStatmentKind::Variable { name, value, .. } => {
-                    self.generate_var(name, value); // Convert VariableId to HirId
+                    let v = VarId::new();
+                    self.vars.insert(name, v);
+                    self.generate_var(v, value);
                 }
                 HirStatmentKind::Expression { expr } => {
                     self.generate_expr(expr);
@@ -284,6 +294,7 @@ impl IntermediateRepr {
     }
 
     pub fn generate(&mut self, decls: Vec<HirDeclaration>, module: TypesModule) {
+        println!("{decls:#?}");
         for decl in decls {
             match decl.kind {
                 HirDeclarationKind::Object => {
@@ -311,7 +322,11 @@ impl IntermediateRepr {
                     let argsty = tys
                         .iter()
                         .zip(&args)
-                        .map(|(ty, id)| (self.get_type(ty, &module), *id))
+                        .map(|(ty, id)| {
+                            let v = VarId::new();
+                            self.vars.insert(*id, v);
+                            (self.get_type(ty, &module), v)
+                        })
                         .collect();
                     let ret = self.get_type(return_type, &module);
                     let handle = self.generate_function(argsty, ret, statments, name);

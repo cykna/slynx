@@ -1,11 +1,14 @@
-use crate::{hir::VariableId, intermediate::id::ValueId};
+use crate::{
+    hir::VariableId,
+    intermediate::id::{ValueId, VarId},
+};
 
 #[derive(Debug)]
 pub enum IntermediatePlace {
     ///A reference to a variable
-    Local(VariableId),
+    Local(VarId),
     Field {
-        parent: VariableId,
+        parent: VarId,
         field: usize,
     },
 }
@@ -18,20 +21,20 @@ pub struct IntermediateInstruction {
 #[derive(Debug)]
 pub enum IntermediateInstructionKind {
     ///Allocates(creates) a new function
-    Alloc(VariableId),
+    Alloc(VarId),
     ///Moves the expression in `value` into `target`
     Move {
         target: IntermediatePlace,
         value: ValueId,
     },
     ///Reads a variable with provided id
-    Read(VariableId),
+    Read(VarId),
     ///Returns with the value on the provided id
     Ret(ValueId),
 }
 
 impl IntermediateInstruction {
-    pub fn alloc(varialbe_id: VariableId) -> Self {
+    pub fn alloc(varialbe_id: VarId) -> Self {
         Self {
             kind: IntermediateInstructionKind::Alloc(varialbe_id),
         }
@@ -41,7 +44,7 @@ impl IntermediateInstruction {
             kind: IntermediateInstructionKind::Move { target, value },
         }
     }
-    pub fn read(varialbe_id: VariableId) -> Self {
+    pub fn read(varialbe_id: VarId) -> Self {
         Self {
             kind: IntermediateInstructionKind::Read(varialbe_id),
         }
