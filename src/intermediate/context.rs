@@ -1,13 +1,10 @@
 use std::{collections::HashMap, ops::Index};
 
-use crate::{
-    hir::VariableId,
-    intermediate::{
-        expr::IntermediateExpr,
-        id::{ContextHandle, PropId, ValueId, VarId},
-        node::IntermediateInstruction,
-        types::IntermediateType,
-    },
+use crate::intermediate::{
+    expr::IntermediateExpr,
+    id::{ContextHandle, PropId, ValueId, VarId},
+    node::IntermediateInstruction,
+    types::IntermediateType,
 };
 
 #[derive(Debug)]

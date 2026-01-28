@@ -4,7 +4,7 @@ mod functions;
 mod helper;
 mod types;
 
-use std::{collections::HashMap, rc::Rc};
+use std::rc::Rc;
 
 use swc_atoms::Atom;
 use swc_common::{DUMMY_SP, SourceMap, SyntaxContext};
@@ -21,7 +21,7 @@ use crate::{
         IntermediateRepr,
         context::IntermediateContext,
         expr::{IntermediateExpr, IntermediateExprKind},
-        id::{ContextHandle, TyId},
+        id::ContextHandle,
         node::{IntermediateInstruction, IntermediateInstructionKind, IntermediatePlace},
     },
 };
@@ -31,7 +31,6 @@ pub struct WebCompiler {
     script: Script,
     contexts: Vec<JsFunction>,
     context_names: Vec<Ident>,
-    tyids: HashMap<TyId, Ident>,
 }
 
 pub fn create_ident(s: &str) -> Ident {
@@ -43,7 +42,6 @@ impl WebCompiler {
         Self {
             contexts: Vec::new(),
             context_names: Vec::new(),
-            tyids: HashMap::new(),
             script: Script::default(),
         }
     }
@@ -205,7 +203,7 @@ impl SlynxCompiler for WebCompiler {
                 })
             }
             IntermediateExprKind::Struct { exprs, .. } => {
-                self.compile_struct(&exprs, ctx, ir, handle)
+                self.compile_struct(exprs, ctx, ir, handle)
             }
             IntermediateExprKind::FieldAccess { parent, field } => {
                 self.compile_field_access(*parent, *field, ctx, ir, handle)

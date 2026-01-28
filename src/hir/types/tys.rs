@@ -1,6 +1,6 @@
 use crate::{
     hir::{
-        ExpressionId, TypeId, VariableId,
+        TypeId, VariableId,
         error::{HIRError, HIRErrorKind},
         symbols::SymbolPointer,
     },

@@ -56,7 +56,6 @@ impl SymbolsModule {
         }
     }
     pub fn intern(&mut self, s: &str) -> SymbolPointer {
-        let s = s.into();
         if let Some(ptr) = self.name_mapping.get(s) {
             *ptr
         } else {

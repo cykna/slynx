@@ -6,7 +6,7 @@ use color_eyre::eyre::Result;
 use crate::{
     checker::error::{IncompatibleComponentReason, TypeError, TypeErrorKind},
     hir::{
-        ExpressionId, SlynxHir, TypeId, VariableId,
+        SlynxHir, TypeId, VariableId,
         deffinitions::{
             ComponentMemberDeclaration, HirDeclaration, HirDeclarationKind, HirExpression,
             HirExpressionKind, HirStatment, HirStatmentKind, SpecializedComponent,
@@ -29,7 +29,6 @@ pub struct PropRef {
 pub struct TypeChecker {
     ///A an array of declaration types
     declarations: Vec<TypeId>,
-    expressions: HashMap<ExpressionId, TypeId>,
 
     types_module: TypesModule,
     /// The type of everything that is expected to have some
@@ -46,7 +45,6 @@ impl TypeChecker {
             structs: std::mem::take(&mut hir.declarations_module.objects),
             types_module: std::mem::take(&mut hir.types_module),
             declarations: Vec::new(),
-            expressions: HashMap::new(),
         };
         for decl in &mut hir.declarations {
             inner.check_decl(decl)?;
@@ -66,7 +64,7 @@ impl TypeChecker {
                 self.resolve_statments(statments, &decl.ty)?;
             }
             HirDeclarationKind::Object => {
-                self.declarations.push(decl.ty.clone());
+                self.declarations.push(decl.ty);
             }
 
             HirDeclarationKind::ComponentDeclaration { ref mut props } => {
@@ -148,7 +146,7 @@ impl TypeChecker {
                     unreachable!("Type should be a struct. Fields only happen to structs");
                 };
                 if let Some(index) = s_fields.iter().position(|name| *name == n) {
-                    Ok(fields[index].clone())
+                    Ok(fields[index])
                 } else {
                     Err(TypeError {
                         kind: TypeErrorKind::Unrecognized,
@@ -162,7 +160,7 @@ impl TypeChecker {
                 if let Some(ty) = self.types_module.get_variable(&rf).cloned() {
                     Ok(self.resolve(&ty, span)?)
                 } else {
-                    Ok(ty.clone())
+                    Ok(*ty)
                 }
             }
             HirType::Component { props } => {
@@ -173,7 +171,7 @@ impl TypeChecker {
                     }
                     tys
                 };
-                let HirType::Component { props } = self.types_module.get_type_mut(&ty) else {
+                let HirType::Component { props } = self.types_module.get_type_mut(ty) else {
                     unreachable!();
                 };
                 props.clear();
@@ -181,7 +179,7 @@ impl TypeChecker {
                 Ok(*ty)
             }
 
-            _ => Ok(ty.clone()),
+            _ => Ok(*ty),
         }
     }
 
@@ -203,7 +201,7 @@ impl TypeChecker {
             (out, inf) | (inf, out)
                 if *out != self.types_module.infer_id() && *inf == self.types_module.infer_id() =>
             {
-                Ok(out.clone())
+                Ok(*out)
             }
             (a, b) => {
                 let concrete_a = self.types_module.get_type(a).clone();
@@ -367,7 +365,7 @@ impl TypeChecker {
                 }
                 HirStatmentKind::Assign { lhs, value } => {
                     let refty = match self.types_module.get_type(&lhs.ty) {
-                        HirType::Field(FieldMethod::Type(_, _)) => lhs.ty.clone(),
+                        HirType::Field(FieldMethod::Type(_, _)) => lhs.ty,
                         HirType::Field(FieldMethod::Variable(v, name)) => {
                             let HirType::Reference { rf, .. } =
                                 self.retrieve_reference_of(v, &lhs.span)?
@@ -465,7 +463,7 @@ impl TypeChecker {
 
     /// Retrieves the type of the provided `expr`. Returns infer if it could not be inferred.
     fn get_type_of_expr(&mut self, expr: &mut HirExpression, span: &Span) -> Result<TypeId> {
-        let expected = expr.ty.clone();
+        let expected = expr.ty;
 
         let calc = match expr.kind {
             HirExpressionKind::Int(_) => self.types_module.int_id(),
@@ -491,11 +489,10 @@ impl TypeChecker {
             } => {
                 let obj = self.get_type_of_name(&name).clone();
                 self.resolve_object_types(&obj, fields)?;
-                let ty = self.types_module.insert_unnamed_type(HirType::Reference {
+                self.types_module.insert_unnamed_type(HirType::Reference {
                     rf: name,
                     generics: Vec::new(),
-                });
-                ty
+                })
             }
 
             HirExpressionKind::FieldAccess {
@@ -508,7 +505,7 @@ impl TypeChecker {
                 match self.types_module.get_type(&expr.ty) {
                     HirType::Field(FieldMethod::Variable(id, name)) => {
                         let HirType::Reference { rf, .. } =
-                            self.retrieve_reference_of(&id, &expr.span)?
+                            self.retrieve_reference_of(id, &expr.span)?
                         else {
                             unreachable!();
                         };
@@ -523,7 +520,7 @@ impl TypeChecker {
                             let HirType::Struct { fields } = self.types_module.get_type(&rf) else {
                                 unreachable!()
                             };
-                            fields[index].clone()
+                            fields[index]
                         } else {
                             return Err(TypeError {
                                 kind: TypeErrorKind::Unrecognized,
@@ -540,9 +537,8 @@ impl TypeChecker {
             }
         };
 
-        let unified = self.unify(&expected, &calc, span)?;
-        expr.ty = unified.clone();
-        Ok(unified)
+        expr.ty = self.unify(&expected, &calc, span)?;
+        Ok(expr.ty)
     }
 
     fn default_expr(&mut self, expr: &mut HirExpression) -> Result<()> {
@@ -668,7 +664,7 @@ impl TypeChecker {
                 }
             }
             HirDeclarationKind::ComponentDeclaration { ref mut props } => {
-                self.resolve_component_members(props, decl.ty.clone())?;
+                self.resolve_component_members(props, decl.ty)?;
             }
         }
         Ok(())

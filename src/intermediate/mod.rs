@@ -88,7 +88,7 @@ impl IntermediateRepr {
                     .insert_expr(IntermediateExpr::identifier(varid))
             }
             HirExpressionKind::Component { name, values, .. } => {
-                let name = self.types.get(&name).unwrap().clone();
+                let name = *self.types.get(&name).unwrap();
                 let eidx = self.generate_child(name, values);
                 if matches!(
                     self.active_context().ty,
@@ -140,7 +140,7 @@ impl IntermediateRepr {
                     props.push(out);
                 }
                 ComponentMemberDeclaration::Child { name, values, .. } => {
-                    let name = self.types.get(&name).unwrap().clone();
+                    let name = *self.types.get(&name).unwrap();
                     let idx = self.generate_child(name, values);
                     children.push(idx);
                 }
@@ -150,7 +150,7 @@ impl IntermediateRepr {
                 }
             }
         }
-        let name = self.context_mapping.get(&name).unwrap().clone();
+        let name = *self.context_mapping.get(&name).unwrap();
         //expr index
         let eidx = self
             .active_context()
@@ -241,7 +241,7 @@ impl IntermediateRepr {
     fn generate_place(&mut self, lhs: HirExpression) -> IntermediatePlace {
         match lhs.kind {
             HirExpressionKind::Identifier(id) => {
-                IntermediatePlace::Local(self.vars.get(&id).unwrap().clone())
+                IntermediatePlace::Local(*self.vars.get(&id).unwrap())
             }
             HirExpressionKind::FieldAccess { field_index, expr } => {
                 let expr = self.generate_expr(*expr);

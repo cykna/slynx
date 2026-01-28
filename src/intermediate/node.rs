@@ -1,7 +1,4 @@
-use crate::{
-    hir::VariableId,
-    intermediate::id::{ValueId, VarId},
-};
+use crate::intermediate::id::{ValueId, VarId};
 
 #[derive(Debug)]
 pub enum IntermediatePlace {

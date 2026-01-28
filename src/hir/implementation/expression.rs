@@ -246,9 +246,9 @@ impl SlynxHir {
             != discriminant(self.types_module.get_type(&rhs.ty))
         {
             if lhs.ty == self.types_module.infer_id() {
-                lhs.ty = rhs.ty.clone();
+                lhs.ty = rhs.ty;
             } else if rhs.ty == self.types_module.infer_id() {
-                rhs.ty = lhs.ty.clone();
+                rhs.ty = lhs.ty;
             }
         }
         let span = Span {
@@ -256,7 +256,7 @@ impl SlynxHir {
             end: lhs.span.end,
         };
         Ok(HirExpression {
-            ty: lhs.ty.clone(),
+            ty: lhs.ty,
             kind: HirExpressionKind::Binary {
                 lhs: Box::new(lhs),
                 op,

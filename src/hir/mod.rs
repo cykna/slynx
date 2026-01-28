@@ -254,7 +254,7 @@ impl SlynxHir {
                         match self
                             .retrieve_information_of_type(&arg.kind.identifier, &arg.kind.span)
                         {
-                            Ok((ty, _)) => Ok(self.create_variable(&arg.name, ty.clone(), false)),
+                            Ok((ty, _)) => Ok(self.create_variable(&arg.name, ty, false)),
                             Err(e) => Err(e),
                         }
                     })

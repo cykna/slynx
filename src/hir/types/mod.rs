@@ -92,6 +92,6 @@ impl TypesModule {
     pub fn get_type_from_name_mut(&mut self, name: &SymbolPointer) -> Option<&mut HirType> {
         self.type_names
             .get(name)
-            .and_then(|id| Some(&mut self.types[id.as_raw() as usize]))
+            .map(|id| &mut self.types[id.as_raw() as usize])
     }
 }

@@ -12,8 +12,7 @@ use crate::{
 impl SlynxHir {
     pub fn create_declaration(&mut self, name: &str, ty: TypeId) -> DeclarationId {
         let ptr = self.symbols_module.intern(name);
-        let function_id = self.declarations_module.create_declaration(ptr, ty);
-        function_id
+        self.declarations_module.create_declaration(ptr, ty)
     }
 
     ///Creates a type with the provided `name` and `ty`. Returns it's ID
@@ -49,21 +48,19 @@ impl SlynxHir {
         name: &str,
         span: &Span,
     ) -> Result<(TypeId, &HirType)> {
-        if let Ok(id) = self.get_typeid_of_name(name, &span) {
+        if let Ok(id) = self.get_typeid_of_name(name, span) {
             Ok((id, self.types_module.get_type(&id)))
+        } else if let Some(name_id) = self.symbols_module.retrieve(name)
+            && let Some(id) = self.types_module.get_id(name_id)
+        {
+            let ty = self.types_module.get_type(id);
+            Ok((*id, ty))
         } else {
-            if let Some(name_id) = self.symbols_module.retrieve(name)
-                && let Some(id) = self.types_module.get_id(name_id)
-            {
-                let ty = self.types_module.get_type(id);
-                Ok((*id, ty))
-            } else {
-                Err(HIRError {
-                    kind: HIRErrorKind::NameNotRecognized(name.to_string()),
-                    span: span.clone(),
-                }
-                .into())
+            Err(HIRError {
+                kind: HIRErrorKind::NameNotRecognized(name.to_string()),
+                span: span.clone(),
             }
+            .into())
         }
     }
     ///Retrieves the type of the provided `name` but in the global scope. The difference of a 'named' to a 'name' is that this function

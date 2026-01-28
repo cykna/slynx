@@ -46,7 +46,7 @@ impl DeclarationsModule {
     ) -> Option<(DeclarationId, TypeId)> {
         self.decls
             .get(symbol)
-            .and_then(|decl| Some((*decl, self.declaration_types[decl.as_raw() as usize])))
+            .map(|decl| (*decl, self.declaration_types[decl.as_raw() as usize]))
     }
 
     pub fn retrieve_declaration_type(&self, id: DeclarationId) -> TypeId {
