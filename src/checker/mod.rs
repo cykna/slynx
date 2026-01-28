@@ -193,17 +193,8 @@ impl TypeChecker {
     }
 
     #[inline]
-    fn get_type_of_name(&self, name: &TypeId, span: &Span) -> Result<HirType> {
-        self.types
-            .get(name)
-            .ok_or(
-                TypeError {
-                    kind: TypeErrorKind::Unrecognized,
-                    span: span.clone(),
-                }
-                .into(),
-            )
-            .cloned()
+    fn get_type_of_name(&self, name: &TypeId) -> &HirType {
+        self.types_module.get_type(name)
     }
 
     /// Tries to unify types `a` and `b` if possible
@@ -296,14 +287,17 @@ impl TypeChecker {
                         self.unify(&rf1, &rf2, span)
                     }
 
-                    (_, _) => Err(TypeError {
-                        kind: TypeErrorKind::IncompatibleTypes {
-                            expected: concrete_b,
-                            received: concrete_a,
-                        },
-                        span: span.clone(),
+                    (_, _) => {
+                        println!("{concrete_a:?} :=: {concrete_b:?}");
+                        Err(TypeError {
+                            kind: TypeErrorKind::IncompatibleTypes {
+                                expected: concrete_b,
+                                received: concrete_a,
+                            },
+                            span: span.clone(),
+                        }
+                        .into())
                     }
-                    .into()),
                 }
             }
         }
@@ -372,7 +366,7 @@ impl TypeChecker {
         for statment in statments {
             match &mut statment.kind {
                 HirStatmentKind::Variable { value, .. } => {
-                    value.ty = self.unify(&value.ty, ty, &value.span)?;
+                    value.ty = self.unify(&value.ty, &return_type, &value.span)?;
                 }
                 HirStatmentKind::Return { expr } => {
                     expr.ty = self.get_type_of_expr(expr, &statment.span)?;
@@ -470,7 +464,7 @@ impl TypeChecker {
         Ok(target)
     }
 
-    fn resolve_object_types(&mut self, ty: HirType, fields: &mut [HirExpression]) -> Result<()> {
+    fn resolve_object_types(&mut self, ty: &HirType, fields: &mut [HirExpression]) -> Result<()> {
         let HirType::Struct { fields: fields_tys } = ty else {
             unreachable!("When resolving object types, a type 'struct' should be provided");
         };
@@ -506,8 +500,8 @@ impl TypeChecker {
                 name,
                 ref mut fields,
             } => {
-                let obj = self.get_type_of_name(&name, span)?;
-                self.resolve_object_types(obj, fields)?;
+                let obj = self.get_type_of_name(&name).clone();
+                self.resolve_object_types(&obj, fields)?;
                 let ty = self.types_module.insert_unnamed_type(HirType::Reference {
                     rf: name,
                     generics: Vec::new(),
@@ -628,7 +622,7 @@ impl TypeChecker {
                                 };
                                 let propty = props[*index].2;
                                 let ty = self.unify(&propty, &ty, span)?;
-                                println!("{:?}", self.types_module.get_type_mut(&resolved));
+
                                 let HirType::Component { props } =
                                     self.types_module.get_type_mut(&resolved)
                                 else {
