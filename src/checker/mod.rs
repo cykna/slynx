@@ -48,7 +48,6 @@ impl TypeChecker {
             declarations: Vec::new(),
             expressions: HashMap::new(),
         };
-        println!("{:#?}", hir.declarations);
         for decl in &mut hir.declarations {
             inner.check_decl(decl)?;
         }

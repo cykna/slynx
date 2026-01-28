@@ -129,10 +129,6 @@ impl SlynxCompiler for WebCompiler {
                             left: AssignTarget::Simple(SimpleAssignTarget::Member(MemberExpr {
                                 span: DUMMY_SP,
                                 obj: Box::new(Expr::Ident({
-                                    println!(
-                                        "{parent:?} {:?}",
-                                        self.contexts[handle.0].variable_ids
-                                    );
                                     self.contexts[handle.0]
                                         .retrieve_varname(*parent)
                                         .cloned()
@@ -233,7 +229,6 @@ impl SlynxCompiler for WebCompiler {
     fn compile(mut self, ir: IntermediateRepr) -> Vec<u8> {
         for ctx in ir.contexts.iter() {
             let mut context = JsFunction::new(ctx.id);
-            println!("{ctx:#?}");
             self.hoist_ctx(ctx, &mut context);
             self.contexts.push(context);
         }
