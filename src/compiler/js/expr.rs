@@ -4,7 +4,11 @@ use swc_ecma_ast::{Expr, IdentName, MemberExpr, MemberProp, ObjectLit, PropOrSpr
 
 use crate::{
     compiler::{js::WebCompiler, slynx_compiler::SlynxCompiler},
-    intermediate::{IntermediateRepr, context::IntermediateContext, id::ValueId},
+    intermediate::{
+        IntermediateRepr,
+        context::IntermediateContext,
+        id::{ContextHandle, ValueId},
+    },
 };
 
 impl WebCompiler {
@@ -13,6 +17,7 @@ impl WebCompiler {
         exprs: &[ValueId],
         ctx: &IntermediateContext,
         ir: &IntermediateRepr,
+        handle: ContextHandle,
     ) -> Expr {
         Expr::Object(ObjectLit {
             span: DUMMY_SP,
@@ -22,7 +27,7 @@ impl WebCompiler {
                 .map(|(idx, ptr)| {
                     PropOrSpread::Prop(Box::new(Self::prop(
                         &format!("f{idx}"),
-                        self.compile_expression(&ctx.exprs[*ptr], ctx, ir),
+                        self.compile_expression(&ctx.exprs[*ptr], ctx, ir, handle),
                     )))
                 })
                 .collect(),
@@ -35,8 +40,9 @@ impl WebCompiler {
         field: usize,
         ctx: &IntermediateContext,
         ir: &IntermediateRepr,
+        handle: ContextHandle,
     ) -> Expr {
-        let parent = self.compile_expression(&ctx.exprs[parent], ctx, ir);
+        let parent = self.compile_expression(&ctx.exprs[parent], ctx, ir, handle);
         Expr::Member(MemberExpr {
             span: DUMMY_SP,
             obj: Box::new(parent),

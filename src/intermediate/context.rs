@@ -4,7 +4,7 @@ use crate::{
     hir::VariableId,
     intermediate::{
         expr::IntermediateExpr,
-        id::{GlobalId, ValueId},
+        id::{ContextHandle, PropId, ValueId},
         node::IntermediateInstruction,
         types::IntermediateType,
     },
@@ -13,7 +13,7 @@ use crate::{
 #[derive(Debug)]
 ///A Intermediate property used to bind an id to it's default value on the current context
 pub struct IntermediateProperty {
-    pub id: GlobalId,
+    pub id: PropId,
     pub ty: IntermediateType,
     pub default_value: Option<ValueId>,
 }
@@ -23,7 +23,7 @@ pub enum IntermediateContextType {
     Function {
         name: String,
         instructions: Vec<IntermediateInstruction>,
-        args: Vec<IntermediateType>,
+        args: Vec<(IntermediateType, VariableId)>,
         ret: IntermediateType,
     },
     Component {
@@ -34,7 +34,7 @@ pub enum IntermediateContextType {
 
 #[derive(Debug)]
 pub struct IntermediateContext {
-    pub id: GlobalId,
+    pub id: ContextHandle,
     pub exprs: Vec<IntermediateExpr>,
     ///A vector of pointer to the expressions
     pub vars: Vec<VariableId>,
@@ -44,9 +44,14 @@ pub struct IntermediateContext {
 }
 
 impl IntermediateContext {
-    pub fn new_function(name: String, args: Vec<IntermediateType>, ret: IntermediateType) -> Self {
+    pub fn new_function(
+        id: ContextHandle,
+        name: String,
+        args: Vec<(IntermediateType, VariableId)>,
+        ret: IntermediateType,
+    ) -> Self {
         Self {
-            id: GlobalId::new(),
+            id,
             exprs: Vec::new(),
             vars: Vec::new(),
             names: HashMap::new(),
@@ -58,9 +63,9 @@ impl IntermediateContext {
             },
         }
     }
-    pub fn new_component() -> Self {
+    pub fn new_component(id: ContextHandle) -> Self {
         Self {
-            id: GlobalId::new(),
+            id,
             exprs: Vec::new(),
             vars: Vec::new(),
             names: HashMap::new(),
@@ -98,11 +103,19 @@ impl IntermediateContext {
     }
     ///Inserts a new property on this component and returns it's property child index.
     ///Returns None if this isn't an component
-    pub fn insert_property(&mut self, expr: IntermediateProperty) -> Option<usize> {
+    pub fn insert_property(
+        &mut self,
+        value: Option<ValueId>,
+        ty: IntermediateType,
+    ) -> Option<PropId> {
         match &mut self.ty {
             IntermediateContextType::Component { properties, .. } => {
-                let prop = properties.len();
-                properties.push(expr);
+                let prop = PropId::from_raw(properties.len() as u64);
+                properties.push(IntermediateProperty {
+                    id: prop,
+                    ty,
+                    default_value: value,
+                });
                 Some(prop)
             }
             _ => None,

@@ -1,7 +1,7 @@
 use crate::{
     hir::VariableId,
     intermediate::{
-        id::{GlobalId, TyId, ValueId},
+        id::{ContextHandle, TyId, ValueId},
         string::StringHandle,
     },
     parser::ast::Operator,
@@ -23,7 +23,6 @@ pub struct NativeComponent {
 
 #[derive(Debug, Clone)]
 pub struct IntermediateExpr {
-    pub id: GlobalId,
     pub kind: IntermediateExprKind,
 }
 
@@ -50,10 +49,10 @@ pub enum IntermediateExprKind {
     },
     Identifier(VariableId),
     ///An component expresssion. The props are the public children that may require some input. A None value will result in passing to them undefined
-    ///and a Some(idx) will pass to them the expression on the `idx` of the current context
+    ///and a Some(value) will pass to them the expression on the `value` of the current context
     ///The children are the children for this component, so, an array of indices for more component expressions inside the ccurrent context
     Component {
-        id: TyId,
+        id: ContextHandle,
         props: Vec<Option<ValueId>>,
         children: Vec<ValueId>,
     },
@@ -64,7 +63,6 @@ impl IntermediateExpr {
     ///Creates a native `text` component with the provided `text`
     pub fn native_text(text: ValueId, props: Vec<Option<ValueId>>) -> Self {
         Self {
-            id: GlobalId::new(),
             kind: IntermediateExprKind::Native(NativeComponent {
                 kind: NativeComponentKind::Text { text },
                 props,
@@ -74,7 +72,6 @@ impl IntermediateExpr {
     ///Creates a native `rect` component with the provided `children`
     pub fn native_rect(children: Vec<ValueId>, props: Vec<Option<ValueId>>) -> Self {
         Self {
-            id: GlobalId::new(),
             kind: IntermediateExprKind::Native(NativeComponent {
                 kind: NativeComponentKind::Rect { children },
                 props,
@@ -83,7 +80,6 @@ impl IntermediateExpr {
     }
     pub fn field(expr: ValueId, field: usize) -> Self {
         Self {
-            id: GlobalId::new(),
             kind: IntermediateExprKind::FieldAccess {
                 parent: expr,
                 field,
@@ -92,16 +88,18 @@ impl IntermediateExpr {
     }
     pub fn strct(ty: TyId, fields: Vec<ValueId>) -> Self {
         Self {
-            id: GlobalId::new(),
             kind: IntermediateExprKind::Struct {
                 id: ty,
                 exprs: fields,
             },
         }
     }
-    pub fn component(id: TyId, props: Vec<Option<ValueId>>, children: Vec<ValueId>) -> Self {
+    pub fn component(
+        id: ContextHandle,
+        props: Vec<Option<ValueId>>,
+        children: Vec<ValueId>,
+    ) -> Self {
         Self {
-            id: GlobalId::new(),
             kind: IntermediateExprKind::Component {
                 id,
                 props,
@@ -111,31 +109,26 @@ impl IntermediateExpr {
     }
     pub fn identifier(varid: VariableId) -> Self {
         Self {
-            id: GlobalId::new(),
             kind: IntermediateExprKind::Identifier(varid),
         }
     }
     pub fn int(int: i32) -> Self {
         Self {
-            id: GlobalId::new(),
             kind: IntermediateExprKind::Int(int),
         }
     }
     pub fn float(float: f32) -> Self {
         Self {
-            id: GlobalId::new(),
             kind: IntermediateExprKind::Float(float),
         }
     }
     pub fn str(handle: StringHandle) -> Self {
         Self {
-            id: GlobalId::new(),
             kind: IntermediateExprKind::StringLiteral(handle),
         }
     }
     pub fn bin(lhs: ValueId, rhs: ValueId, operator: Operator) -> Self {
         Self {
-            id: GlobalId::new(),
             kind: IntermediateExprKind::Binary { lhs, rhs, operator },
         }
     }

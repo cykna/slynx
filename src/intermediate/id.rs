@@ -58,12 +58,13 @@ macro_rules! define_intermediate_id {
     };
 }
 
-// Definition of all specific IDs
+#[derive(Debug, Clone, Copy)]
+pub struct ContextHandle(pub usize);
 
 define_intermediate_id!(
-    GlobalId,
-    GLOBAL_COUNTER,
-    "An Unique ID that anything on the IR contains"
+    PropId,
+    PROPERTY_COUNTER,
+    "Unique ID for top-level declarations (functions, components, objects)"
 );
 define_intermediate_id!(
     DeclId,

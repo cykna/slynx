@@ -18,18 +18,18 @@ use crate::{
     intermediate::{
         context::{IntermediateContext, IntermediateContextType, IntermediateProperty},
         expr::IntermediateExpr,
-        id::{GlobalId, TyId, ValueId},
+        id::{ContextHandle, TyId, ValueId},
         node::{IntermediateInstruction, IntermediatePlace},
         string::StringPool,
         types::IntermediateType,
     },
 };
-
 #[derive(Debug, Default)]
 /// Struct used to represent the intermediate representation of Slynx. Will be used when being compiled. This contains the monomorfization of types
 /// and flat values of everything in the source code. It can be understood as the context itself of the IR
 pub struct IntermediateRepr {
     pub contexts: Vec<IntermediateContext>,
+    pub context_mapping: HashMap<TyId, ContextHandle>,
     pub types_mapping: HashMap<TyId, IntermediateType>,
     ///Mapping of high level types to low level types
     pub types: HashMap<TypeId, TyId>,
@@ -39,6 +39,7 @@ pub struct IntermediateRepr {
 impl IntermediateRepr {
     pub fn new() -> Self {
         Self {
+            context_mapping: HashMap::new(),
             types: HashMap::new(),
             contexts: Vec::new(),
             types_mapping: HashMap::new(),
@@ -138,6 +139,7 @@ impl IntermediateRepr {
                 }
             }
         }
+        let name = self.context_mapping.get(&name).unwrap().clone();
         //expr index
         let eidx = self
             .active_context()
@@ -186,19 +188,17 @@ impl IntermediateRepr {
         &mut self,
         props: Vec<ComponentMemberDeclaration>,
         tys: &[IntermediateType],
-    ) {
-        let expr = IntermediateContext::new_component();
+    ) -> ContextHandle {
+        let handle = ContextHandle(self.contexts.len());
+        let expr = IntermediateContext::new_component(handle);
 
         self.contexts.push(expr);
         for (idx, prop) in props.into_iter().enumerate() {
             match prop {
                 ComponentMemberDeclaration::Property { value, .. } => {
                     let default_value = value.map(|value| self.generate_expr(value));
-                    self.active_context().insert_property(IntermediateProperty {
-                        id: GlobalId::new(),
-                        default_value,
-                        ty: tys[idx].clone(),
-                    });
+                    self.active_context()
+                        .insert_property(default_value, tys[idx].clone());
                 }
                 ComponentMemberDeclaration::Specialized(spec) => {
                     self.generate_specialized(spec);
@@ -209,6 +209,7 @@ impl IntermediateRepr {
                 }
             }
         }
+        handle
     }
 
     pub fn generate_var(&mut self, name: crate::hir::VariableId, value: HirExpression) -> usize {
@@ -253,13 +254,13 @@ impl IntermediateRepr {
     /// Creates a new function with the provided `name` `id` and `statments` and returns its id
     pub fn generate_function(
         &mut self,
-        args: Vec<IntermediateType>,
+        args: Vec<(IntermediateType, VariableId)>,
         ret: IntermediateType,
         statments: Vec<HirStatment>,
         name: String,
-    ) -> usize {
-        let cidx = self.contexts.len();
-        let ctx = IntermediateContext::new_function(name, args, ret);
+    ) -> ContextHandle {
+        let handle = ContextHandle(self.contexts.len());
+        let ctx = IntermediateContext::new_function(handle, name, args, ret);
         self.contexts.push(ctx);
         for statment in statments {
             match statment.kind {
@@ -279,7 +280,7 @@ impl IntermediateRepr {
                 }
             };
         }
-        cidx
+        handle
     }
 
     pub fn generate(&mut self, decls: Vec<HirDeclaration>, module: TypesModule) {
@@ -295,7 +296,9 @@ impl IntermediateRepr {
                     self.types_mapping.insert(tyid, ty); // Convert DeclarationId to HirId
                 }
                 HirDeclarationKind::Function {
-                    statments, name, ..
+                    statments,
+                    name,
+                    args,
                 } => {
                     let HirType::Function {
                         args: tys,
@@ -305,9 +308,15 @@ impl IntermediateRepr {
                         unreachable!("Type of function decl should be function")
                     };
 
-                    let argsty = tys.iter().map(|ty| self.get_type(ty, &module)).collect();
+                    let argsty = tys
+                        .iter()
+                        .zip(&args)
+                        .map(|(ty, id)| (self.get_type(ty, &module), *id))
+                        .collect();
                     let ret = self.get_type(return_type, &module);
-                    self.generate_function(argsty, ret, statments, name);
+                    let handle = self.generate_function(argsty, ret, statments, name);
+                    let ty = TyId::new();
+                    self.context_mapping.insert(ty, handle);
                 }
                 HirDeclarationKind::ComponentDeclaration { props } => {
                     let mut tys = Vec::new();
@@ -319,9 +328,10 @@ impl IntermediateRepr {
                         tys.push(typ);
                     }
 
-                    self.generate_component(props, &tys); // Convert DeclarationId to HirId
+                    let handle = self.generate_component(props, &tys); // Convert DeclarationId to HirId
                     let ty = TyId::new();
                     self.types.insert(decl.ty, ty);
+                    self.context_mapping.insert(ty, handle);
                     self.types_mapping
                         .insert(ty, IntermediateType::Complex(tys));
                     // Convert DeclarationId to HirId

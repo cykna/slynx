@@ -371,7 +371,7 @@ impl TypeChecker {
         };
         for statment in statments {
             match &mut statment.kind {
-                HirStatmentKind::Variable { value, name } => {
+                HirStatmentKind::Variable { value, .. } => {
                     value.ty = self.unify(&value.ty, ty, &value.span)?;
                 }
                 HirStatmentKind::Return { expr } => {
@@ -652,7 +652,7 @@ impl TypeChecker {
 
     fn default_statment(&mut self, statment: &mut HirStatment, expected: &TypeId) -> Result<()> {
         match &mut statment.kind {
-            HirStatmentKind::Variable { name, value } => {
+            HirStatmentKind::Variable { value, .. } => {
                 value.ty = self.unify(&value.ty, expected, &statment.span)?;
             }
             HirStatmentKind::Assign { lhs, value } => {

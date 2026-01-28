@@ -8,6 +8,7 @@ use crate::{
     intermediate::{
         IntermediateRepr,
         context::{IntermediateContext, IntermediateContextType, IntermediateProperty},
+        id::ContextHandle,
         node::IntermediateInstruction,
     },
 };
@@ -18,13 +19,16 @@ impl WebCompiler {
         properties: &[IntermediateProperty],
         ctx: &IntermediateContext,
         ir: &IntermediateRepr,
+        handle: ContextHandle,
     ) -> Vec<Param> {
         properties
             .iter()
             .enumerate()
             .map(|(idx, prop)| {
                 let ident = Pat::Ident(BindingIdent {
-                    id: self.map_name(prop.id, &format!("a{idx}")),
+                    id: self.contexts[handle.0]
+                        .create_property(prop.id, &format!("a{idx}"))
+                        .clone(),
                     type_ann: None,
                 });
                 Param {
@@ -32,7 +36,12 @@ impl WebCompiler {
                         Pat::Assign(AssignPat {
                             span: DUMMY_SP,
                             left: Box::new(ident),
-                            right: Box::new(self.compile_expression(&ctx.exprs[default], ctx, ir)),
+                            right: Box::new(self.compile_expression(
+                                &ctx.exprs[default],
+                                ctx,
+                                ir,
+                                handle,
+                            )),
                         })
                     } else {
                         ident
@@ -57,8 +66,9 @@ impl WebCompiler {
         properties: &[IntermediateProperty],
         ctx: &IntermediateContext,
         ir: &IntermediateRepr,
+        handle: ContextHandle,
     ) {
-        let params = self.retrieve_component_params(properties, ctx, ir);
+        let params = self.retrieve_component_params(properties, ctx, ir, handle);
         let func = Function {
             params,
             is_async: false,
@@ -71,7 +81,7 @@ impl WebCompiler {
             body: Some(self.compile_component_body()),
         };
         let f = Decl::Fn(FnDecl {
-            ident: self.get_name(&ctx.id).clone(),
+            ident: self.context_names[handle.0].clone(),
             declare: false,
             function: Box::new(func),
         });
@@ -83,8 +93,9 @@ impl WebCompiler {
         instructions: &[IntermediateInstruction],
         ctx: &IntermediateContext,
         ir: &IntermediateRepr,
+        handle: ContextHandle,
     ) -> BlockStmt {
-        let stmts = self.compile_instructions(instructions, ctx, ir);
+        let stmts = self.compile_instructions(instructions, ctx, ir, handle);
 
         BlockStmt {
             span: DUMMY_SP,
@@ -93,13 +104,19 @@ impl WebCompiler {
         }
     }
 
-    pub fn compile_function(&mut self, ctx: &IntermediateContext, ir: &IntermediateRepr) {
+    pub fn compile_function(
+        &mut self,
+        ctx: &IntermediateContext,
+        ir: &IntermediateRepr,
+        handle: ContextHandle,
+    ) {
         let IntermediateContextType::Function {
             args, instructions, ..
         } = &ctx.ty
         else {
             unreachable!();
         };
+
         let func = Function {
             is_generator: false,
             is_async: false,
@@ -111,20 +128,22 @@ impl WebCompiler {
             params: args
                 .iter()
                 .enumerate()
-                .map(|(idx, _)| Param {
+                .map(|(idx, arg)| Param {
                     pat: Pat::Ident(BindingIdent {
-                        id: self.map_name(ctx.id, &format!("p{idx}")),
+                        id: self.contexts[handle.0]
+                            .create_variable(arg.1, &format!("p{idx}"))
+                            .clone(),
                         type_ann: None,
                     }),
                     span: DUMMY_SP,
                     decorators: Vec::new(),
                 })
                 .collect(),
-            body: Some(self.compile_func_body(instructions, ctx, ir)),
+            body: Some(self.compile_func_body(instructions, ctx, ir, handle)),
         };
 
         self.script.body.push(Stmt::Decl(Decl::Fn(FnDecl {
-            ident: self.get_name(&ctx.id).clone(),
+            ident: self.context_names[handle.0].clone(),
             declare: false,
             function: Box::new(func),
         })));

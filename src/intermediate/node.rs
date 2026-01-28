@@ -1,7 +1,4 @@
-use crate::{
-    hir::VariableId,
-    intermediate::id::{GlobalId, ValueId},
-};
+use crate::{hir::VariableId, intermediate::id::ValueId};
 
 #[derive(Debug)]
 pub enum IntermediatePlace {
@@ -15,7 +12,6 @@ pub enum IntermediatePlace {
 
 #[derive(Debug)]
 pub struct IntermediateInstruction {
-    pub id: GlobalId,
     pub kind: IntermediateInstructionKind,
 }
 
@@ -37,25 +33,21 @@ pub enum IntermediateInstructionKind {
 impl IntermediateInstruction {
     pub fn alloc(varialbe_id: VariableId) -> Self {
         Self {
-            id: GlobalId::new(),
             kind: IntermediateInstructionKind::Alloc(varialbe_id),
         }
     }
     pub fn mov(target: IntermediatePlace, value: ValueId) -> Self {
         Self {
-            id: GlobalId::new(),
             kind: IntermediateInstructionKind::Move { target, value },
         }
     }
     pub fn read(varialbe_id: VariableId) -> Self {
         Self {
-            id: GlobalId::new(),
             kind: IntermediateInstructionKind::Read(varialbe_id),
         }
     }
     pub fn ret(varialbe_id: ValueId) -> Self {
         Self {
-            id: GlobalId::new(),
             kind: IntermediateInstructionKind::Ret(varialbe_id),
         }
     }
