@@ -852,6 +852,12 @@ dependencies = [
 ]
 
 [[package]]
+name = "paste"
+version = "1.0.15"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "57c0d7b74b563b49d38dae00a0c37d4d6de9b432382b2892f0574ddcae73fd0a"
+
+[[package]]
 name = "percent-encoding"
 version = "2.3.2"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -974,6 +980,16 @@ name = "rand_core"
 version = "0.6.4"
 source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "ec0be4795e2f6a28069bec0b5ff3e2ac9bafc99e6a9a7dc3547996c5c816922c"
+
+[[package]]
+name = "rart"
+version = "0.2.1"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "6ee3cec64ffb4c34bf2ba812c017dda70807b2b46e59cabc9afe19baa2bb65c1"
+dependencies = [
+ "num-traits",
+ "simdeez",
+]
 
 [[package]]
 name = "redox_syscall"
@@ -1127,6 +1143,16 @@ dependencies = [
 ]
 
 [[package]]
+name = "simdeez"
+version = "2.0.0"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "e08cb8b1603106d47fbd32f34f5e4f332bb07c02c7b2c6ebad893e6f6ba53f9e"
+dependencies = [
+ "cfg-if",
+ "paste",
+]
+
+[[package]]
 name = "siphasher"
 version = "0.3.11"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -1145,6 +1171,7 @@ dependencies = [
  "clap",
  "color-eyre",
  "lalrpop",
+ "rart",
  "swc_atoms",
  "swc_common",
  "swc_ecma_ast",

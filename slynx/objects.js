@@ -1,6 +1,6 @@
 function c0() {
   ;
 }
-function f1() {
+function c1() {
   return c0();
 }

@@ -2,13 +2,15 @@ use std::sync::atomic::{AtomicU64, Ordering};
 
 /// Shared trait for all HIR IDs
 /// Ensures all IDs have consistent behavior
-pub trait HirIdTrait: Copy + Clone + std::fmt::Debug + std::hash::Hash + Eq + PartialEq {
+pub trait IntermediateIdTrait:
+    Copy + Clone + std::fmt::Debug + std::hash::Hash + Eq + PartialEq
+{
     fn as_u64(&self) -> u64;
     fn from_u64(value: u64) -> Self;
 }
 
 /// Macro to generate newtype wrappers for IDs with standard behavior
-macro_rules! define_hir_id {
+macro_rules! define_intermediate_id {
     ($name:ident, $counter:ident, $doc:expr) => {
         static $counter: AtomicU64 = AtomicU64::new(0);
 
@@ -36,7 +38,7 @@ macro_rules! define_hir_id {
             }
         }
 
-        impl HirIdTrait for $name {
+        impl IntermediateIdTrait for $name {
             #[inline]
             fn as_u64(&self) -> u64 {
                 self.0
@@ -56,40 +58,35 @@ macro_rules! define_hir_id {
     };
 }
 
-// Definition of all specific IDs
+#[derive(Debug, Clone, Copy)]
+pub struct ContextHandle(pub usize);
 
-define_hir_id!(
-    SymbolID,
-    SYMBOL_COUNTER,
-    "Unique ID to intern strings internally"
+define_intermediate_id!(
+    PropId,
+    PROPERTY_COUNTER,
+    "Unique ID for top-level declarations (functions, components, objects)"
 );
-
-define_hir_id!(
-    DeclarationId,
+define_intermediate_id!(
+    DeclId,
     DECLARATION_COUNTER,
     "Unique ID for top-level declarations (functions, components, objects)"
 );
 
-define_hir_id!(
-    ExpressionId,
+//Maybe child nodes might receive an specific id, but until now i dont see a reason to do so
+define_intermediate_id!(
+    ValueId,
     EXPRESSION_COUNTER,
-    "Unique ID for expressions"
+    "Unique ID for expressions (child nodes included)"
 );
 
-define_hir_id!(
-    VariableId,
+define_intermediate_id!(
+    VarId,
     VARIABLE_COUNTER,
     "Unique ID for variables (let/let mut)"
 );
 
-define_hir_id!(
-    PropertyId,
-    PROPERTY_COUNTER,
-    "Unique ID for component properties"
-);
-
-define_hir_id!(
-    TypeId,
+define_intermediate_id!(
+    TyId,
     TYPE_COUNTER,
     "Unique ID for custom types (structs, objects, components)"
 );
@@ -100,23 +97,23 @@ mod tests {
 
     #[test]
     fn test_id_uniqueness() {
-        let id1 = DeclarationId::new();
-        let id2 = DeclarationId::new();
+        let id1 = DeclId::new();
+        let id2 = DeclId::new();
         assert_ne!(id1, id2);
     }
 
     #[test]
     fn test_id_ordering() {
-        let id1 = ExpressionId::new();
-        let id2 = ExpressionId::new();
+        let id1 = ValueId::new();
+        let id2 = ValueId::new();
         assert!(id1 < id2);
     }
 
     #[test]
     fn test_id_raw_conversion() {
-        let id = VariableId::new();
+        let id = VarId::new();
         let raw = id.as_raw();
-        let reconstructed = VariableId::from_raw(raw);
+        let reconstructed = VarId::from_raw(raw);
         assert_eq!(id, reconstructed);
     }
 }

@@ -4,7 +4,7 @@ use color_eyre::eyre::Result;
 
 use crate::{
     hir::{
-        ExpressionId, SlynxHir,
+        ExpressionId, SlynxHir, TypeId,
         deffinitions::{HirExpression, HirExpressionKind},
         error::{HIRError, HIRErrorKind},
         types::{FieldMethod, HirType},
@@ -12,40 +12,34 @@ use crate::{
     parser::ast::{ASTExpression, ASTExpressionKind, NamedExpr, Operator, Span},
 };
 
-#[allow(deprecated)]
-use crate::hir::HirId;
-
 impl SlynxHir {
     pub fn organized_object_fields(
         &mut self,
-        objid: HirId,
-        ty: &HirType,
+        ty: TypeId,
         fields: Vec<NamedExpr>,
         span: &Span,
     ) -> Result<HirExpressionKind> {
-        let HirType::Struct {
-            fields: field_types,
-        } = ty
-        else {
-            unreachable!("Type when organizing object fields should be a struct");
-        };
-        let Some(defined_layout) = self.objects_deffinitions.get(&objid) else {
+        let Some(defined_layout) = self.declarations_module.retrieve_object_body(ty) else {
             unreachable!(
                 "The deffinition of this should have been defined during hoisting and the resolving of it"
             )
         };
+        let defined_layout = defined_layout.to_vec();
         if defined_layout.len() != fields.len() {
             if defined_layout.len() > fields.len() {
                 let missing_fields = defined_layout
                     .iter()
                     .filter_map(|field| {
-                        if fields.iter().any(|f| &f.name == field) {
+                        if fields
+                            .iter()
+                            .any(|f| self.symbols_module.intern(&f.name) == *field)
+                        {
                             None
                         } else {
-                            Some(field.clone())
+                            Some(self.symbols_module[*field].to_string())
                         }
                     })
-                    .collect::<Vec<String>>();
+                    .collect::<Vec<_>>();
                 return Err(HIRError {
                     kind: HIRErrorKind::MissingProperty {
                         prop_names: missing_fields,
@@ -57,7 +51,9 @@ impl SlynxHir {
                 let non_existent_fields = fields
                     .into_iter()
                     .filter(|provided_field| {
-                        !defined_layout.iter().any(|f| f == &provided_field.name)
+                        !defined_layout
+                            .iter()
+                            .any(|f| *f == self.symbols_module.intern(&provided_field.name))
                     })
                     .map(|f| f.name)
                     .collect::<Vec<String>>();
@@ -72,15 +68,22 @@ impl SlynxHir {
         }
         let mut out = Vec::with_capacity(fields.len());
         let mut non_recognized_fields = Vec::with_capacity(fields.len());
-        let cloned_layout = defined_layout.clone();
+
+        let HirType::Struct {
+            fields: field_types,
+        } = self.types_module.get_type(&ty).clone()
+        else {
+            unreachable!();
+        };
         for field in fields {
-            if let Some(field_idx) = cloned_layout
+            if let Some(field_idx) = defined_layout
                 .iter()
-                .position(|defined_field| &field.name == defined_field)
+                .position(|defined_field| &self.symbols_module.intern(&field.name) == defined_field)
             {
+                let ty = field_types[field_idx];
                 out.insert(
                     field_idx.max(out.len()),
-                    self.resolve_expr(field.expr, Some(&field_types[field_idx]))?,
+                    self.resolve_expr(field.expr, Some(ty))?,
                 );
             } else {
                 non_recognized_fields.push(field.name);
@@ -88,7 +91,7 @@ impl SlynxHir {
         }
         if non_recognized_fields.is_empty() {
             Ok(HirExpressionKind::Object {
-                name: objid,
+                name: ty,
                 fields: out,
             })
         } else {
@@ -106,56 +109,71 @@ impl SlynxHir {
     pub fn resolve_expr(
         &mut self,
         expr: ASTExpression,
-        ty: Option<&HirType>,
+        ty: Option<TypeId>,
     ) -> Result<HirExpression> {
         match expr.kind {
             ASTExpressionKind::Binary { lhs, op, rhs } => self.resolve_binary(*lhs, op, *rhs, ty),
             ASTExpressionKind::StringLiteral(s) => Ok(HirExpression {
-                id: ExpressionId::new(),  // Changed to ExpressionId
-                ty: HirType::Str,
+                id: ExpressionId::new(), // Changed to ExpressionId
+                ty: self.types_module.str_id(),
                 kind: HirExpressionKind::StringLiteral(s),
                 span: expr.span,
             }),
             ASTExpressionKind::Identifier(name) => {
-                let id = self.retrieve_information_of_scoped(&name, &expr.span)?;
+                let id = *self.get_variable(&name, &expr.span)?;
+                let tyid = self
+                    .types_module
+                    .insert_type(self.symbols_module.intern(&name), HirType::VarReference(id));
                 Ok(HirExpression {
                     kind: HirExpressionKind::Identifier(id),
-                    id: ExpressionId::new(),  // Changed to ExpressionId
-                    ty: HirType::VarReference(id),
+                    id: ExpressionId::new(), // Changed to ExpressionId
+                    ty: tyid,
                     span: expr.span,
                 })
             }
             ASTExpressionKind::IntLiteral(int) => Ok(HirExpression {
                 kind: HirExpressionKind::Int(int),
-                ty: HirType::Int,
-                id: ExpressionId::new(),  // Changed to ExpressionId
+                ty: self.types_module.int_id(),
+                id: ExpressionId::new(), // Changed to ExpressionId
                 span: expr.span,
             }),
 
-            ASTExpressionKind::FloatLiteral(float) => Ok(HirExpression::float(float, expr.span)),
+            ASTExpressionKind::FloatLiteral(float) => Ok(self.create_floatexpr(float, expr.span)),
             ASTExpressionKind::Component(component) => {
-                let (id, ty) =
-                    self.retrieve_information_of(&component.name.identifier, &component.span)?;
+                let (id, _) =
+                    self.retrieve_information_of_type(&component.name.identifier, &component.span)?;
 
                 Ok(HirExpression {
                     kind: HirExpressionKind::Component {
                         name: id,
-                        values: self.resolve_component_members(component.values, &ty)?,
+                        values: self.resolve_component_members(component.values, id)?,
                     },
-                    id: ExpressionId::new(),  // Changed to ExpressionId
-                    ty,
+                    id: ExpressionId::new(), // Changed to ExpressionId
+                    ty: id,
                     span: expr.span,
                 })
             }
             ASTExpressionKind::ObjectExpression { name, fields } => {
-                let (id, ty) = self.retrieve_information_of(&name.identifier, &expr.span)?;
-                let kind = self.organized_object_fields(id, &ty, fields, &expr.span)?;
+                let symbol = self.symbols_module.intern(&name.identifier);
+                let Some((_, ty)) = self
+                    .declarations_module
+                    .retrieve_declaration_data_by_name(&symbol)
+                else {
+                    return Err(HIRError {
+                        kind: HIRErrorKind::NameNotRecognized(name.identifier),
+                        span: name.span,
+                    }
+                    .into());
+                };
+
+                let kind = self.organized_object_fields(ty, fields, &expr.span)?;
+                let ty = self.types_module.insert_unnamed_type(HirType::Reference {
+                    rf: ty,
+                    generics: Vec::new(),
+                });
                 Ok(HirExpression {
-                    id: ExpressionId::new(),  // Changed to ExpressionId
-                    ty: HirType::Reference {
-                        rf: id,
-                        generics: Vec::new(),
-                    },
+                    id: ExpressionId::new(), // Changed to ExpressionId
+                    ty,
                     kind,
                     span: expr.span,
                 })
@@ -163,18 +181,23 @@ impl SlynxHir {
             ASTExpressionKind::FieldAccess { parent, field } => {
                 let parent = self.resolve_expr(*parent, None)?;
                 let HirExpression { ref ty, .. } = parent;
-                match ty {
+                match self.types_module.get_type(ty) {
                     HirType::Reference { rf, .. } => {
                         if let Some(index) = self
-                            .objects_deffinitions
-                            .get(rf)
+                            .declarations_module
+                            .retrieve_object_body(*rf)
                             .expect("Object should have been defined")
                             .iter()
-                            .position(|struct_field| &field == struct_field)
+                            .position(|struct_field| {
+                                &self.symbols_module.intern(&field) == struct_field
+                            })
                         {
+                            let ty = self
+                                .types_module
+                                .insert_unnamed_type(HirType::Field(FieldMethod::Type(*ty, index)));
                             Ok(HirExpression {
-                                id: ExpressionId::new(),  // Changed to ExpressionId
-                                ty: HirType::Field(FieldMethod::Type(*rf, index)),
+                                id: ExpressionId::new(), // Changed to ExpressionId
+                                ty,
                                 kind: HirExpressionKind::FieldAccess {
                                     expr: Box::new(parent),
                                     field_index: index,
@@ -191,15 +214,20 @@ impl SlynxHir {
                             .into())
                         }
                     }
-                    HirType::VarReference(rf) => Ok(HirExpression {
-                        id: ExpressionId::new(),  // Changed to ExpressionId
-                        ty: HirType::Field(FieldMethod::Variable(*rf, field)),
-                        kind: HirExpressionKind::FieldAccess {
-                            expr: Box::new(parent),
-                            field_index: usize::MAX,
-                        },
-                        span: expr.span,
-                    }),
+                    HirType::VarReference(rf) => {
+                        let ty = self.types_module.insert_unnamed_type(HirType::Field(
+                            FieldMethod::Variable(*rf, self.symbols_module.intern(&field)),
+                        ));
+                        Ok(HirExpression {
+                            id: ExpressionId::new(), // Changed to ExpressionId
+                            ty,
+                            kind: HirExpressionKind::FieldAccess {
+                                expr: Box::new(parent),
+                                field_index: usize::MAX,
+                            },
+                            span: expr.span,
+                        })
+                    }
                     u => unreachable!("{u:?}"),
                 }
             }
@@ -210,15 +238,17 @@ impl SlynxHir {
         lhs: ASTExpression,
         op: Operator,
         rhs: ASTExpression,
-        ty: Option<&HirType>,
+        ty: Option<TypeId>,
     ) -> Result<HirExpression> {
         let mut lhs = self.resolve_expr(lhs, ty)?;
         let mut rhs = self.resolve_expr(rhs, ty)?;
-        if discriminant(&lhs.ty) != discriminant(&rhs.ty) {
-            if matches!(lhs.ty, HirType::Infer) {
-                lhs.ty = rhs.ty.clone();
-            } else if matches!(rhs.ty, HirType::Infer) {
-                rhs.ty = lhs.ty.clone();
+        if discriminant(self.types_module.get_type(&lhs.ty))
+            != discriminant(self.types_module.get_type(&rhs.ty))
+        {
+            if lhs.ty == self.types_module.infer_id() {
+                lhs.ty = rhs.ty;
+            } else if rhs.ty == self.types_module.infer_id() {
+                rhs.ty = lhs.ty;
             }
         }
         let span = Span {
@@ -226,14 +256,33 @@ impl SlynxHir {
             end: lhs.span.end,
         };
         Ok(HirExpression {
-            ty: lhs.ty.clone(),
+            ty: lhs.ty,
             kind: HirExpressionKind::Binary {
                 lhs: Box::new(lhs),
                 op,
                 rhs: Box::new(rhs),
             },
-            id: ExpressionId::new(),  // Changed to ExpressionId
+            id: ExpressionId::new(), // Changed to ExpressionId
             span,
         })
+    }
+    /// Creates an int expression that must be inferred.
+    pub fn create_intexpr(&self, i: i32, span: Span) -> HirExpression {
+        HirExpression {
+            kind: HirExpressionKind::Int(i),
+            id: ExpressionId::new(),
+            ty: self.types_module.infer_id(),
+            span,
+        }
+    }
+
+    /// Creates a float expression.
+    pub fn create_floatexpr(&self, float: f32, span: Span) -> HirExpression {
+        HirExpression {
+            kind: HirExpressionKind::Float(float),
+            id: ExpressionId::new(),
+            ty: self.types_module.float_id(),
+            span,
+        }
     }
 }

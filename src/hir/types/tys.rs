@@ -1,7 +1,8 @@
 use crate::{
     hir::{
-        HirId,
-        error::{HIRError, HIRErrorKind, InvalidTypeReason},
+        TypeId, VariableId,
+        error::{HIRError, HIRErrorKind},
+        symbols::SymbolPointer,
     },
     parser::ast::{GenericIdentifier, VisibilityModifier},
 };
@@ -19,20 +20,20 @@ pub enum FieldMethod {
     /// }```
     ///
     /// Since `p`'s type is Reference {rf: Person, generics: vec![]}, `p.age` is is Field(FieldMethod(Person, 1))
-    Type(HirId, usize),
+    Type(TypeId, usize),
     ///This is the same of the `type` variant, but since the provided `id` is the id of some variable whose type may be a Reference to a type, or
     ///a reference to another variable that references a type, we must store the field being accessed and check it on the type checker
-    Variable(HirId, String),
+    Variable(VariableId, SymbolPointer),
 }
 
 #[derive(Debug, Clone)]
 pub enum HirType {
     Struct {
-        fields: Vec<HirType>,
+        fields: Vec<TypeId>,
     },
 
     Vector {
-        ty: Box<HirType>,
+        ty: TypeId,
     },
     ///This reference type can be understood better explained like
     ///object Name<T> {
@@ -44,21 +45,21 @@ pub enum HirType {
     ///Here, Name is the reference to the object type 'Name' with generic being 'int'
     Reference {
         ///The reference to the type this type maps to
-        rf: HirId,
+        rf: TypeId,
         ///If its got a generic
-        generics: Vec<HirType>,
+        generics: Vec<TypeId>,
     },
 
     ///A type that references the type of another value. The provided `id` is the ID of this value
-    VarReference(HirId),
+    VarReference(VariableId),
 
     ///The type of the Nth field on the struct/object with the provided `id`. If the struct is defined as
     /// struct S {a:int, b:str}, then Field(S_ID, 0) == int
     Field(FieldMethod),
 
     Function {
-        args: Vec<HirType>,
-        return_type: Box<HirType>,
+        args: Vec<TypeId>,
+        return_type: TypeId,
     },
     ///A type used for floats. This is by default the type of js.
     Float,
@@ -72,13 +73,15 @@ pub enum HirType {
     GenericComponent,
     ///A type specific for components
     Component {
-        props: Vec<(VisibilityModifier, String, HirType)>,
+        props: Vec<(VisibilityModifier, String, TypeId)>,
     },
     ///A type that represents no value
     Void,
     ///Type that must be resolved during type check
     Infer,
 }
+
+//On modificating some of the type ids, please check before on TypesModule, to see how the
 
 impl HirType {
     ///Tries to retrieve a value from its `gener`(ic) type
@@ -89,18 +92,6 @@ impl HirType {
             "int" => Ok(Self::Int),
             "float" => Ok(Self::Float),
             "str" => Ok(Self::Str),
-            "Vector" => {
-                let generic_ty = gener.generic.as_ref().ok_or(HIRError {
-                    kind: HIRErrorKind::InvalidType {
-                        ty: gener.to_string(),
-                        reason: InvalidTypeReason::MissingGeneric,
-                    },
-                    span: gener.span.clone(),
-                })?;
-                Ok(Self::Vector {
-                    ty: Box::new(Self::new(&generic_ty[0])?),
-                })
-            }
             _ => Err(HIRError {
                 kind: HIRErrorKind::TypeNotRecognized(gener.to_string()),
                 span: gener.span.clone(),
