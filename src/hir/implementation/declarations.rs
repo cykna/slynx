@@ -23,7 +23,9 @@ impl SlynxHir {
         let mut fields = {
             let mut out = Vec::with_capacity(fields.len());
             for field in &fields {
-                if field.name.kind.to_string() == name.to_string() {
+                if self.symbols_module.intern(&field.name.name)
+                    == self.symbols_module.intern(&name.identifier)
+                {
                     return Err(HIRError {
                         kind: HIRErrorKind::RecursiveType {
                             ty: name.to_string(),
@@ -32,25 +34,38 @@ impl SlynxHir {
                     }
                     .into());
                 }
-                out.push(self.retrieve_type_of_name(&field.name.kind, &field.name.span)?);
+                out.push(
+                    self.retrieve_information_of_type(
+                        &field.name.kind.identifier,
+                        &field.name.span,
+                    )?
+                    .0,
+                );
             }
             out
         };
-        let id = self.retrieve_hirdid_of(&name.to_string(), &name.span)?;
-        let HirType::Struct { fields: ty_field } =
-            self.retrieve_ref_to_type(&name.identifier, &name.span)?
-        else {
+        let symbol = self.get_symbol_of(&name.identifier, &name.span)?;
+        let (decl, declty) = if let Some(data) = self
+            .declarations_module
+            .retrieve_declaration_data_by_name(&symbol)
+        {
+            data
+        } else {
+            return Err(HIRError {
+                kind: HIRErrorKind::NameNotRecognized(name.identifier),
+                span: name.span,
+            }
+            .into());
+        };
+        let HirType::Struct { fields: ty_field } = self.types_module.get_type_mut(&declty) else {
             unreachable!("WTF. Type of object should be a Struct ty");
         };
 
         ty_field.append(&mut fields);
-        let ty = HirType::Struct {
-            fields: ty_field.clone(),
-        };
         self.declarations.push(HirDeclaration {
             kind: HirDeclarationKind::Object,
-            id: id.into(),  // Convert HirId to DeclarationId
-            ty,
+            id: decl,
+            ty: declty,
             span,
         });
 
@@ -62,9 +77,17 @@ impl SlynxHir {
         name: &GenericIdentifier,
         obj_fields: &[ObjectField],
     ) -> Result<()> {
-        let def_fields = obj_fields.iter().map(|f| f.name.name.clone()).collect();
-        let id = self.create_hirid_for(name.to_string(), HirType::Struct { fields: Vec::new() });
-        self.objects_deffinitions.insert(id, def_fields);
+        let name = self.symbols_module.intern(&name.identifier);
+        let def_fields = obj_fields
+            .iter()
+            .map(|f| self.symbols_module.intern(&f.name.name))
+            .collect();
+
+        let ty = self
+            .types_module
+            .insert_type(name, HirType::Struct { fields: Vec::new() });
+
+        self.declarations_module.create_object(name, ty, def_fields);
         Ok(())
     }
 
@@ -77,17 +100,18 @@ impl SlynxHir {
         let args = {
             let mut vec = Vec::with_capacity(args.len());
             for arg in args {
-                let ty = self.retrieve_type_of_name(&arg.kind, &arg.span)?;
-                vec.push(ty);
+                let (id, _) = self.retrieve_information_of_type(&arg.kind.identifier, &arg.span)?;
+                vec.push(id);
             }
             vec
         };
         let func_ty = HirType::Function {
             args,
-            return_type: Box::new(self.retrieve_type_of_name(return_type, &return_type.span)?),
+            return_type: self.get_typeid_of_name(&return_type.identifier, &return_type.span)?,
         };
-
-        self.create_hirid_for(name.to_string(), func_ty);
+        let symbol = self.symbols_module.intern(&name.identifier);
+        let id = self.define_type(symbol, func_ty);
+        self.create_declaration(&name.identifier, id);
         Ok(())
     }
 
@@ -147,24 +171,24 @@ impl SlynxHir {
             match def.kind {
                 ComponentMemberKind::Property { ty, rhs, name, .. } => {
                     let ty = if let Some(ty) = ty {
-                        self.retrieve_type_of_name(&ty, &ty.span)?
+                        self.retrieve_information_of_type(&ty.identifier, &ty.span)?
+                            .0
                     } else {
-                        HirType::Infer
+                        self.types_module.infer_id()
                     };
-                    let id = PropertyId::new();  // Changed to PropertyId
+
                     out.push(ComponentMemberDeclaration::Property {
-                        id,
+                        id: PropertyId::new(),
                         index: prop_idx,
                         value: if let Some(rhs) = rhs {
-                            Some(self.resolve_expr(rhs, Some(&ty))?)
+                            Some(self.resolve_expr(rhs, Some(ty))?)
                         } else {
                             None
                         },
                         span: def.span,
                     });
-                    // Convert PropertyId to HirId for scope
-                    let hirid = id.into();
-                    self.last_scope().insert_name(hirid, name);
+
+                    self.create_variable(&name, ty, true);
                     prop_idx += 1;
                 }
                 ComponentMemberKind::Child(child) => {
@@ -174,9 +198,11 @@ impl SlynxHir {
                             out.push(ComponentMemberDeclaration::Specialized(text));
                         }
                         _ => {
-                            let (id, ty) =
-                                self.retrieve_information_of(&child.name.identifier, &child.span)?;
-                            let values = self.resolve_component_members(child.values, &ty)?;
+                            let (id, _) = self.retrieve_information_of_type(
+                                &child.name.identifier,
+                                &child.span,
+                            )?;
+                            let values = self.resolve_component_members(child.values, id)?;
                             out.push(ComponentMemberDeclaration::Child {
                                 name: id,
                                 values,

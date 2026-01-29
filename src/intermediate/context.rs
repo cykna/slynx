@@ -1,18 +1,18 @@
-use std::collections::HashMap;
+use std::{collections::HashMap, ops::Index};
 
-use crate::{
-    hir::HirId,
-    intermediate::{
-        expr::IntermediateExpr, node::IntermediateInstruction, types::IntermediateType,
-    },
+use crate::intermediate::{
+    expr::IntermediateExpr,
+    id::{ContextHandle, PropId, ValueId, VarId},
+    node::IntermediateInstruction,
+    types::IntermediateType,
 };
 
 #[derive(Debug)]
 ///A Intermediate property used to bind an id to it's default value on the current context
 pub struct IntermediateProperty {
-    pub id: HirId,
+    pub id: PropId,
     pub ty: IntermediateType,
-    pub default_value: Option<usize>,
+    pub default_value: Option<ValueId>,
 }
 
 #[derive(Debug)]
@@ -20,31 +20,31 @@ pub enum IntermediateContextType {
     Function {
         name: String,
         instructions: Vec<IntermediateInstruction>,
-        args: Vec<(IntermediateType, HirId)>,
+        args: Vec<(IntermediateType, VarId)>,
         ret: IntermediateType,
     },
     Component {
         properties: Vec<IntermediateProperty>,
-        children: Vec<usize>,
+        children: Vec<ValueId>,
     },
 }
 
 #[derive(Debug)]
 pub struct IntermediateContext {
-    pub id: HirId,
+    pub id: ContextHandle,
     pub exprs: Vec<IntermediateExpr>,
     ///A vector of pointer to the expressions
-    pub vars: Vec<HirId>,
+    pub vars: Vec<VarId>,
     ///Maps some name to an expression
-    pub names: HashMap<HirId, usize>,
+    pub names: HashMap<VarId, usize>,
     pub ty: IntermediateContextType,
 }
 
 impl IntermediateContext {
     pub fn new_function(
-        id: HirId,
+        id: ContextHandle,
         name: String,
-        args: Vec<(IntermediateType, HirId)>,
+        args: Vec<(IntermediateType, VarId)>,
         ret: IntermediateType,
     ) -> Self {
         Self {
@@ -60,7 +60,7 @@ impl IntermediateContext {
             },
         }
     }
-    pub fn new_component(id: HirId) -> Self {
+    pub fn new_component(id: ContextHandle) -> Self {
         Self {
             id,
             exprs: Vec::new(),
@@ -73,16 +73,16 @@ impl IntermediateContext {
         }
     }
 
-    pub fn allocate(&mut self, id: HirId) -> usize {
+    pub fn allocate(&mut self, id: VarId) -> usize {
         let out = self.vars.len();
-        self.insert_instruction(IntermediateInstruction::Alloc(id));
+        self.insert_instruction(IntermediateInstruction::alloc(id));
         self.vars.push(id);
         out
     }
 
     ///Inserts the provided `expr` on this context and returns it's id
-    pub fn insert_expr(&mut self, expr: IntermediateExpr) -> usize {
-        let id = self.exprs.len();
+    pub fn insert_expr(&mut self, expr: IntermediateExpr) -> ValueId {
+        let id = ValueId::from_raw(self.exprs.len() as u64);
         self.exprs.push(expr);
         id
     }
@@ -100,11 +100,19 @@ impl IntermediateContext {
     }
     ///Inserts a new property on this component and returns it's property child index.
     ///Returns None if this isn't an component
-    pub fn insert_property(&mut self, expr: IntermediateProperty) -> Option<usize> {
+    pub fn insert_property(
+        &mut self,
+        value: Option<ValueId>,
+        ty: IntermediateType,
+    ) -> Option<PropId> {
         match &mut self.ty {
             IntermediateContextType::Component { properties, .. } => {
-                let prop = properties.len();
-                properties.push(expr);
+                let prop = PropId::from_raw(properties.len() as u64);
+                properties.push(IntermediateProperty {
+                    id: prop,
+                    ty,
+                    default_value: value,
+                });
                 Some(prop)
             }
             _ => None,
@@ -112,16 +120,23 @@ impl IntermediateContext {
     }
 
     ///Creates a new child that value is the provided `expr` in this context. Returns its index if this is a context, else None, and does nothing
-    pub fn insert_child(&mut self, expr: usize) -> Option<usize> {
+    pub fn insert_child(&mut self, expr: ValueId) -> Option<ValueId> {
         if let IntermediateContextType::Component {
             ref mut children, ..
         } = self.ty
         {
             let id = children.len();
             children.push(expr);
-            Some(id)
+            Some(ValueId::from_raw(id as u64))
         } else {
             None
         }
+    }
+}
+
+impl Index<ValueId> for Vec<IntermediateExpr> {
+    type Output = IntermediateExpr;
+    fn index(&self, index: ValueId) -> &Self::Output {
+        &self[index.as_raw() as usize]
     }
 }

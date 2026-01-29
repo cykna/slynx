@@ -1,23 +1,28 @@
+pub mod declarations;
 pub mod deffinitions;
 pub mod error;
 pub mod id; // New module for specific IDs
 mod implementation;
-mod scope;
+pub mod names;
+mod scopes;
+pub mod symbols;
 pub mod types;
 
-use std::{collections::HashMap, sync::atomic::AtomicU64};
+use std::collections::HashMap;
 
 use color_eyre::eyre::Result;
 
 use crate::{
     hir::{
+        declarations::DeclarationsModule,
         deffinitions::{
             ComponentMemberDeclaration, HirDeclaration, HirDeclarationKind, HirStatment,
             HirStatmentKind,
         },
         error::{HIRError, HIRErrorKind},
-        scope::HIRScope,
-        types::HirType,
+        scopes::ScopeModule,
+        symbols::SymbolsModule,
+        types::{HirType, TypesModule},
     },
     parser::ast::{
         ASTDeclaration, ASTDeclarationKind, ASTStatmentKind, ComponentMemberKind,
@@ -28,54 +33,31 @@ use crate::{
 // Re-export new ID types for convenience
 pub use id::{DeclarationId, ExpressionId, PropertyId, TypeId, VariableId};
 
-// Keep old HirId temporarily for backward compatibility during migration
-static ACCUMULATOR: AtomicU64 = AtomicU64::new(0);
-
-#[derive(Debug, Clone, Copy, Hash, PartialEq, Eq, PartialOrd, Ord)]
-#[deprecated(
-    since = "0.1.0",
-    note = "Use specific ID types (DeclarationId, ExpressionId, etc.) instead"
-)]
-/// An ID for name resolution on the HIR
-/// DEPRECATED: Use specific ID types instead
-pub struct HirId(pub u64);
-
-impl Default for HirId {
-    fn default() -> Self {
-        HirId::new()
-    }
-}
-
-impl HirId {
-    pub fn new() -> Self {
-        Self(ACCUMULATOR.fetch_add(1, std::sync::atomic::Ordering::Relaxed))
-    }
-}
-
 #[derive(Debug, Default)]
 pub struct SlynxHir {
-    /// Maps a name N to its ID on the HIR. This is for something like function declaration and function call.
-    names: HashMap<String, HirId>,
+    ///The module that will keep track of all declarations on the top level
+    pub(crate) declarations_module: DeclarationsModule,
+    symbols_module: SymbolsModule,
+    pub(crate) types_module: TypesModule,
+    scope_module: ScopeModule,
+
     /// Maps the types of top level things on the current scope to their types.
     /// An example is functions, which contain an HirType.
-    types: HashMap<HirId, HirType>,
-    /// A hashmap mapping the id of some struct or object to its layout. The 'layout' in case is the name of the property. So something like `object Packet {data: [100]u8, ty: PacketTy} would be simply
-    /// id => ['data', 'ty'] to resolve its order correctly if some object expression like Packet(ty:PacketTy::Crypto, data:[100]0) appears
-    pub(crate) objects_deffinitions: HashMap<HirId, Vec<String>>,
-    /// The scopes of this HIR. On the final it's expected to have only one, which is the global one
-    scopes: Vec<HIRScope>,
+    types: HashMap<TypeId, HirType>,
 
+    /// The scopes of this HIR. On the final it's expected to have only one, which is the global one
     pub declarations: Vec<HirDeclaration>,
 }
 
 impl SlynxHir {
     pub fn new() -> Self {
         Self {
-            scopes: vec![HIRScope::new()],
-            objects_deffinitions: HashMap::new(),
-            names: HashMap::new(),
+            scope_module: ScopeModule::new(),
             types: HashMap::new(),
             declarations: Vec::new(),
+            declarations_module: DeclarationsModule::new(),
+            symbols_module: SymbolsModule::new(),
+            types_module: TypesModule::new(),
         }
     }
 
@@ -90,14 +72,20 @@ impl SlynxHir {
         Ok(())
     }
 
-    /// Retrieves information about the provided `name` going from the current scope to the outer ones, finishing on the global
-    pub fn retrieve_information_of_scoped(&mut self, name: &str, span: &Span) -> Result<HirId> {
-        let mut idx = self.scopes.len() - 1;
-
+    /// Retrieves the id of the variable with the provided `name` going from the global scope, to the most internal one
+    pub fn retrieve_variable_id(&mut self, name: &str, span: &Span) -> Result<VariableId> {
+        let Some(symbol) = self.symbols_module.retrieve(name) else {
+            return Err(HIRError {
+                kind: HIRErrorKind::NameNotRecognized(name.to_string()),
+                span: span.clone(),
+            }
+            .into());
+        };
+        let mut idx = self.scope_module.len() - 1;
         while idx != 0 {
-            let scope = &self.scopes[idx];
+            let scope = &self.scope_module[idx];
 
-            let Ok(id) = scope.retrieve_name(name, span) else {
+            let Some(id) = scope.retrieve_name(symbol) else {
                 idx -= 1;
                 continue;
             };
@@ -110,48 +98,13 @@ impl SlynxHir {
         .into())
     }
 
-    /// Retrieves the hir id of the provided `name` in the global scope
-    pub fn retrieve_hirdid_of(&mut self, name: &str, span: &Span) -> Result<HirId> {
-        self.names.get(name).cloned().ok_or(
-            HIRError {
-                kind: HIRErrorKind::NameNotRecognized(name.to_string()),
-                span: span.clone(),
-            }
-            .into(),
-        )
-    }
-
-    fn enter_scope(&mut self) {
-        self.scopes.push(HIRScope::new());
-    }
-
-    fn exit_scope(&mut self) {
-        self.scopes.pop();
-    }
-
-    fn last_scope(&mut self) -> &mut HIRScope {
-        let idx = self.scopes.len() - 1;
-        &mut self.scopes[idx]
-    }
-
     /// Resolves the provided values on a component. The `ty` is the type of the component we are resolving it
     fn resolve_component_members(
         &mut self,
         members: Vec<ComponentMemberValue>,
-        ty: &HirType,
+        ty: TypeId,
     ) -> Result<Vec<ComponentMemberDeclaration>> {
         let mut out = Vec::with_capacity(members.len());
-        let HirType::Component { props } = ty else {
-            unreachable!("The type should be a component instead");
-        };
-
-        let accepting_children = props.iter().any(|prop| {
-            prop.1 == "children"
-                && matches!(
-                    prop.0,
-                    VisibilityModifier::ParentPublic | VisibilityModifier::Public
-                )
-        });
         for member in members {
             out.push(match member {
                 ComponentMemberValue::Assign {
@@ -159,6 +112,10 @@ impl SlynxHir {
                     rhs,
                     span,
                 } => {
+                    let t = self.types_module.get_type(&ty);
+                    let HirType::Component { props } = t else {
+                        unreachable!("The type should be a component instead");
+                    };
                     let index =
                         props
                             .iter()
@@ -178,32 +135,39 @@ impl SlynxHir {
                         }
                         .into());
                     }
-
                     ComponentMemberDeclaration::Property {
-                        id: PropertyId::new(),  // Changed to PropertyId
+                        id: PropertyId::new(), // Changed to PropertyId
                         index,
-                        value: Some(self.resolve_expr(rhs, Some(&props[index].2))?),
+                        value: Some(self.resolve_expr(rhs, Some(props[index].2))?),
                         span,
                     }
                 }
                 ComponentMemberValue::Child(child) => {
-                    if accepting_children {
-                        let (name, ty) =
-                            self.retrieve_information_of(&child.name.identifier, &child.name.span)?;
+                    //By now this won't track whether it can or cannot have children, since a method better than 'children' might be implemented in the future.
+                    {
+                        let (id, _) = {
+                            self.retrieve_information_of_type(
+                                &child.name.identifier,
+                                &child.name.span,
+                            )?
+                        };
+                        let values = self.resolve_component_members(child.values, id)?;
+
                         ComponentMemberDeclaration::Child {
-                            name,
-                            values: self.resolve_component_members(child.values, &ty)?,
+                            name: id,
+                            values,
                             span: child.span,
                         }
-                    } else {
-                        return Err(HIRError {
-                            span: child.span.clone(),
-                            kind: HIRErrorKind::InvalidChild {
-                                child: Box::new(child),
-                            },
-                        }
-                        .into());
                     }
+                    //else {
+                    //     return Err(HIRError {
+                    //         span: child.span.clone(),
+                    //         kind: HIRErrorKind::InvalidChild {
+                    //             child: Box::new(child),
+                    //         },
+                    //     }
+                    //     .into());
+                    // }
                 }
             });
         }
@@ -235,9 +199,9 @@ impl SlynxHir {
                                     modifier.clone(),
                                     name.clone(),
                                     if let Some(generic) = ty {
-                                        self.retrieve_type_of_name(generic, &member.span)?
+                                        self.get_typeid_of_name(&generic.identifier, &member.span)?
                                     } else {
-                                        HirType::Infer
+                                        self.types_module.infer_id()
                                     },
                                 ));
                             }
@@ -246,10 +210,11 @@ impl SlynxHir {
                     }
                     out
                 };
-                self.create_hirid_for(
-                    name.to_string(),
-                    HirType::Component { props },
-                );
+                let symbol = self.symbols_module.intern(&name.identifier);
+                let tyid = self
+                    .types_module
+                    .insert_type(symbol, HirType::Component { props });
+                self.declarations_module.create_declaration(symbol, tyid);
             }
         }
         Ok(())
@@ -266,18 +231,34 @@ impl SlynxHir {
                 mut body,
                 ..
             } => {
-                let (id, func) = self.retrieve_information_of(&name.to_string(), &ast.span)?;
+                let (decl, tyid) = if let Some(symb) =
+                    self.symbols_module.retrieve(&name.identifier)
+                    && let Some(data) = self
+                        .declarations_module
+                        .retrieve_declaration_data_by_name(symb)
+                {
+                    data
+                } else {
+                    return Err(HIRError {
+                        kind: HIRErrorKind::NameNotRecognized(name.identifier),
+                        span: name.span,
+                    }
+                    .into());
+                };
 
-                self.enter_scope();
+                self.scope_module.enter_scope();
+
                 let args = args
                     .into_iter()
                     .map(|arg| {
-                        let var_id = VariableId::new();  // Changed to VariableId
-                        let hirid: HirId = var_id.into();  // Convert to HirId for scope
-                        self.last_scope().insert_name(hirid, arg.name);
-                        var_id
+                        match self
+                            .retrieve_information_of_type(&arg.kind.identifier, &arg.kind.span)
+                        {
+                            Ok((ty, _)) => Ok(self.create_variable(&arg.name, ty, false)),
+                            Err(e) => Err(e),
+                        }
                     })
-                    .collect();
+                    .collect::<Result<Vec<_>, _>>()?;
 
                 let statments = if let Some(last) = body.pop() {
                     let mut statments = Vec::with_capacity(body.len());
@@ -302,25 +283,38 @@ impl SlynxHir {
                         args,
                         name: name.to_string(),
                     },
-                    id: id.into(),  // Convert HirId to DeclarationId
-                    ty: func,
+                    id: decl,
+                    ty: tyid,
                     span: ast.span,
                 });
-                self.exit_scope();
+                self.scope_module.exit_scope();
             }
             ASTDeclarationKind::ComponentDeclaration { members, name } => {
-                self.enter_scope();
+                self.scope_module.enter_scope();
 
-                let (hir, ty) = self.retrieve_information_of(&name.to_string(), &ast.span)?;
+                let (decl, ty) = if let Some(symbol) =
+                    self.symbols_module.retrieve(&name.identifier)
+                    && let Some(data) = self
+                        .declarations_module
+                        .retrieve_declaration_data_by_name(symbol)
+                {
+                    data
+                } else {
+                    return Err(HIRError {
+                        kind: HIRErrorKind::NameNotRecognized(name.identifier),
+                        span: ast.span,
+                    }
+                    .into());
+                };
 
                 let defs = self.resolve_component_defs(members)?;
                 self.declarations.push(HirDeclaration {
-                    id: hir.into(),  // Convert HirId to DeclarationId
+                    id: decl,
                     kind: HirDeclarationKind::ComponentDeclaration { props: defs },
                     ty,
                     span: ast.span,
                 });
-                self.exit_scope();
+                self.scope_module.exit_scope();
             }
         }
         Ok(())

@@ -6,7 +6,6 @@ component Rect {
 component HelloBox {
 	pub prop seupai:float;
 	pub prop maria = 0;
-	pub prop children;
 	
 	Rect {
 		text: maria
@@ -15,7 +14,7 @@ component HelloBox {
 
 func main(): Component {
 	HelloBox {
-		seupai: 5
+		seupai: 5.0
 		maria: 12
 		Rect {}
 	}
