@@ -55,7 +55,8 @@ impl TypesModule {
     }
     pub fn bool_id(&self) -> TypeId {
         TypeId::from_raw(6)
-    }    ///Inserts a new variable on this module
+    }
+    ///Inserts a new variable on this module
     pub fn insert_variable(&mut self, varid: VariableId, ty: TypeId) {
         self.variables.insert(varid, ty);
     }

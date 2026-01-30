@@ -59,8 +59,7 @@ impl TypeChecker {
     fn check_decl(&mut self, decl: &mut HirDeclaration) -> Result<()> {
         match decl.kind {
             HirDeclarationKind::Function {
-                ref mut statments,
-                ..
+                ref mut statments, ..
             } => {
                 self.resolve_statments(statments, &decl.ty)?;
             }
