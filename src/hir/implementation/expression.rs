@@ -113,8 +113,8 @@ impl SlynxHir {
     ) -> Result<HirExpression> {
         match expr.kind {
             ASTExpressionKind::Boolean(b) => Ok(HirExpression {
-                id: HirId::new(),
-                ty: HirType::Bool,
+                id: ExpressionId::new(),
+                ty: self.types_module.bool_id(),
                 kind: HirExpressionKind::Bool(b),
                 span: expr.span,
             }),
@@ -272,7 +272,7 @@ impl SlynxHir {
                 | Operator::GreaterThan
                 | Operator::GreaterThanOrEqual
                 | Operator::LessThan
-                | Operator::LessThanOrEqual => HirType::Bool,
+                | Operator::LessThanOrEqual => self.types_module.bool_id(),
             },
             kind: HirExpressionKind::Binary {
                 lhs: Box::new(lhs),

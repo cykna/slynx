@@ -30,6 +30,7 @@ impl SlynxHir {
         match name {
             "Component" => Ok(self.types_module.generic_component_id()),
             "void" => Ok(self.types_module.void_id()),
+            "bool" => Ok(self.types_module.bool_id()),
             "int" => Ok(self.types_module.int_id()),
             "float" => Ok(self.types_module.float_id()),
             "str" => Ok(self.types_module.str_id()),

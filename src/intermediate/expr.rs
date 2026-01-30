@@ -132,4 +132,9 @@ impl IntermediateExpr {
             kind: IntermediateExprKind::Binary { lhs, rhs, operator },
         }
     }
+    pub fn bool(b: bool) -> Self {
+        Self {
+            kind: IntermediateExprKind::Bool(b),
+        }
+    }
 }

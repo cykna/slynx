@@ -22,6 +22,7 @@ impl TypesModule {
             HirType::Void,
             HirType::Infer,
             HirType::GenericComponent,
+            HirType::Bool,
         ];
         //since type ids have a incremental index, it's a must to skip these, because HirType::int_id(), and the other ones are made to match this array
         for _ in &types {
@@ -52,7 +53,9 @@ impl TypesModule {
     pub fn generic_component_id(&self) -> TypeId {
         TypeId::from_raw(5)
     }
-    ///Inserts a new variable on this module
+    pub fn bool_id(&self) -> TypeId {
+        TypeId::from_raw(6)
+    }    ///Inserts a new variable on this module
     pub fn insert_variable(&mut self, varid: VariableId, ty: TypeId) {
         self.variables.insert(varid, ty);
     }

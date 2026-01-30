@@ -60,7 +60,7 @@ impl IntermediateRepr {
     fn generate_expr(&mut self, expr: HirExpression) -> ValueId {
         match expr.kind {
             HirExpressionKind::Bool(b) => {
-                self.active_context().insert_expr(IntermediateExpr::Bool(b))
+                self.active_context().insert_expr(IntermediateExpr::bool(b))
             }
             HirExpressionKind::StringLiteral(s) => {
                 let handle = self.strings.insert_string(&s);

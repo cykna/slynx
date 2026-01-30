@@ -60,18 +60,8 @@ impl TypeChecker {
         match decl.kind {
             HirDeclarationKind::Function {
                 ref mut statments,
-                ref args,
                 ..
             } => {
-                let HirType::Function {
-                    args: args_types, ..
-                } = &decl.ty
-                else {
-                    unreachable!();
-                };
-                for (index, arg) in args.iter().enumerate() {
-                    self.types.insert(*arg, args_types[index].clone());
-                }
                 self.resolve_statments(statments, &decl.ty)?;
             }
             HirDeclarationKind::Object => {
@@ -205,11 +195,7 @@ impl TypeChecker {
         let b = self.resolve(b, span)?;
 
         match (&a, &b) {
-            (a, b) if a == b && *a == self.types_module.int_id() => Ok(self.types_module.int_id()),
-            (a, b) if a == b && *a == self.types_module.float_id() => {
-                Ok(self.types_module.float_id())
-            }
-            (a, b) if a == b && *a == self.types_module.str_id() => Ok(self.types_module.str_id()),
+            (a, b) if a == b => Ok(*a),
             (out, inf) | (inf, out)
                 if *out != self.types_module.infer_id() && *inf == self.types_module.infer_id() =>
             {
@@ -486,10 +472,10 @@ impl TypeChecker {
                 ref mut rhs,
                 ref op,
             } => {
-                if matches!(expr.ty, HirType::Bool)
+                if expr.ty == self.types_module.bool_id()
                     || matches!(op, Operator::LogicAnd | Operator::LogicOr)
                 {
-                    return Ok(HirType::Bool);
+                    return Ok(self.types_module.bool_id());
                 }
                 let lhs_ty = self.get_type_of_expr(lhs, &lhs.span.clone())?;
                 let rhs_ty = self.get_type_of_expr(rhs, &rhs.span.clone())?;
@@ -549,7 +535,7 @@ impl TypeChecker {
                     ref u => unimplemented!("{u:?}"),
                 }
             }
-            HirExpressionKind::Bool(_) => HirType::Bool,
+            HirExpressionKind::Bool(_) => self.types_module.bool_id(),
             ref un => {
                 unimplemented!("{un:?}")
             }
@@ -562,7 +548,7 @@ impl TypeChecker {
     fn default_expr(&mut self, expr: &mut HirExpression) -> Result<()> {
         match expr.kind {
             HirExpressionKind::Bool(_) => {
-                expr.ty = self.unify(&expr.ty, &HirType::Bool, &expr.span)?
+                expr.ty = self.unify(&expr.ty, &self.types_module.bool_id(), &expr.span)?
             }
             HirExpressionKind::StringLiteral(_) => {
                 expr.ty = self.unify(&expr.ty, &self.types_module.str_id(), &expr.span)?
@@ -581,7 +567,7 @@ impl TypeChecker {
                 self.default_expr(rhs)?;
                 self.default_expr(lhs)?;
                 if op.is_logical() {
-                    expr.ty = HirType::Bool;
+                    expr.ty = self.types_module.bool_id();
                 } else {
                     expr.ty = self.unify(&rhs.ty, &lhs.ty, &expr.span)?;
                 }

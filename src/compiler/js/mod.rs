@@ -209,7 +209,7 @@ impl SlynxCompiler for WebCompiler {
             IntermediateExprKind::FieldAccess { parent, field } => {
                 self.compile_field_access(*parent, *field, ctx, ir, handle)
             }
-            IntermediateExpr::Binary { lhs, rhs, operator } => Expr::Bin(BinExpr {
+            IntermediateExprKind::Binary { lhs, rhs, operator } => Expr::Bin(BinExpr {
                 span: DUMMY_SP,
                 op: operator.to_binaryop(),
                 left: Box::new(self.compile_expression(&ctx.exprs[*lhs], ctx, ir, handle)),
@@ -220,7 +220,7 @@ impl SlynxCompiler for WebCompiler {
                 value: *n as f64,
                 raw: None,
             })),
-            IntermediateExpr::Bool(b) => Expr::Lit(Lit::Bool((*b).into())),
+            IntermediateExprKind::Bool(b) => Expr::Lit(Lit::Bool((*b).into())),
             un => unimplemented!("{un:?}"),
         }
     }
