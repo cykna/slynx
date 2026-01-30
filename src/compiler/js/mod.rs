@@ -24,6 +24,7 @@ use crate::{
         id::ContextHandle,
         node::{IntermediateInstruction, IntermediateInstructionKind, IntermediatePlace},
     },
+    parser::ast::Operator,
 };
 
 #[derive(Debug, Default)]
@@ -208,9 +209,9 @@ impl SlynxCompiler for WebCompiler {
             IntermediateExprKind::FieldAccess { parent, field } => {
                 self.compile_field_access(*parent, *field, ctx, ir, handle)
             }
-            IntermediateExprKind::Binary { lhs, rhs, .. } => Expr::Bin(BinExpr {
+            IntermediateExprKind::Binary { lhs, rhs, operator } => Expr::Bin(BinExpr {
                 span: DUMMY_SP,
-                op: BinaryOp::Add,
+                op: operator.to_binaryop(),
                 left: Box::new(self.compile_expression(&ctx.exprs[*lhs], ctx, ir, handle)),
                 right: Box::new(self.compile_expression(&ctx.exprs[*rhs], ctx, ir, handle)),
             }),
@@ -219,6 +220,7 @@ impl SlynxCompiler for WebCompiler {
                 value: *n as f64,
                 raw: None,
             })),
+            IntermediateExprKind::Bool(b) => Expr::Lit(Lit::Bool((*b).into())),
             un => unimplemented!("{un:?}"),
         }
     }
@@ -246,6 +248,24 @@ impl SlynxCompiler for WebCompiler {
             };
             emitter.emit_program(&Program::Script(self.script)).unwrap();
             String::from_utf8(buf).unwrap().into_bytes()
+        }
+    }
+}
+
+impl Operator {
+    pub fn to_binaryop(&self) -> BinaryOp {
+        match self {
+            Self::LogicAnd => BinaryOp::LogicalAnd,
+            Self::LogicOr => BinaryOp::LogicalOr,
+            Self::Add => BinaryOp::Add,
+            Self::Sub => BinaryOp::Sub,
+            Self::Star => BinaryOp::Mul,
+            Self::Slash => BinaryOp::Div,
+            Self::Equals => BinaryOp::EqEqEq,
+            Self::GreaterThan => BinaryOp::Gt,
+            Self::LessThan => BinaryOp::Lt,
+            Self::GreaterThanOrEqual => BinaryOp::GtEq,
+            Self::LessThanOrEqual => BinaryOp::LtEq,
         }
     }
 }

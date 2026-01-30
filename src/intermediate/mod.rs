@@ -59,6 +59,9 @@ impl IntermediateRepr {
     /// Generates a new expression and returns it's id on the current context
     fn generate_expr(&mut self, expr: HirExpression) -> ValueId {
         match expr.kind {
+            HirExpressionKind::Bool(b) => {
+                self.active_context().insert_expr(IntermediateExpr::bool(b))
+            }
             HirExpressionKind::StringLiteral(s) => {
                 let handle = self.strings.insert_string(&s);
                 self.active_context()

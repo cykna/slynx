@@ -27,6 +27,7 @@ pub struct IntermediateExpr {
 
 #[derive(Debug, Clone)]
 pub enum IntermediateExprKind {
+    Bool(bool),
     Int(i32),
     Float(f32),
     StringLiteral(StringHandle),
@@ -129,6 +130,11 @@ impl IntermediateExpr {
     pub fn bin(lhs: ValueId, rhs: ValueId, operator: Operator) -> Self {
         Self {
             kind: IntermediateExprKind::Binary { lhs, rhs, operator },
+        }
+    }
+    pub fn bool(b: bool) -> Self {
+        Self {
+            kind: IntermediateExprKind::Bool(b),
         }
     }
 }

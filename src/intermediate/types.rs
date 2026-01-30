@@ -11,6 +11,7 @@ pub enum IntermediateType {
     Void,
     Int,
     Float,
+    Bool,
     Component,
     Str,
     ///Index inside the intermediate repr
@@ -31,6 +32,7 @@ impl IntermediateRepr {
         match module.get_type(ty) {
             HirType::Int => IntermediateType::Int,
             HirType::Float => IntermediateType::Float,
+            HirType::Bool => IntermediateType::Bool,
             HirType::Str => IntermediateType::Str,
             HirType::Void => IntermediateType::Void,
             HirType::Vector { ty } => {

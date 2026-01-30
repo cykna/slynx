@@ -61,6 +61,8 @@ pub enum HirType {
         args: Vec<TypeId>,
         return_type: TypeId,
     },
+    ///A type used for booleans, which can be either true of false
+    Bool,
     ///A type used for floats. This is by default the type of js.
     Float,
     ///A type used for ints. There's no Uint because js is gay. The difference between this to floats is that this is limited to be 32bits
@@ -89,6 +91,7 @@ impl HirType {
         match gener.identifier.as_str() {
             "Component" => Ok(Self::GenericComponent),
             "void" => Ok(Self::Void),
+            "bool" => Ok(Self::Bool),
             "int" => Ok(Self::Int),
             "float" => Ok(Self::Float),
             "str" => Ok(Self::Str),

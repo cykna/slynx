@@ -112,6 +112,12 @@ impl SlynxHir {
         ty: Option<TypeId>,
     ) -> Result<HirExpression> {
         match expr.kind {
+            ASTExpressionKind::Boolean(b) => Ok(HirExpression {
+                id: ExpressionId::new(),
+                ty: self.types_module.bool_id(),
+                kind: HirExpressionKind::Bool(b),
+                span: expr.span,
+            }),
             ASTExpressionKind::Binary { lhs, op, rhs } => self.resolve_binary(*lhs, op, *rhs, ty),
             ASTExpressionKind::StringLiteral(s) => Ok(HirExpression {
                 id: ExpressionId::new(), // Changed to ExpressionId
@@ -256,7 +262,16 @@ impl SlynxHir {
             end: lhs.span.end,
         };
         Ok(HirExpression {
-            ty: lhs.ty,
+            ty: match op {
+                Operator::LogicAnd | Operator::LogicOr | Operator::Star | Operator::Slash => lhs.ty,
+                Operator::Equals
+                | Operator::Add
+                | Operator::Sub
+                | Operator::GreaterThan
+                | Operator::GreaterThanOrEqual
+                | Operator::LessThan
+                | Operator::LessThanOrEqual => self.types_module.bool_id(),
+            },
             kind: HirExpressionKind::Binary {
                 lhs: Box::new(lhs),
                 op,

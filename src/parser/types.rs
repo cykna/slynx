@@ -6,6 +6,33 @@ use color_eyre::eyre::Result;
 
 use super::Parser;
 impl Parser {
+    ///Looking from where this function initializes, check is this is a generic one.
+    ///Note that this will only work when the function initializes on something like: N<...
+    ///the '...' is what this function will check. It won't eat anything, just look ahead.
+    ///`ahead` is just a parameter to know how many tokens to look ahead. When using this, it should be initialized
+    ///by the index where the token after '<' is at. This function will return weather it was a generic or not, and return the amount needed to look ahead to keep going
+    pub fn is_generic(&self, mut ahead: usize) -> Result<(bool, usize)> {
+        let initial_ahead = ahead;
+        let Token {
+            kind: TokenKind::Identifier(_),
+            ..
+        } = self.peek_at(ahead)?
+        else {
+            return Ok((false, ahead));
+        };
+
+        if let TokenKind::Lt = self.peek_at(ahead + 1)?.kind {
+            match self.is_generic(ahead + 2)? {
+                (true, n) => ahead += n,
+                (false, n) => return Ok((false, n - initial_ahead)),
+            }
+        }
+        return Ok((
+            matches!(self.peek_at(ahead + 1)?.kind, TokenKind::Gt),
+            ahead - initial_ahead,
+        ));
+    }
+
     ///Parses a type.
     pub fn parse_type(&mut self) -> Result<GenericIdentifier> {
         let Token {
