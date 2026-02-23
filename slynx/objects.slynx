@@ -1,10 +1,15 @@
 object Pessoa{
-    name: str
+    name: str,
+    age: int,
 }
 
 component Sla {}
 
 func main(): Component {
-    Pessoa(name:"123");
+    let pessoa = Pessoa(
+        name:"123", age: 123
+    );
+    pessoa.name = "Jorge";
+    pessoa.age = 255;
     Sla{}
 }

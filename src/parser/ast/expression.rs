@@ -35,4 +35,8 @@ pub enum ASTExpressionKind {
         parent: Box<ASTExpression>,
         field: String,
     },
+    FunctionCall {
+        name: GenericIdentifier,
+        args: Vec<ASTExpression>,
+    },
 }
