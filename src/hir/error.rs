@@ -55,11 +55,6 @@ impl std::fmt::Display for HIRError {
                 expected_length,
                 received_length,
             } => {
-                format!(
-                    "Function '{func_name}' expected to receive {expected_length} arguments, instead got {received_length} arguments"
-                )
-=======
-            HIRErrorKind::InvalidFuncallArgLength { func_name, expected_length, received_length } => {
                 format!("Function '{func_name}' expected to receive {expected_length} arguments, instead got {received_length} arguments")
 >>>>>>> 317da60 (feat: implemented function call on hir level)
             }
