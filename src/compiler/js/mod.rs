@@ -171,14 +171,32 @@ impl SlynxCompiler for WebCompiler {
                 raw: None,
             })),
             IntermediateExprKind::StringLiteral(s) => Expr::Lit(Lit::Str(ir.strings[s].into())),
-            IntermediateExprKind::Component { props, id, .. } => {
+            IntermediateExprKind::FunctionCall { id, args } => {
+                let callee = Callee::Expr(Box::new(Expr::Ident(self.context_names[id.0].clone())));
+                let args = args
+                    .iter()
+                    .map(|expr| ExprOrSpread {
+                        spread: None,
+                        expr: Box::new(self.compile_expression(&ctx.exprs[*expr], ctx, ir, handle)),
+                    })
+                    .collect();
+                Expr::Call(CallExpr {
+                    span: DUMMY_SP,
+                    ctxt: SyntaxContext::empty(),
+                    callee,
+                    args,
+                    type_args: None,
+                })
+            }
+            IntermediateExprKind::Component {
+                props: args, id, ..
+            } => {
                 let callee = Callee::Expr(Box::new(Expr::Ident(self.context_names[id.0].clone())));
                 let args = {
-                    if props.iter().all(|v| v.is_none()) {
+                    if args.iter().all(|v| v.is_none()) {
                         Vec::new()
                     } else {
-                        props
-                            .iter()
+                        args.iter()
                             .map(|expr| ExprOrSpread {
                                 spread: None,
                                 expr: if let Some(expr_idx) = expr {
