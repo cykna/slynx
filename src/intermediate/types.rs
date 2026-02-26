@@ -41,8 +41,8 @@ impl IntermediateRepr {
             }
             HirType::GenericComponent => IntermediateType::Component,
             HirType::Reference { rf, .. } => IntermediateType::Reference(*rf),
-            HirType::Function { .. } | HirType::Struct { .. } | HirType::Component { .. } => {
-                unreachable!("All struct types should be reference instead")
+            v @ (HirType::Function { .. } | HirType::Struct { .. } | HirType::Component { .. }) => {
+                unreachable!("All struct types should be reference instead. Got {v:?}");
             }
             un => unimplemented!("{un:?}"),
         }

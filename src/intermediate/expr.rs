@@ -56,6 +56,10 @@ pub enum IntermediateExprKind {
         props: Vec<Option<ValueId>>,
         children: Vec<ValueId>,
     },
+    FunctionCall {
+        id: ContextHandle,
+        args: Vec<ValueId>,
+    },
     Native(NativeComponent),
 }
 
@@ -107,6 +111,13 @@ impl IntermediateExpr {
             },
         }
     }
+
+    pub fn functioncall(id: ContextHandle, args: Vec<ValueId>) -> Self {
+        Self {
+            kind: IntermediateExprKind::FunctionCall { id, args },
+        }
+    }
+
     pub fn identifier(varid: VarId) -> Self {
         Self {
             kind: IntermediateExprKind::Identifier(varid),

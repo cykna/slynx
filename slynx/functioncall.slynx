@@ -1,0 +1,15 @@
+object Person {
+	name: str,
+	age: int,
+}
+
+func person(name: str, age:int): Person {
+	Person(name: name, age: age)
+}
+
+component Empty {}
+
+func main(): Component{
+	let p = person("Jorge", 44);
+	Empty{}
+}

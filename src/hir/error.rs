@@ -40,7 +40,7 @@ pub enum HIRErrorKind {
     },
     NotAFunction(String, HirType),
     InvalidFuncallArgLength {
-        func_name: String
+        func_name: String,
         expected_length: usize,
         received_length: usize,
     },
@@ -49,7 +49,11 @@ pub enum HIRErrorKind {
 impl std::fmt::Display for HIRError {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
         let out = match &self.kind {
-            HIRErrorKind::InvalidFuncallArgLength { func_name, expected_length, received_length } => {
+            HIRErrorKind::InvalidFuncallArgLength {
+                func_name,
+                expected_length,
+                received_length,
+            } => {
                 format!("Function '{func_name}' expected to receive {expected_length} arguments, instead got {received_length} arguments")
             }
             HIRErrorKind::NotAFunction(name, ty) => {

@@ -5,13 +5,8 @@ use color_eyre::eyre::Result;
 use crate::{
     hir::{
         ExpressionId, SlynxHir, TypeId,
-<<<<<<< HEAD
         definitions::{HirExpression, HirExpressionKind},
         error::{HIRError, HIRErrorKind},
-=======
-        deffinitions::{HirExpression, HirExpressionKind},
-        error::{HIRError, HIRErrorKind, InvalidTypeReason, ValueUsage},
->>>>>>> d733410 (feat: implemented function call on hir level)
         types::{FieldMethod, HirType},
     },
     parser::ast::{ASTExpression, ASTExpressionKind, NamedExpr, Operator, Span},
