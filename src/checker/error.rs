@@ -1,4 +1,7 @@
-use crate::{hir::types::HirType, parser::ast::Span};
+use crate::{
+    hir::{VariableId, types::HirType},
+    parser::ast::Span,
+};
 
 #[derive(Debug)]
 pub enum IncompatibleComponentReason {
@@ -27,6 +30,7 @@ pub enum TypeErrorKind {
         expected: HirType,
         received: HirType,
     },
+    NotARef(VariableId, HirType),
     Unrecognized,
 }
 
@@ -44,6 +48,9 @@ impl std::fmt::Display for TypeError {
             }
             TypeErrorKind::IncompatibleTypes { expected, received } => format!(
                 "Incompatible types. Was expecting to receive type '{expected:?}' instead got type '{received:?}'"
+            ),
+            TypeErrorKind::NotARef(v, ty) => format!(
+                "Variable with id {v:?} has got type {ty:?} instead was expecting to be an object"
             ),
             TypeErrorKind::Unrecognized => "Tem que fazer".to_string(),
         };

@@ -17,14 +17,6 @@ use crate::{
     parser::ast::Span,
 };
 
-#[derive(Hash, PartialEq, Eq, Debug)]
-pub struct PropRef {
-    /// The id of the owner of the property
-    owner: TypeId,
-    /// It's index inside the owner
-    index: usize,
-}
-
 #[derive(Debug)]
 pub struct TypeChecker {
     ///A an array of declaration types
@@ -70,7 +62,7 @@ impl TypeChecker {
                 HirType::Reference { .. } => Ok(ty.clone()),
                 HirType::VarReference(id) => self.retrieve_reference_of(id, span),
                 _ => Err(TypeError {
-                    kind: TypeErrorKind::Unrecognized,
+                    kind: TypeErrorKind::NotARef(*id, ty.clone()),
                     span: span.clone(),
                 }),
             }
@@ -93,7 +85,7 @@ impl TypeChecker {
                             expected: self.types_module.get_type(&ty).clone(),
                             received: HirType::Struct { fields: Vec::new() },
                         },
-                        span: Span { start: 0, end: 0 },
+                        span: span.clone(),
                     }
                     .into())
                 }

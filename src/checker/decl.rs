@@ -32,7 +32,7 @@ impl TypeChecker {
                         } => {
                             if let Some(value) = value {
                                 let index = *index;
-                                let ty = self.get_type_of_expr(value, span)?;
+                                let ty = self.get_type_of_expr(value)?;
                                 typrops[index].2 = self.unify(&typrops[index].2, &ty, span)?;
                             }
                         }
@@ -59,7 +59,7 @@ impl TypeChecker {
                     index, value, span, ..
                 } => {
                     if let Some(value) = value {
-                        let ty = self.get_type_of_expr(value, span)?;
+                        let ty = self.get_type_of_expr(value)?;
                         let HirType::Component { props } =
                             self.types_module.get_type(&target).clone()
                         else {

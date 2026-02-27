@@ -12,7 +12,7 @@ use crate::{
         },
         types::{FieldMethod, HirType},
     },
-    parser::ast::{Operator, Span},
+    parser::ast::Operator,
 };
 impl TypeChecker {
     pub(super) fn resolve_specialized(&mut self, _: &mut SpecializedComponent) -> Result<()> {
@@ -30,14 +30,14 @@ impl TypeChecker {
         for statment in statments {
             match &mut statment.kind {
                 HirStatmentKind::Variable { value, .. } => {
-                    value.ty = self.get_type_of_expr(value, &value.span.clone())?;
+                    value.ty = self.get_type_of_expr(value)?;
                 }
                 HirStatmentKind::Return { expr } => {
-                    expr.ty = self.get_type_of_expr(expr, &statment.span)?;
+                    expr.ty = self.get_type_of_expr(expr)?;
                     expr.ty = self.unify(&expr.ty, &return_type, &statment.span)?;
                 }
                 HirStatmentKind::Expression { expr } => {
-                    expr.ty = self.get_type_of_expr(expr, &expr.span.clone())?;
+                    expr.ty = self.get_type_of_expr(expr)?;
                 }
                 HirStatmentKind::Assign { lhs, value } => {
                     let refty = match self.types_module.get_type(&lhs.ty) {
@@ -148,7 +148,6 @@ impl TypeChecker {
                 ref mut field_index,
                 expr: ref mut e,
             } => {
-                let span = e.span.clone();
                 self.get_type_of_expr(e)?;
 
                 match self.types_module.get_type(&expr.ty) {
@@ -253,7 +252,7 @@ impl TypeChecker {
                             index, value, span, ..
                         } => {
                             if let Some(value) = value {
-                                let ty = self.get_type_of_expr(value, span)?;
+                                let ty = self.get_type_of_expr(value)?;
                                 let resolved = self.resolve(&expr.ty, &expr.span)?;
                                 let HirType::Component { props } =
                                     self.types_module.get_type(&resolved)
