@@ -10,14 +10,7 @@ use crate::{
     checker::error::{IncompatibleComponentReason, TypeError, TypeErrorKind},
     hir::{
         SlynxHir, TypeId, VariableId,
-<<<<<<< HEAD
         deffinitions::{HirDeclaration, HirDeclarationKind},
-=======
-        definitions::{
-            ComponentMemberDeclaration, HirDeclaration, HirDeclarationKind, HirExpression,
-            HirExpressionKind, HirStatement, HirStatementKind, SpecializedComponent,
-        },
->>>>>>> 48cbb2c (chore: rewrote code to use 'statement' instead of 'statment' and 'definitions' instead of 'deffinitions')
         symbols::SymbolPointer,
         types::{FieldMethod, HirType, TypesModule},
     },
@@ -55,46 +48,6 @@ impl TypeChecker {
 
         Ok(inner.types_module)
     }
-<<<<<<< HEAD
-=======
-    fn check_decl(&mut self, decl: &mut HirDeclaration) -> Result<()> {
-        match decl.kind {
-            HirDeclarationKind::Function {
-                ref mut statements, ..
-            } => {
-                self.resolve_statements(statements, &decl.ty)?;
-            }
-            HirDeclarationKind::Object => {
-                self.declarations.push(decl.ty);
-            }
-
-            HirDeclarationKind::ComponentDeclaration { ref mut props } => {
-                let HirType::Component { props: mut typrops } =
-                    self.types_module.get_type(&decl.ty).clone()
-                else {
-                    unreachable!("Component declaration should have type component");
-                };
-                for prop in props {
-                    match prop {
-                        ComponentMemberDeclaration::Property {
-                            index, value, span, ..
-                        } => {
-                            if let Some(value) = value {
-                                let index = *index;
-                                let ty = self.get_type_of_expr(value, span)?;
-                                typrops[index].2 = self.unify(&typrops[index].2, &ty, span)?;
-                            }
-                        }
-                        ComponentMemberDeclaration::Child { .. }
-                        | ComponentMemberDeclaration::Specialized(_) => {}
-                    }
-                }
-                *self.types_module.get_type_mut(&decl.ty) = HirType::Component { props: typrops };
-            }
-        }
-        Ok(())
-    }
->>>>>>> 48cbb2c (chore: rewrote code to use 'statement' instead of 'statment' and 'definitions' instead of 'deffinitions')
 
     fn substitute(&mut self, id: TypeId, ty: HirType) {
         self.types.insert(id, ty);

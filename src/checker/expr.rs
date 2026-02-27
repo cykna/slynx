@@ -12,77 +12,9 @@ use crate::{
         },
         types::{FieldMethod, HirType},
     },
-    parser::ast::Operator,
+    parser::ast::{Operator, Span},
 };
 impl TypeChecker {
-    pfn resolve_specialized(&mut self, _: &mut SpecializedComponent) -> Result<()> {
-        Ok(())
-    }
-
-    fn resolve_statements(
-        &mut self,
-        statements: &mut Vec<HirStatement>,
-        ty: &TypeId,
-    ) -> Result<()> {
-        let HirType::Function { return_type, .. } = self.types_module.get_type(ty).clone() else {
-            unreachable!();
-        };
-        for statement in statements {
-            match &mut statement.kind {
-                HirStatementKind::Variable { value, .. } => {
-                    value.ty = self.get_type_of_expr(value, &value.span.clone())?;
-                }
-                HirStatementKind::Return { expr } => {
-                    expr.ty = self.get_type_of_expr(expr, &statement.span)?;
-                    expr.ty = self.unify(&expr.ty, &return_type, &statement.span)?;
-                }
-                HirStatementKind::Expression { expr } => {
-                    expr.ty = self.get_type_of_expr(expr, &expr.span.clone())?;
-                }
-                HirStatementKind::Assign { lhs, value } => {
-                    let refty = match self.types_module.get_type(&lhs.ty) {
-                        HirType::Field(FieldMethod::Type(_, _)) => lhs.ty,
-                        HirType::Field(FieldMethod::Variable(v, name)) => {
-                            let HirType::Reference { rf, .. } =
-                                self.retrieve_reference_of(v, &lhs.span)?
-                            else {
-                                unreachable!();
-                            };
-                            if let Some(index) = self
-                                .structs
-                                .get(&rf)
-                                .expect("Type should be defined")
-                                .iter()
-                                .position(|f| f == name)
-                            {
-                                let HirExpressionKind::FieldAccess {
-                                    ref mut field_index,
-                                    ..
-                                } = lhs.kind
-                                else {
-                                    unreachable!();
-                                };
-                                *field_index = index;
-                                *self.types_module.get_type_mut(&lhs.ty) =
-                                    HirType::Field(FieldMethod::Type(rf, index));
-                                lhs.ty
-                            } else {
-                                return Err(TypeError {
-                                    kind: TypeErrorKind::Unrecognized,
-                                    span: lhs.span.clone(),
-                                }
-                                .into());
-                            }
-                        }
-                        _ => unreachable!(),
-                    };
-
-                    let ty = self.resolve(&lhs.ty, &statement.span)?;
-                    lhs.ty = refty;
-                    value.ty = self.unify(&ty, &value.ty, &value.span)?;
-                }
-            }
-        }
     pub(super) fn resolve_specialized(&mut self, _: &mut SpecializedComponent) -> Result<()> {
         Ok(())
     }
@@ -148,7 +80,10 @@ impl TypeChecker {
 
                     let ty = self.resolve(&lhs.ty, &statment.span)?;
                     lhs.ty = refty;
+<<<<<<< HEAD
                     value.ty = self.get_type_of_expr(value)?;
+=======
+>>>>>>> abb5786 (refactor: refactored type checker to have separated files)
                     value.ty = self.unify(&ty, &value.ty, &value.span)?;
                 }
             }
