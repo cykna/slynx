@@ -8,7 +8,7 @@ use std::collections::HashMap;
 
 use crate::{
     hir::{
-        PropertyId, TypeId, VariableId, DeclarationId,
+        DeclarationId, PropertyId, TypeId, VariableId,
         definitions::{
             ComponentMemberDeclaration, HirDeclaration, HirDeclarationKind, HirExpression,
             HirExpressionKind, HirStatement, HirStatementKind, SpecializedComponent,

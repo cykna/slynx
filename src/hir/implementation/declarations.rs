@@ -86,9 +86,17 @@ impl SlynxHir {
             .iter()
             .map(|f| self.symbols_module.intern(&f.name.name))
             .collect();
-        let ty = self.types_module.insert_unnamed_type(HirType::Struct { fields: {Vec::new()} });
-        
-        let ty = self.define_type(name, HirType::Reference { rf: ty, generics: Vec::new() });
+        let ty = self.types_module.insert_unnamed_type(HirType::Struct {
+            fields: { Vec::new() },
+        });
+
+        let ty = self.define_type(
+            name,
+            HirType::Reference {
+                rf: ty,
+                generics: Vec::new(),
+            },
+        );
 
         self.declarations_module.create_object(name, ty, def_fields);
         Ok(())

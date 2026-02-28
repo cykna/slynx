@@ -43,14 +43,14 @@ impl SlynxHir {
             {
                 Ok(self.types_module.get_type(rf))
             } else {
-                return Err(HIRError {
+                Err(HIRError {
                     kind: HIRErrorKind::InvalidType {
                         ty: name.to_string(),
                         reason: InvalidTypeReason::IncorrectUsage,
                     },
                     span: span.clone(),
                 }
-                .into());
+                .into())
             }
         } else {
             Err(HIRError {

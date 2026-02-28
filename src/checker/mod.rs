@@ -91,7 +91,8 @@ impl TypeChecker {
                 }
             }
             HirType::Field(FieldMethod::Variable(var_id, n)) => {
-                let HirType::Reference { rf, .. } = self.retrieve_reference_of(&var_id, span)? else {
+                let HirType::Reference { rf, .. } = self.retrieve_reference_of(&var_id, span)?
+                else {
                     unreachable!();
                 };
                 let object_ty = *self.types_module.get_variable(&var_id).ok_or(TypeError {
@@ -143,11 +144,6 @@ impl TypeChecker {
 
             _ => Ok(*ty),
         }
-    }
-
-    #[inline]
-    fn get_type_of_name(&self, name: &TypeId) -> &HirType {
-        self.types_module.get_type(name)
     }
 
     /// Tries to unify types `a` and `b` if possible

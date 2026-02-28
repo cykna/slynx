@@ -70,7 +70,15 @@ impl TypesModule {
     pub fn new() -> Self {
         let builtins = BuiltinTypes::new();
         Self {
-            types: vec![builtins.int_ty.clone(), builtins.float_ty.clone(), builtins.str_ty.clone(), builtins.void_ty.clone(), builtins.infer_ty.clone(), builtins.generic_component_ty.clone(), builtins.bool_ty.clone()],
+            types: vec![
+                builtins.int_ty.clone(),
+                builtins.float_ty.clone(),
+                builtins.str_ty.clone(),
+                builtins.void_ty.clone(),
+                builtins.infer_ty.clone(),
+                builtins.generic_component_ty.clone(),
+                builtins.bool_ty.clone(),
+            ],
             builtins,
             type_names: HashMap::new(),
             variables: HashMap::new(),
@@ -142,7 +150,7 @@ impl TypesModule {
             .map(|id| &mut self.types[id.as_raw() as usize])
     }
     pub fn get_type_from_ref(&self, id: &TypeId) -> &HirType {
-        if let HirType::Reference { rf, .. } = self.get_type(&id) {
+        if let HirType::Reference { rf, .. } = self.get_type(id) {
             self.get_type(rf)
         } else {
             unreachable!("The provided ref_ty should be of type Reference");

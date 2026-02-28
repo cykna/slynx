@@ -150,8 +150,7 @@ impl SlynxHir {
                 let return_type = *return_type;
                 let exprs = args
                     .into_iter()
-                    .enumerate()
-                    .map(|(_, v)| self.resolve_expr(v, None))
+                    .map(|v| self.resolve_expr(v, None))
                     .collect::<Result<Vec<_>>>()?;
 
                 Ok(HirExpression {

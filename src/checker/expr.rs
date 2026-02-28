@@ -42,10 +42,11 @@ impl TypeChecker {
                     let refty = match self.types_module.get_type(&lhs.ty) {
                         HirType::Field(FieldMethod::Type(_, _)) => lhs.ty,
                         HirType::Field(FieldMethod::Variable(v, name)) => {
-                            let object_ty = *self.types_module.get_variable(v).ok_or(TypeError {
-                                kind: TypeErrorKind::Unrecognized,
-                                span: lhs.span.clone(),
-                            })?;
+                            let object_ty =
+                                *self.types_module.get_variable(v).ok_or(TypeError {
+                                    kind: TypeErrorKind::Unrecognized,
+                                    span: lhs.span.clone(),
+                                })?;
                             let HirType::Reference { rf, .. } =
                                 self.retrieve_reference_of(v, &lhs.span)?
                             else {
