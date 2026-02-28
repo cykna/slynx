@@ -147,15 +147,16 @@ impl SlynxHir {
                     }
                     .into());
                 }
+                let return_type = *return_type;
                 let exprs = args
                     .into_iter()
                     .enumerate()
-                    .map(|(i, v)| self.resolve_expr(v, None))
+                    .map(|(_, v)| self.resolve_expr(v, None))
                     .collect::<Result<Vec<_>>>()?;
 
                 Ok(HirExpression {
                     id: ExpressionId::new(),
-                    ty: *return_type,
+                    ty: return_type,
                     kind: HirExpressionKind::FunctionCall {
                         name: decl,
                         args: exprs,
@@ -224,10 +225,6 @@ impl SlynxHir {
                 };
 
                 let kind = self.organized_object_fields(ty, fields, &expr.span)?;
-                let ty = self.types_module.insert_unnamed_type(HirType::Reference {
-                    rf: ty,
-                    generics: Vec::new(),
-                });
                 Ok(HirExpression {
                     id: ExpressionId::new(), // Changed to ExpressionId
                     ty,

@@ -90,13 +90,20 @@ impl TypeChecker {
                     .into())
                 }
             }
-            HirType::Field(FieldMethod::Variable(rf, n)) => {
-                let HirType::Reference { rf, .. } = self.retrieve_reference_of(&rf, span)? else {
+            HirType::Field(FieldMethod::Variable(var_id, n)) => {
+                let HirType::Reference { rf, .. } = self.retrieve_reference_of(&var_id, span)? else {
                     unreachable!();
                 };
+                let object_ty = *self.types_module.get_variable(&var_id).ok_or(TypeError {
+                    kind: TypeErrorKind::Unrecognized,
+                    span: span.clone(),
+                })?;
 
                 let concrete_type = self.types_module.get_type(&rf);
-                let s_fields = self.structs.get(&rf).unwrap();
+                let s_fields = self.structs.get(&object_ty).ok_or(TypeError {
+                    kind: TypeErrorKind::Unrecognized,
+                    span: span.clone(),
+                })?;
                 let HirType::Struct { fields } = concrete_type else {
                     unreachable!("Type should be a struct. Fields only happen to structs");
                 };

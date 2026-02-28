@@ -1,5 +1,5 @@
 use crate::{
-    hir::definitions::HirExpression,
+    hir::{definitions::HirExpression, types::HirType},
     parser::ast::{ComponentExpression, Span},
 };
 
@@ -49,14 +49,13 @@ pub enum HIRErrorKind {
 impl std::fmt::Display for HIRError {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
         let out = match &self.kind {
-<<<<<<< HEAD
+
             HIRErrorKind::InvalidFuncallArgLength {
                 func_name,
                 expected_length,
                 received_length,
             } => {
                 format!("Function '{func_name}' expected to receive {expected_length} arguments, instead got {received_length} arguments")
->>>>>>> 317da60 (feat: implemented function call on hir level)
             }
             HIRErrorKind::NotAFunction(name, ty) => {
                 format!(
