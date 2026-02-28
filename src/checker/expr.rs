@@ -80,6 +80,7 @@ impl TypeChecker {
 
                     let ty = self.resolve(&lhs.ty, &statment.span)?;
                     lhs.ty = refty;
+                    value.ty = self.get_type_of_expr(value)?;
                     value.ty = self.unify(&ty, &value.ty, &value.span)?;
                 }
             }
@@ -176,9 +177,15 @@ impl TypeChecker {
                 }
             }
             HirExpressionKind::Bool(_) => self.types_module.bool_id(),
-            ref un => {
-                unimplemented!("{un:?}")
-            }
+            HirExpressionKind::Specialized(ref mut s) => match s {
+                SpecializedComponent::Text { text } => {
+                    text.ty = self.unify(&text.ty, &self.types_module.str_id(), &text.span)?;
+                    text.ty
+                }
+                SpecializedComponent::Div { .. } => {
+                    todo!()
+                }
+            },
         };
 
         expr.ty = self.unify(&expected, &calc, &expr.span)?;

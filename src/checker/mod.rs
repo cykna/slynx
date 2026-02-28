@@ -190,15 +190,12 @@ impl TypeChecker {
                         };
                         props.clear();
                         props.extend_from_slice(&unified_props);
-                        let HirType::Component { props } = self.types_module.get_type_mut(a) else {
+                        let HirType::Component { props } = self.types_module.get_type_mut(b) else {
                             unreachable!()
                         };
                         props.clear();
                         props.extend_from_slice(&unified_props);
-                        let ty = self.types_module.insert_unnamed_type(HirType::Component {
-                            props: unified_props,
-                        });
-                        Ok(ty)
+                        Ok(*a)
                     }
                     (HirType::Component { .. }, HirType::GenericComponent) => Ok(*a),
                     (HirType::GenericComponent, HirType::Component { .. }) => Ok(*b),

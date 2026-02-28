@@ -4,6 +4,58 @@ pub use tys::*;
 use crate::hir::{TypeId, VariableId, symbols::SymbolPointer};
 use std::collections::HashMap;
 
+#[derive(Debug, Clone)]
+pub struct BuiltinTypes {
+    int: TypeId,
+    int_ty: HirType,
+
+    float: TypeId,
+    float_ty: HirType,
+
+    str: TypeId,
+    str_ty: HirType,
+
+    void: TypeId,
+    void_ty: HirType,
+
+    ///Won't appear on final IR, just so the type checker knows what must be inferred
+    infer: TypeId,
+    infer_ty: HirType,
+
+    generic_component: TypeId,
+    generic_component_ty: HirType,
+
+    bool: TypeId,
+    bool_ty: HirType,
+}
+
+impl Default for BuiltinTypes {
+    fn default() -> Self {
+        Self::new()
+    }
+}
+
+impl BuiltinTypes {
+    pub fn new() -> Self {
+        Self {
+            int: TypeId::new(),
+            int_ty: HirType::Int,
+            float: TypeId::new(),
+            float_ty: HirType::Float,
+            str: TypeId::new(),
+            str_ty: HirType::Str,
+            void: TypeId::new(),
+            void_ty: HirType::Void,
+            infer: TypeId::new(),
+            infer_ty: HirType::Infer,
+            generic_component: TypeId::new(),
+            generic_component_ty: HirType::GenericComponent,
+            bool: TypeId::new(),
+            bool_ty: HirType::Bool,
+        }
+    }
+}
+
 #[derive(Debug, Default)]
 pub struct TypesModule {
     ///A hashmap that maps a name of a global name to its type. This is not for variables, but only for global types, such as structs, functions and components
@@ -12,26 +64,16 @@ pub struct TypesModule {
     pub variables: HashMap<VariableId, TypeId>,
 
     types: Vec<HirType>,
+    builtins: BuiltinTypes,
 }
 impl TypesModule {
     pub fn new() -> Self {
-        let types = vec![
-            HirType::Int,
-            HirType::Float,
-            HirType::Str,
-            HirType::Void,
-            HirType::Infer,
-            HirType::GenericComponent,
-            HirType::Bool,
-        ];
-        //since type ids have a incremental index, it's a must to skip these, because HirType::int_id(), and the other ones are made to match this array
-        for _ in &types {
-            TypeId::new();
-        }
+        let builtins = BuiltinTypes::new();
         Self {
+            types: vec![],
+            builtins,
             type_names: HashMap::new(),
             variables: HashMap::new(),
-            types,
         }
     }
 
