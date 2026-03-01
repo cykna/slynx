@@ -164,6 +164,18 @@ impl SlynxContext {
         let stream = match Lexer::tokenize(self.get_entry_point_source()) {
             Ok(value) => value,
             Err(e) => match e {
+                LexerError::MalformedNumber { init, .. } => {
+                    let (line, column, src) = self.get_line_info(&self.entry_point, init);
+                    let err = SlynxError {
+                        line,
+                        ty: SlynxErrorType::Lexer,
+                        column_start: column,
+                        message: e.to_string(),
+                        file: self.entry_point.to_string_lossy().to_string(),
+                        source_code: src.to_string(),
+                    };
+                    return Err(Report::new(err));
+                }
                 LexerError::UnrecognizedChar { index, .. } => {
                     let (line, column, src) = self.get_line_info(&self.entry_point, index);
                     let err = SlynxError {

@@ -173,27 +173,41 @@ impl Lexer {
                         if *c == '.' {
                             float_value = true;
                         }
-                        buffer.push(chars[idx]);
+                        buffer.push(*c);
                         idx += 1;
                     }
                     idx -= 1;
                     if float_value {
                         match buffer.parse::<f32>() {
                             Ok(value) => Token::float(value, start, idx),
-                            Err(_) => return Err(LexerError::MalformedNumber { number: buffer }),
+                            Err(_) => {
+                                return Err(LexerError::MalformedNumber {
+                                    number: buffer,
+                                    init: start,
+                                    end: idx,
+                                });
+                            }
                         }
                     } else {
                         match buffer.parse::<i32>() {
                             Ok(value) => Token::int(value, start, idx),
-                            Err(_) => return Err(LexerError::MalformedNumber { number: buffer }),
+                            Err(_) => {
+                                return Err(LexerError::MalformedNumber {
+                                    number: buffer,
+                                    init: start,
+                                    end: idx,
+                                });
+                            }
                         }
                     }
                 }
                 c if c.is_alphabetic() || *c == '_' => {
                     let mut buffer = String::new();
                     let start = idx;
-                    while idx < chars.len() && (chars[idx].is_alphanumeric() || chars[idx] == '_') {
-                        buffer.push(chars[idx]);
+                    while let Some(c) = chars.get(idx)
+                        && (chars[idx].is_alphanumeric() || *c == '_')
+                    {
+                        buffer.push(*c);
                         idx += 1;
                     }
 
