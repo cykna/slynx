@@ -5,16 +5,114 @@ use super::TypeChecker;
 use crate::{
     checker::error::{TypeError, TypeErrorKind},
     hir::{
-        TypeId,
+        DeclarationId, TypeId,
         definitions::{
             ComponentMemberDeclaration, HirExpression, HirExpressionKind, HirStatement,
             HirStatementKind, SpecializedComponent,
         },
         types::{FieldMethod, HirType},
     },
+    parser::ast::Span,
 };
 impl TypeChecker {
-    pub(super) fn resolve_specialized(&mut self, _: &mut SpecializedComponent) -> Result<()> {
+    fn get_function_signature(
+        &self,
+        declaration: DeclarationId,
+        span: &Span,
+    ) -> Result<(Vec<TypeId>, TypeId)> {
+        let Some(function_ty) = self
+            .declarations
+            .get(declaration.as_raw() as usize)
+            .copied()
+        else {
+            return Err(TypeError {
+                kind: TypeErrorKind::Unrecognized,
+                span: span.clone(),
+            }
+            .into());
+        };
+
+        let resolved = self.types_module.get_type(&function_ty).clone();
+        let HirType::Function { args, return_type } = resolved.clone() else {
+            return Err(TypeError {
+                kind: TypeErrorKind::InvalidFunctionCallTarget {
+                    declaration,
+                    received: resolved,
+                },
+                span: span.clone(),
+            }
+            .into());
+        };
+        Ok((args, return_type))
+    }
+
+    fn check_function_call_len(
+        &self,
+        args: &[HirExpression],
+        expected_args: &[TypeId],
+        span: &Span,
+    ) -> Result<()> {
+        if args.len() != expected_args.len() {
+            return Err(TypeError {
+                kind: TypeErrorKind::InvalidFuncallArgLength {
+                    expected_length: expected_args.len(),
+                    received_length: args.len(),
+                },
+                span: span.clone(),
+            }
+            .into());
+        }
+        Ok(())
+    }
+
+    fn check_function_call_args(
+        &mut self,
+        args: &mut [HirExpression],
+        expected: &[TypeId],
+    ) -> Result<()> {
+        for (arg, expected_ty) in args.iter_mut().zip(expected.iter().copied()) {
+            arg.ty = self.get_type_of_expr(arg)?;
+            arg.ty = self.unify(&arg.ty, &expected_ty, &arg.span)?;
+        }
+        Ok(())
+    }
+
+    fn default_function_call_args(
+        &mut self,
+        args: &mut [HirExpression],
+        expected: &[TypeId],
+    ) -> Result<()> {
+        for (arg, expected_ty) in args.iter_mut().zip(expected.iter().copied()) {
+            self.default_expr(arg)?;
+            arg.ty = self.unify(&arg.ty, &expected_ty, &arg.span)?;
+        }
+        Ok(())
+    }
+
+    pub(super) fn resolve_specialized(&mut self, spec: &mut SpecializedComponent) -> Result<()> {
+        match spec {
+            SpecializedComponent::Text { text } => {
+                text.ty = self.get_type_of_expr(text)?;
+                text.ty = self.unify(&text.ty, &self.types_module.str_id(), &text.span)?;
+            }
+            SpecializedComponent::Div { children } => {
+                for child in children {
+                    match child {
+                        ComponentMemberDeclaration::Property { value, .. } => {
+                            if let Some(value) = value {
+                                value.ty = self.get_type_of_expr(value)?;
+                            }
+                        }
+                        ComponentMemberDeclaration::Specialized(spec) => {
+                            self.resolve_specialized(spec)?;
+                        }
+                        ComponentMemberDeclaration::Child { name, values, .. } => {
+                            self.resolve_component_members(values, *name)?;
+                        }
+                    }
+                }
+            }
+        }
         Ok(())
     }
 
@@ -121,16 +219,11 @@ impl TypeChecker {
         let calc = match expr.kind {
             HirExpressionKind::FunctionCall {
                 name,
-                args: ref f_args,
+                args: ref mut f_args,
             } => {
-                let t = self.declarations[name.as_raw() as usize];
-                let HirType::Function { args, return_type } = self.types_module.get_type(&t) else {
-                    unreachable!();
-                };
-                let return_type = *return_type;
-                for (f_arg, t_args) in f_args.iter().zip(args.clone()) {
-                    self.unify(&f_arg.ty, &t_args, &f_arg.span)?;
-                }
+                let (args, return_type) = self.get_function_signature(name, &expr.span)?;
+                self.check_function_call_len(f_args, &args, &expr.span)?;
+                self.check_function_call_args(f_args, &args)?;
                 return_type
             }
             HirExpressionKind::Int(_) => self.types_module.int_id(),
@@ -201,19 +294,20 @@ impl TypeChecker {
                             .into());
                         }
                     }
-                    ref u => unimplemented!("{u:?}"),
+                    _ => {
+                        return Err(TypeError {
+                            kind: TypeErrorKind::Unrecognized,
+                            span: expr.span.clone(),
+                        }
+                        .into());
+                    }
                 }
             }
             HirExpressionKind::Bool(_) => self.types_module.bool_id(),
-            HirExpressionKind::Specialized(ref mut s) => match s {
-                SpecializedComponent::Text { text } => {
-                    text.ty = self.unify(&text.ty, &self.types_module.str_id(), &text.span)?;
-                    text.ty
-                }
-                SpecializedComponent::Div { .. } => {
-                    todo!()
-                }
-            },
+            HirExpressionKind::Specialized(ref mut s) => {
+                self.resolve_specialized(s)?;
+                self.types_module.generic_component_id()
+            }
         };
 
         expr.ty = self.unify(&expected, &calc, &expr.span)?;
@@ -224,18 +318,11 @@ impl TypeChecker {
         match expr.kind {
             HirExpressionKind::FunctionCall {
                 name,
-                args: ref f_args,
+                args: ref mut f_args,
             } => {
-                let HirType::Function { args, return_type } = self
-                    .types_module
-                    .get_type(&self.declarations[name.as_raw() as usize])
-                else {
-                    unreachable!()
-                };
-                let return_type = *return_type;
-                for (f_arg, t_args) in f_args.iter().zip(args.clone()) {
-                    self.unify(&f_arg.ty, &t_args, &f_arg.span)?;
-                }
+                let (args, return_type) = self.get_function_signature(name, &expr.span)?;
+                self.check_function_call_len(f_args, &args, &expr.span)?;
+                self.default_function_call_args(f_args, &args)?;
                 expr.ty = self.unify(&expr.ty, &return_type, &expr.span)?;
             }
             HirExpressionKind::Bool(_) => {
@@ -266,7 +353,8 @@ impl TypeChecker {
             HirExpressionKind::Identifier(_) => {
                 expr.ty = self.resolve(&expr.ty, &expr.span)?;
             }
-            HirExpressionKind::Specialized(_) => {
+            HirExpressionKind::Specialized(ref mut spec) => {
+                self.resolve_specialized(spec)?;
                 expr.ty = self.unify(
                     &expr.ty,
                     &self.types_module.generic_component_id(),

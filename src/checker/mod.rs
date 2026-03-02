@@ -38,6 +38,17 @@ impl TypeChecker {
             types_module: std::mem::take(&mut hir.types_module),
             declarations: Vec::new(),
         };
+        // Register declaration id -> type before checking bodies.
+        // Function calls index this table by DeclarationId.
+        for decl in &hir.declarations {
+            let index = decl.id.as_raw() as usize;
+            if inner.declarations.len() <= index {
+                inner
+                    .declarations
+                    .resize(index + 1, inner.types_module.void_id());
+            }
+            inner.declarations[index] = decl.ty;
+        }
         for decl in &mut hir.declarations {
             inner.check_decl(decl)?;
         }
@@ -315,5 +326,139 @@ impl TypeChecker {
             }
         }
         Ok(())
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use super::TypeChecker;
+    use crate::{
+        checker::error::{TypeError, TypeErrorKind},
+        hir::{
+            ExpressionId, SlynxHir,
+            definitions::{HirDeclarationKind, HirExpression, HirExpressionKind, HirStatementKind},
+        },
+        parser::{Parser, lexer::Lexer},
+    };
+
+    fn load_hir(path: &str) -> SlynxHir {
+        let source = std::fs::read_to_string(path).expect("source file should exist");
+        let tokens = Lexer::tokenize(&source).expect("source should tokenize");
+        let declarations = Parser::new(tokens)
+            .parse_declarations()
+            .expect("source should parse");
+        let mut hir = SlynxHir::new();
+        hir.generate(declarations).expect("HIR should generate");
+        hir
+    }
+
+    fn main_call_args(hir: &mut SlynxHir) -> Option<&mut Vec<HirExpression>> {
+        for declaration in &mut hir.declarations {
+            let HirDeclarationKind::Function {
+                name, statements, ..
+            } = &mut declaration.kind
+            else {
+                continue;
+            };
+            if name != "main" {
+                continue;
+            }
+
+            for statement in statements {
+                let expr = match &mut statement.kind {
+                    HirStatementKind::Variable { value, .. } => value,
+                    HirStatementKind::Expression { expr } => expr,
+                    HirStatementKind::Return { expr } => expr,
+                    HirStatementKind::Assign { value, .. } => value,
+                };
+                let HirExpressionKind::FunctionCall { args, .. } = &mut expr.kind else {
+                    continue;
+                };
+                return Some(args);
+            }
+        }
+        None
+    }
+
+    #[test]
+    fn function_calls_work_with_mixed_declaration_order() {
+        let mut hir = load_hir("slynx/functioncall.slynx");
+        TypeChecker::check(&mut hir).expect("function call should resolve with declaration ids");
+    }
+
+    #[test]
+    fn rejects_function_call_with_missing_arg() {
+        let mut hir = load_hir("slynx/functioncall.slynx");
+        let args = main_call_args(&mut hir).expect("expected to find a function call in main");
+        args.pop();
+
+        let err = TypeChecker::check(&mut hir)
+            .expect_err("type checker should reject function calls with missing args");
+        let type_error = err
+            .downcast_ref::<TypeError>()
+            .expect("error should come from type checker");
+
+        match &type_error.kind {
+            TypeErrorKind::InvalidFuncallArgLength {
+                expected_length,
+                received_length,
+            } => {
+                assert_eq!(*expected_length, 2);
+                assert_eq!(*received_length, 1);
+            }
+            other => panic!("expected InvalidFuncallArgLength, got {other:?}"),
+        }
+    }
+
+    #[test]
+    fn rejects_function_call_with_extra_arg() {
+        let mut hir = load_hir("slynx/functioncall.slynx");
+        let args = main_call_args(&mut hir).expect("expected to find a function call in main");
+        let template = args.first().expect("call should have at least one arg");
+        args.push(HirExpression {
+            id: ExpressionId::new(),
+            ty: template.ty,
+            kind: HirExpressionKind::Int(0),
+            span: template.span.clone(),
+        });
+
+        let err = TypeChecker::check(&mut hir)
+            .expect_err("type checker should reject function calls with extra args");
+        let type_error = err
+            .downcast_ref::<TypeError>()
+            .expect("error should come from type checker");
+
+        match &type_error.kind {
+            TypeErrorKind::InvalidFuncallArgLength {
+                expected_length,
+                received_length,
+            } => {
+                assert_eq!(*expected_length, 2);
+                assert_eq!(*received_length, 3);
+            }
+            other => panic!("expected InvalidFuncallArgLength, got {other:?}"),
+        }
+    }
+
+    #[test]
+    fn rejects_function_call_with_wrong_argument_type() {
+        let mut hir = load_hir("slynx/functioncall.slynx");
+        let bool_ty = hir.types_module.bool_id();
+        let args = main_call_args(&mut hir).expect("expected to find a function call in main");
+        let first_arg = args.first_mut().expect("call should have at least one arg");
+        first_arg.kind = HirExpressionKind::Bool(true);
+        first_arg.ty = bool_ty;
+
+        let err = TypeChecker::check(&mut hir)
+            .expect_err("type checker should reject function calls with wrong arg type");
+        let type_error = err
+            .downcast_ref::<TypeError>()
+            .expect("error should come from type checker");
+
+        assert!(
+            matches!(type_error.kind, TypeErrorKind::IncompatibleTypes { .. }),
+            "expected IncompatibleTypes, got {:?}",
+            type_error.kind
+        );
     }
 }

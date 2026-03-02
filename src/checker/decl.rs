@@ -15,9 +15,7 @@ impl TypeChecker {
             } => {
                 self.resolve_statments(statements, &decl.ty)?;
             }
-            HirDeclarationKind::Object => {
-                self.declarations.push(decl.ty);
-            }
+            HirDeclarationKind::Object => {}
 
             HirDeclarationKind::ComponentDeclaration { ref mut props } => {
                 let HirType::Component { props: mut typrops } =
