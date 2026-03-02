@@ -37,20 +37,28 @@ impl Default for BuiltinTypes {
 
 impl BuiltinTypes {
     pub fn new() -> Self {
+        const INT_IDX: u64 = 0;
+        const FLOAT_IDX: u64 = 1;
+        const STR_IDX: u64 = 2;
+        const VOID_IDX: u64 = 3;
+        const INFER_IDX: u64 = 4;
+        const GENERIC_COMPONENT_IDX: u64 = 5;
+        const BOOL_IDX: u64 = 6;
+
         Self {
-            int: TypeId::new(),
+            int: TypeId::from_raw(INT_IDX),
             int_ty: HirType::Int,
-            float: TypeId::new(),
+            float: TypeId::from_raw(FLOAT_IDX),
             float_ty: HirType::Float,
-            str: TypeId::new(),
+            str: TypeId::from_raw(STR_IDX),
             str_ty: HirType::Str,
-            void: TypeId::new(),
+            void: TypeId::from_raw(VOID_IDX),
             void_ty: HirType::Void,
-            infer: TypeId::new(),
+            infer: TypeId::from_raw(INFER_IDX),
             infer_ty: HirType::Infer,
-            generic_component: TypeId::new(),
+            generic_component: TypeId::from_raw(GENERIC_COMPONENT_IDX),
             generic_component_ty: HirType::GenericComponent,
-            bool: TypeId::new(),
+            bool: TypeId::from_raw(BOOL_IDX),
             bool_ty: HirType::Bool,
         }
     }

@@ -20,7 +20,7 @@ impl DeclarationsModule {
         }
     }
     pub fn create_declaration(&mut self, name: SymbolPointer, ty: TypeId) -> DeclarationId {
-        let id = DeclarationId::new();
+        let id = DeclarationId::from_raw(self.declaration_types.len() as u64);
         self.decls.insert(name, id);
         self.declaration_types.push(ty);
         id
@@ -32,7 +32,7 @@ impl DeclarationsModule {
         ty: TypeId,
         fields: Vec<SymbolPointer>,
     ) -> DeclarationId {
-        let id = DeclarationId::new();
+        let id = DeclarationId::from_raw(self.declaration_types.len() as u64);
         self.decls.insert(name, id);
         self.declaration_types.push(ty);
         self.objects.insert(ty, fields);
