@@ -94,12 +94,12 @@ Which represents that it creates a temporary variable named `result` being the c
 Strings on the IR are represented as internalized values. On the IR they live on a separated struct called Internalizer, and their access can be made via slices. Note that this IR expects them to be UTF8, and be represented as, inside the IR
 
 ```
-struct %Handle {usize, usize}
+struct %StrHandle {usize, usize}
 ```
 which in slynx would be
 
 ```slynx
-struct Handle {
+struct StrHandle {
   ptr: usize,
   length: usize, //length in bytes
 }
@@ -134,10 +134,7 @@ struct %Person {%StrHandle, i32}
 }
 ```
 
-and so the compiler can determine how it should be done internally.<br>
-The instructions for strings are:
-
-
+and so the compiler can determine how it should be done internally.
 
 #### Components
 
@@ -264,8 +261,8 @@ AnyComponent main() {
 
 Differently of default values, special values are primitives that are expected to exist on the runtime we are compiling to.
 
-### Binds
-
+### UI Operations
+Anything on the IR that initializes with '@' and is being used as an instruction, is an specific UI Operation, which determine what the UI itself should do. If being used as a value, then it's the visual reference to a handle of some internal string
 On Components, @binds are way to determine which value on the component should update which dependency. On the %Counter example above, we had
 ```
 @bind %count -> field #t0, 0;
@@ -274,6 +271,7 @@ On Components, @binds are way to determine which value on the component should u
 
 which means that, on %count update, it updates with the new value, the value of the field 0 of #t0. For the field 0 of #t1, it updates it using `%count |> f`, which means that the value of `call f, %count`, is used as the new value.
 The `@emit p0, %count` on the function, tells that `p0` should execute its `%count` binds. And after executing them, send a re-render with @rerender.
+
 
 #### Instructions
 
@@ -414,12 +412,12 @@ Division:
 
 ##### Logic Operations
 
-* cmp, compares the first value to the second one, and returns 1u8 if they're equal, 0u8 if they're not
-* cmpgt, compares the first value to the second one, and returns 1u8 if the first is greater than the second one, and 0u8 otherwhise
-* cmpgte, compares the first value to the second one, and returns 1u8 if the first is greater or equal to the second one, and 0u8 otherwhise
-* cmplt, compares the first value to the second one, and returns 1u8 if the first is less than the second one, and 0u8 otherwise
-* cmplte, compares the first value to the second one, and returns 1u8 if the first is less than or equal to the second one, and 0u8 otherwise
-* cmpne, compares the first value to the second one, and returns 1u8 if they're not equal, and 0u8 otherwise
+* cmp, compares the first value to the second one, and returns `true` if they're equal, `false` if they're not
+* cmpgt, compares the first value to the second one, and returns `true if the first is greater than the second one, and `false` otherwhise
+* cmpgte, compares the first value to the second one, and returns `true` if the first is greater or equal to the second one, and `false` otherwhise
+* cmplt, compares the first value to the second one, and returns `true` if the first is less than the second one, and `false` otherwise
+* cmplte, compares the first value to the second one, and returns `true` if the first is less than or equal to the second one, and `false` otherwise
+* cmpne, compares the first value to the second one, and returns `true` if they're not equal, and `false` otherwise
 
 ##### Strings Operations
 
