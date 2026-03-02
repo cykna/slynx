@@ -9,7 +9,7 @@ function c0(p0, p1, p2) {
   v4.f1 = 55;
   v3 = {
     f0: "Maria",
-    f1: v3.f18446744073709551615
+    f1: v3.f1
   };
   return v3.f1;
 }

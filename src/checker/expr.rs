@@ -101,6 +101,7 @@ impl TypeChecker {
             unreachable!("When resolving object types, a type 'struct' should be provided");
         };
         for (idx, f) in fields.iter_mut().enumerate() {
+            f.ty = self.get_type_of_expr(f)?;
             f.ty = self.unify(&fields_tys[idx], &f.ty, &f.span)?;
         }
         Ok(())
