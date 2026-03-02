@@ -55,42 +55,7 @@ object T(int,float);
 
 is defined by the same way as `S`, the only thing is how their fields are accessed on the code. (Tuples must be implemented in slynx yet)
 
-#### Functions
-Functions are defined on the IR level as the following:
-```
-int #add(int, int) {
-  result = addi32 p0, p1;
-  ret result;
-}
-```
-Where p0 is the first parameter and p1 the second one. The order of the names then is pN where N is the (N+1)th parameter of the function.
-Something in slynx such as
-```slynx
-struct Currency {
-  money: int
-}
-
-func currency_of(money: int): Currency {
-  Currency(money: money)
-}
-```
-in the IR can be represented by
-
-```
-
-struct %Currency {int}
-
-%Currency currency_of(int) {
-  result = %Currency{0};
-  propset result, 0, p0;
-  ret result;
-}
-
-```
-
-Which represents that it creates a temporary variable named `result` being the currency zeroed. storefield stores the value of `p0` on the first field of `result`
-
-#### Strings
+### Strings
 Strings on the IR are represented as internalized values. On the IR they live on a separated struct called Internalizer, and their access can be made via slices. Note that this IR expects them to be UTF8, and be represented as, inside the IR
 
 ```
@@ -136,6 +101,62 @@ struct %Person {%StrHandle, i32}
 
 and so the compiler can determine how it should be done internally.
 
+
+### Contexts
+All 'contexts' are refered as any piece of code that executes some sort of code. A struct cannot be considered a context by itself because it cannot execute any sort of code, but can be used for execution.
+Based on that, all contexts are composed by basic blocks.
+Basic Blocks have a linear sequence of instructions and MUST terminate with some termination operation. Since its linear there are no jumps.
+Note that termination operations do not terminate the context, but rather, the current block, which means that we can enter another block via `labels`
+
+#### Labels
+Labels are named as `$name` and represent another block that can be used run. All labels are meant to be declared inside a context and be used only by that specific context. Think of them like:
+i32 main(i32){
+$entry:
+  inc = addi32 p0, 1;
+  br $end
+$end:
+  twice = muli32, inc, 2;
+  ret twice;
+}
+Since a label is a named block, it needs to terminate with a termination operation.
+
+#### Functions
+Functions are defined on the IR level as the following:
+```
+int #add(int, int) {
+$entry:
+  result = addi32 p0, p1;
+  ret result;
+}
+```
+Where p0 is the first parameter and p1 the second one. The order of the names then is pN where N is the (N+1)th parameter of the function.
+Something in slynx such as
+```slynx
+struct Currency {
+  money: int
+}
+
+func currency_of(money: int): Currency {
+  Currency(money: money)
+}
+```
+in the IR can be represented by
+
+```
+
+struct %Currency {int}
+
+%Currency currency_of(int) {
+$entry:
+  result = %Currency{0};
+  propset result, 0, p0;
+  ret result;
+}
+
+```
+
+Which represents that it creates a temporary variable named `result` being the currency zeroed. storefield stores the value of `p0` on the first field of `result`
+
 #### Components
 
 Since components in Slynx are a bit more complex than a simple struct, as they can execute some sort of code during runtime, they can be declared as contexts as well. This said, the implementation of the reactivity may be specific from one compiler to another
@@ -169,12 +190,14 @@ Can be compiled to an IR that looks like the following:
 ```
 
 int f(int) {
+$entry:
   result = muli32 p0, 2;
   ret result;
 }
 
 component %Counter(int) {
   %count: int = p0;
+  
   #t0: specialized Text;
   #t1: specialized Text;
   @bind %count -> field #t0, 0;
@@ -182,6 +205,7 @@ component %Counter(int) {
 }
 
 AnyComponent main() {
+$entry:
   Counter0 = %Counter(0); //0 = default value
   Counter1 = %Counter(12);
   ret Counter1
@@ -225,16 +249,19 @@ special component %Text(bytes) {
 }
 
 int f(int) {
+$entry:
   result = muli32 p0, 2;
   ret result;
 }
 
 void Counter_count_update(%Counter) {
+$entry:
   count = prop_get p0, 0;
   inc = addi32 count, 1;
   prop_set p0, 0, inc;
   @emit p0, %count;
   @rerender p0;
+  ret
 }
 
 component %Counter(int) {
@@ -252,6 +279,7 @@ component %Counter(int) {
 }
 
 AnyComponent main() {
+$entry:
   Counter0 = %Counter(0); //0 = default value
   Counter1 = %Counter(12);
   ret Counter;
@@ -272,10 +300,19 @@ On Components, @binds are way to determine which value on the component should u
 which means that, on %count update, it updates with the new value, the value of the field 0 of #t0. For the field 0 of #t1, it updates it using `%count |> f`, which means that the value of `call f, %count`, is used as the new value.
 The `@emit p0, %count` on the function, tells that `p0` should execute its `%count` binds. And after executing them, send a re-render with @rerender.
 
+* @bind: which follows `@bind %property |> func -> value`, means that on update of `%property` inside the component we are defining, updates the provided `value`
+* @emit: which follows `@emit Component, %property`, means that it should execute the binds related to `%property` of the provided `Component`
+* @rerender: which follows: `@rerender Component`, means that the `Component` should be re-rendered
 
-#### Instructions
+### Instructions
 
-##### Integer Operations
+#### Termination Operations
+
+* br: Unconditional branch. Emits that the provided `label` should be executed.
+* cbr: Conditional branch. Follows that `cbr value, $if_label, $else_label`. If the `value` is true, then it executes the `$if_label`, otherwhise `$else_labels`. Obviously, `value` must be a boolean
+* ret: Only used inside functions, returns the provided value
+
+#### Integer Operations
 
 For now, arithmetic instructions are only defined for integer types.
 Each instruction takes two operands of the same type and returns a value of that same type.
@@ -383,7 +420,7 @@ Wrapping multiplication:
 * wrapping_mulu64
 * wrapping_mulu128
 
-##### Floating Point Operations
+#### Floating Point Operations
 
 Floating point instructions follow IEEE-754 semantics and are not saturating.
 Backends must preserve NaN, infinity and signed zero behavior.
@@ -410,7 +447,7 @@ Division:
 * divf32: divides the first `f32` by the second and returns an `f32`
 * divf64: divides the first `f64` by the second and returns an `f64`
 
-##### Logic Operations
+#### Logic Operations
 
 * cmp, compares the first value to the second one, and returns `true` if they're equal, `false` if they're not
 * cmpgt, compares the first value to the second one, and returns `true if the first is greater than the second one, and `false` otherwhise
@@ -419,7 +456,7 @@ Division:
 * cmplte, compares the first value to the second one, and returns `true` if the first is less than or equal to the second one, and `false` otherwise
 * cmpne, compares the first value to the second one, and returns `true` if they're not equal, and `false` otherwise
 
-##### Strings Operations
+#### Strings Operations
 
 * strconcat: Concats the first to the second string and returns a new copy.
 * strcmp: Compares the first string to the second one, and returns 1u8 if they're equal, 0u8 if they're not.
