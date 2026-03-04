@@ -1,9 +1,9 @@
 use slynx::{
-    hir::{
+    frontend::parser::{Parser, lexer::Lexer},
+    middleend::hir::{
         SlynxHir,
         definitions::{HirDeclarationKind, HirExpression, HirExpressionKind, HirStatementKind},
     },
-    parser::{Parser, lexer::Lexer},
 };
 
 pub fn load_hir(path: &str) -> SlynxHir {

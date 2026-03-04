@@ -1,11 +1,11 @@
 mod common;
 
 use slynx::{
-    checker::{
+    frontend::checker::{
         TypeChecker,
         error::{TypeError, TypeErrorKind},
     },
-    hir::{
+    middleend::hir::{
         ExpressionId,
         definitions::{HirExpression, HirExpressionKind},
     },
