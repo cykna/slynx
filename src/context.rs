@@ -3,11 +3,11 @@ use std::{collections::HashMap, path::PathBuf, sync::Arc};
 use color_eyre::{Report, eyre::Result, owo_colors::OwoColorize};
 
 use crate::{
-    checker::{TypeChecker, error::TypeError},
-    compiler::slynx_compiler::SlynxCompiler,
-    hir::{SlynxHir, error::HIRError},
-    intermediate::IntermediateRepr,
-    parser::{
+    frontend::checker::{TypeChecker, error::TypeError},
+    backend::compiler::slynx_compiler::SlynxCompiler,
+    middleend::hir::{SlynxHir, error::HIRError},
+    middleend::intermediate::IntermediateRepr,
+    frontend::parser::{
         Parser,
         error::ParseError,
         lexer::{Lexer, error::LexerError},
