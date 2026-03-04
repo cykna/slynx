@@ -1,16 +1,14 @@
-pub mod checker;
-pub mod compiler;
+pub mod backend;
 pub mod context;
-pub mod hir;
-pub mod intermediate;
-pub mod parser;
+pub mod frontend;
+pub mod middleend;
 
 use std::{path::PathBuf, process::exit};
 
 use clap::Parser;
 use color_eyre::eyre::Result;
 
-use crate::{compiler::js::WebCompiler, context::SlynxContext};
+use crate::{backend::compiler::js::WebCompiler, context::SlynxContext};
 
 #[derive(Debug, Parser)]
 struct Cli {
@@ -20,9 +18,11 @@ struct Cli {
 
 fn main() -> Result<()> {
     color_eyre::install()?;
+
     let cli = Cli::parse();
     let path = PathBuf::from(cli.target);
     let ctx = SlynxContext::new(path.into())?;
+
     if let Err(e) = ctx.start_compilation(WebCompiler::new()) {
         if !cfg!(debug_assertions) {
             eprintln!("{e}");
