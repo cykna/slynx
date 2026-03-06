@@ -288,6 +288,7 @@ Differently of default values, special values are primitives that are expected t
 ### UI Operations
 Anything on the IR that initializes with '@' and is being used as an instruction, is an specific UI Operation, which determine what the UI itself should do. If being used as a value, then it's the visual reference to a handle of some internal string
 On Components, @binds are way to determine which value on the component should update which dependency. On the %Counter example above, we had
+
 ```
 @bind %count -> field #t0, 0;
 @bind %count |> f -> field #t1, 0;
@@ -311,10 +312,13 @@ The `@emit p0, %count` on the function, tells that `p0` should execute its `%cou
 * cbr: Conditional branch. Follows that `cbr value, $if_label, $else_label`. If the `value` is true, then it executes the `$if_label`, otherwhise `$else_labels`. Obviously, `value` must be a boolean
 * ret: Only used inside functions, returns the provided value
 
-#### Integer Operations
+#### General Operations
+* cast: which follows: `cast ty, value` casts the provided `value`, copies the value and casts it to the provided `ty`
+
+#### Numeric Operations
 
 For now, arithmetic instructions are only defined for integer types.
-Each instruction takes two operands of the same type and returns a value of that same type.
+Each instruction takes a type argument, and two operands of the same type and returns a value of that same type. Since this only covers integers, the `type` argument(also refered as `ty`) can be any primitive integer type
 Unless explicitly stated otherwise, arithmetic instructions in this section are saturating.
 
 Saturating semantics:
@@ -326,55 +330,12 @@ Saturating semantics:
 
 Addition:
 
-* addi8: saturating add of two `i8` values, returns an `i8`
-* addi16: saturating add of two `i16` values, returns an `i16`
-* addi32: saturating add of two `i32` values, returns an `i32`
-* addi64: saturating add of two `i64` values, returns an `i64`
-* addi128: saturating add of two `i128` values, returns an `i128`
-* addu8: saturating add of two `u8` values, returns a `u8`
-* addu16: saturating add of two `u16` values, returns a `u16`
-* addu32: saturating add of two `u32` values, returns a `u32`
-* addu64: saturating add of two `u64` values, returns a `u64`
-* addu128: saturating add of two `u128` values, returns a `u128`
+* add: which follows `add ty, a,b` adds the provided `a` and `b` value asserting their type is the same as `ty` and returns the saturing result.
+* sub: which follows `sub ty, a,b` subtracts the provided `a` and `b` value asserting their type is the same as `ty` and returns the saturing result.
+* mul: which follows `mul ty, a,b` multiplies the provided `a` and `b` value asserting their type is the same as `ty` and returns the saturing result.
+* div: which follows `div ty, a,b` divides the provided `a` and `b` value asserting their type is the same as `ty` and returns the saturing result.
+* rem: which follows `rem ty, a,b` takes remainder value from the provided `a` and `b` value asserting their type is the same as `ty` and returns the saturing result.
 
-Subtraction:
-
-* subi8: saturating subtraction, returns an `i8`
-* subi16: saturating subtraction, returns an `i16`
-* subi32: saturating subtraction, returns an `i32`
-* subi64: saturating subtraction, returns an `i64`
-* subi128: saturating subtraction, returns an `i128`
-* subu8: saturating subtraction, returns a `u8`
-* subu16: saturating subtraction, returns a `u16`
-* subu32: saturating subtraction, returns a `u32`
-* subu64: saturating subtraction, returns a `u64`
-* subu128: saturating subtraction, returns a `u128`
-
-Multiplication:
-
-* muli8: saturating multiplication, returns an `i8`
-* muli16: saturating multiplication, returns an `i16`
-* muli32: saturating multiplication, returns an `i32`
-* muli64: saturating multiplication, returns an `i64`
-* muli128: saturating multiplication, returns an `i128`
-* mulu8: saturating multiplication, returns a `u8`
-* mulu16: saturating multiplication, returns a `u16`
-* mulu32: saturating multiplication, returns a `u32`
-* mulu64: saturating multiplication, returns a `u64`
-* mulu128: saturating multiplication, returns a `u128`
-
-Division:
-
-* divi8: saturating division, returns an `i8`
-* divi16: saturating division, returns an `i16`
-* divi32: saturating division, returns an `i32`
-* divi64: saturating division, returns an `i64`
-* divi128: saturating division, returns an `i128`
-* divu8: saturating division, returns a `u8`
-* divu16: saturating division, returns a `u16`
-* divu32: saturating division, returns a `u32`
-* divu64: saturating division, returns a `u64`
-* divu128: saturating division, returns a `u128`
 
 Wrapping variants:
 
@@ -382,69 +343,18 @@ Wrapping instructions are explicit and use modulo `2^N` arithmetic for the opera
 
 Wrapping addition:
 
-* wrapping_addi8
-* wrapping_addi16
-* wrapping_addi32
-* wrapping_addi64
-* wrapping_addi128
-* wrapping_addu8
-* wrapping_addu16
-* wrapping_addu32
-* wrapping_addu64
-* wrapping_addu128
+* wrapping_add
+* wrapping_sub
+* wrapping_mul
 
-Wrapping subtraction:
-
-* wrapping_subi8
-* wrapping_subi16
-* wrapping_subi32
-* wrapping_subi64
-* wrapping_subi128
-* wrapping_subu8
-* wrapping_subu16
-* wrapping_subu32
-* wrapping_subu64
-* wrapping_subu128
-
-Wrapping multiplication:
-
-* wrapping_muli8
-* wrapping_muli16
-* wrapping_muli32
-* wrapping_muli64
-* wrapping_muli128
-* wrapping_mulu8
-* wrapping_mulu16
-* wrapping_mulu32
-* wrapping_mulu64
-* wrapping_mulu128
-
-#### Floating Point Operations
-
-Floating point instructions follow IEEE-754 semantics and are not saturating.
-Backends must preserve NaN, infinity and signed zero behavior.
-Unless a backend cannot represent a specific edge case, the default rounding mode is round-to-nearest, ties-to-even.
-Floating point divide-by-zero does not trap and follows IEEE-754 results.
-
-Addition:
-
-* addf32: adds two `f32` values and returns an `f32`
-* addf64: adds two `f64` values and returns an `f64`
-
-Subtraction:
-
-* subf32: subtracts the second `f32` from the first and returns an `f32`
-* subf64: subtracts the second `f64` from the first and returns an `f64`
-
-Multiplication:
-
-* mulf32: multiplies two `f32` values and returns an `f32`
-* mulf64: multiplies two `f64` values and returns an `f64`
-
-Division:
-
-* divf32: divides the first `f32` by the second and returns an `f32`
-* divf64: divides the first `f64` by the second and returns an `f64`
+#### Bit Operations(Only for integers)
+* and: which follows `band ty, a,b`, stands for Bit AND, executes the AND operation from the provided `a` and `b` value asserting their type is the same as `ty` and returns the saturing result.
+* or: which follows `bor ty, a,b`, stands for Bit OR, executes the OR operation from the provided `a` and `b` value asserting their type is the same as `ty` and returns the saturing result.
+* xor: which follows `bxor ty, a,b`, stands for Bit XOR, executes the XOR operation from the provided `a` and `b` value asserting their type is the same as `ty` and returns the saturing result.
+* not: which follows `bnot value`, standds for Bit Not, executes the NOT operation on the provided `value` and returns a copy of it. The type of this operation is inferred by the type of `value`.
+* shl: which follows `shl ty, a,b` shifts to the left the value of `a` by `b` bits. Asserts their type is the same as `ty` and returns the saturing result.
+* shr: which follows `shr ty, a,b` shifts to the right the value of `a` by `b` bits. Asserts their type is the same as `ty` and returns the saturing result. This is the logical implementation. So if `ty` is negative(thus, bit 1 to tell so), it will not keep
+* ashr: which follows `ashr ty, a,b` shifts to the right the value of `a` by `b` bits. Asserts their type is the same as `ty` and returns the saturing result. This is the arithmetical implementation, so the negative bit keeps. This is the same as N * 2, for N of any int type
 
 #### Logic Operations
 
