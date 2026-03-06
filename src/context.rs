@@ -6,11 +6,16 @@ use std::{
 
 use color_eyre::{Report, eyre::Result, owo_colors::OwoColorize};
 
+<<<<<<< HEAD
+=======
+
+>>>>>>> b854d69 (feat: initialized ir rewriting)
 use frontend::checker::{TypeChecker, error::TypeError};
 use frontend::hir::{SlynxHir, error::HIRError};
 use frontend::lexer::{Lexer, error::LexerError};
 use frontend::parser::{Parser, error::ParseError};
-use middleend::IntermediateRepr;
+use middleend::SlynxIR;
+
 
 #[derive(Debug)]
 ///The type of the error that was generated
@@ -293,7 +298,7 @@ impl SlynxContext {
             },
             Ok(module) => module,
         };
-        let mut ir = IntermediateRepr::new();
+        let mut ir = SlynxIR::new();
 
         ir.generate(hir.declarations, module);
 
