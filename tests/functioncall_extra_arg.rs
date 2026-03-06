@@ -1,6 +1,6 @@
 mod common;
 
-use slynx::{
+use frontend::{
     checker::{
         TypeChecker,
         error::{TypeError, TypeErrorKind},
