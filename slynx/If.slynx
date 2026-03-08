@@ -3,7 +3,9 @@ func main() : Component{
 
     if 1>9{
         
-    }else{
+    }else if 8>9{
       
+    }else{
+        
     }
 }

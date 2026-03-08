@@ -81,10 +81,7 @@ pub enum HirStatementKind {
     If {
         condition: HirExpression,
         body: Vec<HirStatement>,
-    },
-
-    Else {
-        body: Vec<HirStatement>,
+        else_body: Option<Vec<HirStatement>>,
     },
 }
 
