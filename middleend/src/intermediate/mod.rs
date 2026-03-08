@@ -305,9 +305,7 @@ impl IntermediateRepr {
                     self.active_context()
                         .insert_instruction(node::IntermediateInstruction::ret(id));
                 }
-                _ => {
-                   
-                }
+                _ => {}
             };
         }
         handle

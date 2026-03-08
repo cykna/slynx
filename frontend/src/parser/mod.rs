@@ -1,11 +1,11 @@
 mod component;
+pub mod conditionals;
 pub mod error;
 mod expr;
 mod functions;
 pub mod objects;
 mod statement;
 mod types;
-pub mod conditionals;
 use color_eyre::eyre::{Report, Result};
 
 use crate::lexer::{
@@ -28,8 +28,10 @@ pub struct Parser {
 impl Parser {
     ///Creates a new parser instance from the given `stream`
     pub fn new(stream: TokenStream) -> Self {
-        Parser { stream, flags: ParserFlags::None }
-
+        Parser {
+            stream,
+            flags: ParserFlags::None,
+        }
     }
 
     /// Consumes the next token from the input stream and returns it.
@@ -55,11 +57,9 @@ impl Parser {
         self.peek_at(0)
     }
     /// Consumes the next token and checks if it matches the expected `kind`.
-    /// If it does, it returns the token; otherwise, it returns an error indicating the mismatch. 
+    /// If it does, it returns the token; otherwise, it returns an error indicating the mismatch.
     /// The error message will specify what kind of token was expected, providing clarity for debugging purposes.
-
     pub fn expect(&mut self, kind: &TokenKind) -> Result<Token> {
-        
         let token = self.eat()?;
         if std::mem::discriminant(&token.kind) == std::mem::discriminant(kind) {
             Ok(token)
@@ -77,7 +77,6 @@ impl Parser {
     /// Parses the declarations in the source code and returns them as a vector of `ASTDeclaration`s.
     /// The parser will continue parsing until it reaches the end of the input stream.
     /// If it encounters an unexpected token, it will return an error indicating the expected token type.
-    
     pub fn parse_declarations(&mut self) -> Result<Vec<ASTDeclaration>> {
         let mut out = Vec::new();
         while let Ok(token) = self.peek() {
@@ -111,13 +110,13 @@ impl Parser {
         }
         Ok(out)
     }
-    pub fn reset_flags(&mut self){
+    pub fn reset_flags(&mut self) {
         self.flags = ParserFlags::None;
     }
     pub fn set_flags(&mut self, flag: ParserFlags) {
         self.flags = flag;
     }
-     pub fn finish_current_parse(&mut self) -> Result<(), Report> {
+    pub fn finish_current_parse(&mut self) -> Result<(), Report> {
         if self.flags == ParserFlags::RequireSemicolon {
             self.expect(&TokenKind::SemiColon)?;
         }

@@ -78,6 +78,7 @@ impl SlynxHir {
                 let mut stmts = Vec::new();
                 for s in body {
                     stmts.push(self.resolve_statement(s)?);
+                    println!("Resolved statement in if: {:#?}", stmts.last());
                 }
                 let else_stmts = if let Some(eb) = else_body {
                     let mut estmts = Vec::new();
