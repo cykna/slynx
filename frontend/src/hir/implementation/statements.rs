@@ -73,7 +73,11 @@ impl SlynxHir {
                     span: statement.span,
                 })
             }
-            ASTStatementKind::If { condition, body, else_body } => {
+            ASTStatementKind::If {
+                condition,
+                body,
+                else_body,
+            } => {
                 let cond = self.resolve_expr(*condition, None)?;
                 let mut stmts = Vec::new();
                 for s in body {
@@ -91,7 +95,11 @@ impl SlynxHir {
                 };
                 Ok(HirStatement {
                     span: statement.span,
-                    kind: HirStatementKind::If { condition: cond, body: stmts, else_body: else_stmts },
+                    kind: HirStatementKind::If {
+                        condition: cond,
+                        body: stmts,
+                        else_body: else_stmts,
+                    },
                 })
             }
         }

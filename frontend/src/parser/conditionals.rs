@@ -10,7 +10,7 @@ impl Parser {
         let condition = self.parse_expression()?;
         let (body, block_span) = self.parse_block()?;
         let (else_body, end) = if self.peek()?.kind == TokenKind::Else {
-            self.eat()?; 
+            self.eat()?;
             if self.peek()?.kind == TokenKind::If {
                 let if_span = self.eat()?.span;
                 let stmt = self.parse_if(if_span)?;
