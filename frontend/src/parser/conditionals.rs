@@ -9,28 +9,31 @@ impl Parser {
         self.set_flags(super::ParserFlags::None);
         let condition = self.parse_expression()?;
         let (body, block_span) = self.parse_block()?;
+        let (else_body, end) = if self.peek()?.kind == TokenKind::Else {
+            self.eat()?; 
+            if self.peek()?.kind == TokenKind::If {
+                let if_span = self.eat()?.span;
+                let stmt = self.parse_if(if_span)?;
+                let end = stmt.span.end;
+                (Some(vec![stmt]), end)
+            } else {
+                let (eb, es) = self.parse_block()?;
+                (Some(eb), es.end)
+            }
+        } else {
+            (None, block_span.end)
+        };
+
         Ok(ASTStatement {
             span: Span {
                 start: span.start,
-                end: block_span.end,
+                end,
             },
             kind: ASTStatementKind::If {
                 condition: Box::new(condition),
                 body,
+                else_body,
             },
-        })
-    }
-
-    /// Parses an else statement. The provided `span` is the initial span for the 'else' keyword.
-    pub fn parse_else(&mut self, span: Span) -> Result<ASTStatement> {
-        self.set_flags(super::ParserFlags::None);
-        let (body, block_span) = self.parse_block()?;
-        Ok(ASTStatement {
-            span: Span {
-                start: span.start,
-                end: block_span.end,
-            },
-            kind: ASTStatementKind::Else { body },
         })
     }
 
@@ -39,20 +42,20 @@ impl Parser {
         let lbrace = self.expect(&TokenKind::LBrace)?;
         let start = lbrace.span.start;
         let mut body = Vec::new();
-       while !matches!(self.peek()?.kind, TokenKind::RBrace) {
-                    let stmt = self.parse_statement()?;
-                    body.push(stmt);
-                    match  &body.last().unwrap().kind {
-                        ASTStatementKind::If { .. } | ASTStatementKind::Else { .. } => {
-                            continue;
-                        }
-                        _ => {}
-                    }
-                    if self.peek()?.kind == TokenKind::RBrace {
-                        continue;
-                    }
-                    self.finish_current_parse()?;
+        while !matches!(self.peek()?.kind, TokenKind::RBrace) {
+            let stmt = self.parse_statement()?;
+            body.push(stmt);
+            match &body.last().unwrap().kind {
+                ASTStatementKind::If { .. } => {
+                    continue;
                 }
+                _ => {}
+            }
+            if self.peek()?.kind == TokenKind::RBrace {
+                continue;
+            }
+            self.finish_current_parse()?;
+        }
         let rbrace = self.expect(&TokenKind::RBrace)?;
         let end = rbrace.span.end;
         Ok((body, Span { start, end }))

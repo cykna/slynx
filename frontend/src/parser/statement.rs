@@ -64,10 +64,6 @@ impl Parser {
                 
                 self.parse_if(span)
             }
-            TokenKind::Else => {
-                let span = self.eat()?.span;
-                self.parse_else(span)
-            }
             _ => {
                 let expr = self.parse_expression()?;
                 if matches!(self.peek()?.kind, TokenKind::Eq) && expr.is_assignable() {

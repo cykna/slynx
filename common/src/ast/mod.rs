@@ -71,9 +71,7 @@ pub enum ASTStatementKind {
     If {
         condition: Box<ASTExpression>,
         body: Vec<ASTStatement>,
-    },
-    Else {
-        body: Vec<ASTStatement>,
+        else_body: Option<Vec<ASTStatement>>,
     },
 }
 
