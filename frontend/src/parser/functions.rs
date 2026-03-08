@@ -80,7 +80,7 @@ impl Parser {
                     let stmt = self.parse_statement()?;
                     body.push(stmt);
                     match  &body.last().unwrap().kind {
-                        ASTStatementKind::If { .. } | ASTStatementKind::Else { .. } => {
+                        ASTStatementKind::If { .. } => {
                             continue;
                         }
                         _ => {}
