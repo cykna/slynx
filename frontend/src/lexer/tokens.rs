@@ -113,13 +113,19 @@ impl Token {
     pub fn if_token(pos: usize) -> Self {
         Self {
             kind: TokenKind::If,
-            span: Span { end: pos, start: pos },
+            span: Span {
+                end: pos,
+                start: pos,
+            },
         }
     }
     pub fn else_token(pos: usize) -> Self {
         Self {
             kind: TokenKind::Else,
-            span: Span { end: pos, start: pos },
+            span: Span {
+                end: pos,
+                start: pos,
+            },
         }
     }
     pub fn bitor(pos: usize) -> Self {

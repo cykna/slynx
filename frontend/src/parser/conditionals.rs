@@ -39,20 +39,20 @@ impl Parser {
         let lbrace = self.expect(&TokenKind::LBrace)?;
         let start = lbrace.span.start;
         let mut body = Vec::new();
-       while !matches!(self.peek()?.kind, TokenKind::RBrace) {
-                    let stmt = self.parse_statement()?;
-                    body.push(stmt);
-                    match  &body.last().unwrap().kind {
-                        ASTStatementKind::If { .. } | ASTStatementKind::Else { .. } => {
-                            continue;
-                        }
-                        _ => {}
-                    }
-                    if self.peek()?.kind == TokenKind::RBrace {
-                        continue;
-                    }
-                    self.finish_current_parse()?;
+        while !matches!(self.peek()?.kind, TokenKind::RBrace) {
+            let stmt = self.parse_statement()?;
+            body.push(stmt);
+            match &body.last().unwrap().kind {
+                ASTStatementKind::If { .. } | ASTStatementKind::Else { .. } => {
+                    continue;
                 }
+                _ => {}
+            }
+            if self.peek()?.kind == TokenKind::RBrace {
+                continue;
+            }
+            self.finish_current_parse()?;
+        }
         let rbrace = self.expect(&TokenKind::RBrace)?;
         let end = rbrace.span.end;
         Ok((body, Span { start, end }))

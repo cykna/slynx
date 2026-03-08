@@ -61,7 +61,7 @@ impl Parser {
             }
             TokenKind::If => {
                 let span = self.eat()?.span;
-                
+
                 self.parse_if(span)
             }
             TokenKind::Else => {
@@ -71,6 +71,7 @@ impl Parser {
             _ => {
                 let expr = self.parse_expression()?;
                 if matches!(self.peek()?.kind, TokenKind::Eq) && expr.is_assignable() {
+                    self.set_flags(super::ParserFlags::RequireSemicolon);
                     self.eat()?;
                     let rhs = self.parse_expression()?;
                     Ok(ASTStatement {

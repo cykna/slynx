@@ -7,7 +7,7 @@ use common::ast::{
 };
 
 impl Parser {
-    /// Parses a function call expression. 
+    /// Parses a function call expression.
     /// It expects the current token to be an identifier, followed by a left parenthesis '(', then a list of expressions as arguments separated by commas, and finally a right parenthesis ')'.
     pub fn parse_funcall(&mut self) -> Result<ASTExpression> {
         let identifier = self.parse_type()?;
