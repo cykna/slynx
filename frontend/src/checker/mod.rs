@@ -368,6 +368,7 @@ mod tests {
                     HirStatementKind::Expression { expr } => expr,
                     HirStatementKind::Return { expr } => expr,
                     HirStatementKind::Assign { value, .. } => value,
+                    _ => continue,
                 };
                 let HirExpressionKind::FunctionCall { args, .. } = &mut expr.kind else {
                     continue;

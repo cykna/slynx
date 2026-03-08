@@ -1,0 +1,9 @@
+func main() : Component{
+    let mut person = 10;
+
+    if 1>9{
+        
+    }else{
+      
+    }
+}

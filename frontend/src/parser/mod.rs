@@ -5,7 +5,7 @@ mod functions;
 pub mod objects;
 mod statement;
 mod types;
-
+pub mod conditionals;
 use color_eyre::eyre::{Report, Result};
 
 use crate::lexer::{
@@ -83,6 +83,7 @@ impl Parser {
                     let Token { span, .. } = self.eat()?;
                     out.push(self.parse_component(span)?)
                 }
+
                 TokenKind::Func => {
                     let Token {
                         kind: TokenKind::Func,

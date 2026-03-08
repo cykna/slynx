@@ -193,6 +193,9 @@ impl TypeChecker {
                     value.ty = self.get_type_of_expr(value)?;
                     value.ty = self.unify(&ty, &value.ty, &value.span)?;
                 }
+                _ => {
+                    // ignore other kinds (conditionals, etc.)
+                }
             }
         }
         Ok(())

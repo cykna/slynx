@@ -77,7 +77,14 @@ impl Parser {
             TokenKind::LBrace => {
                 let mut body = Vec::new();
                 while !matches!(self.peek()?.kind, TokenKind::RBrace) {
-                    body.push(self.parse_statement()?);
+                    let stmt = self.parse_statement()?;
+                    body.push(stmt);
+                    match  &body.last().unwrap().kind {
+                        ASTStatementKind::If { .. } | ASTStatementKind::Else { .. } => {
+                            continue;
+                        }
+                        _ => {}
+                    }
                     if self.peek()?.kind == TokenKind::RBrace {
                         continue;
                     }

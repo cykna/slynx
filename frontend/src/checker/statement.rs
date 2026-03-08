@@ -26,6 +26,9 @@ impl TypeChecker {
                 let unify = self.unify(&expr.ty, expected, &statement.span)?;
                 expr.ty = unify;
             }
+            _ => {
+                // conditionals not type-checked here yet
+            }
         };
         Ok(())
     }
