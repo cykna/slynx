@@ -6,16 +6,11 @@ use std::{
 
 use color_eyre::{Report, eyre::Result, owo_colors::OwoColorize};
 
-<<<<<<< HEAD
-=======
-
->>>>>>> b854d69 (feat: initialized ir rewriting)
 use frontend::checker::{TypeChecker, error::TypeError};
 use frontend::hir::{SlynxHir, error::HIRError};
 use frontend::lexer::{Lexer, error::LexerError};
 use frontend::parser::{Parser, error::ParseError};
 use middleend::SlynxIR;
-
 
 #[derive(Debug)]
 ///The type of the error that was generated
@@ -54,12 +49,12 @@ impl std::error::Error for SlynxError {}
 #[derive(Debug)]
 pub struct CompilationOutput {
     output_path: PathBuf,
-    ir: IntermediateRepr,
+    ir: SlynxIR,
 }
 
 impl CompilationOutput {
     ///Creates a new compilation output with the provided `ir`. Writes the `ir` in its textual format on the provided `entry_point` with extension of `sir`
-    fn new(entry_point: &Path, ir: IntermediateRepr) -> Self {
+    fn new(entry_point: &Path, ir: SlynxIR) -> Self {
         Self {
             output_path: entry_point.with_extension("sir"),
             ir,
@@ -67,7 +62,7 @@ impl CompilationOutput {
     }
 
     ///Consumes and retrieves the IR of this compilation output
-    pub fn ir(self) -> IntermediateRepr {
+    pub fn ir(self) -> SlynxIR {
         self.ir
     }
 
