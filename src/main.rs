@@ -3,7 +3,6 @@ use std::{path::PathBuf, process::exit};
 use clap::Parser;
 use color_eyre::eyre::Result;
 
-use backend::compiler::js::WebCompiler;
 use slynx::context::SlynxContext;
 
 #[derive(Debug, Parser)]
