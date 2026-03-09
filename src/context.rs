@@ -1,4 +1,8 @@
-use std::{collections::HashMap, path::PathBuf, sync::Arc};
+use std::{
+    collections::HashMap,
+    path::{Path, PathBuf},
+    sync::Arc,
+};
 
 use color_eyre::{Report, eyre::Result, owo_colors::OwoColorize};
 
@@ -42,6 +46,34 @@ pub struct SlynxError {
     source_code: String,
 }
 impl std::error::Error for SlynxError {}
+
+#[derive(Debug)]
+pub struct CompilationOutput {
+    output_path: PathBuf,
+    bytes: Vec<u8>,
+}
+
+impl CompilationOutput {
+    fn new(entry_point: &Path, bytes: Vec<u8>) -> Self {
+        Self {
+            output_path: entry_point.with_extension("js"),
+            bytes,
+        }
+    }
+
+    pub fn output_path(&self) -> &Path {
+        &self.output_path
+    }
+
+    pub fn bytes(&self) -> &[u8] {
+        &self.bytes
+    }
+
+    pub fn write(&self) -> Result<()> {
+        std::fs::write(&self.output_path, &self.bytes)?;
+        Ok(())
+    }
+}
 
 impl std::fmt::Display for SlynxError {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
@@ -155,7 +187,7 @@ impl SlynxContext {
         self.entry_point.to_string_lossy().to_string()
     }
 
-    pub fn start_compilation<S: SlynxCompiler>(self, compiler: S) -> Result<()> {
+    pub fn compile<S: SlynxCompiler>(self, compiler: S) -> Result<CompilationOutput> {
         let stream = match Lexer::tokenize(self.get_entry_point_source()) {
             Ok(value) => value,
             Err(e) => match e {
@@ -262,7 +294,13 @@ impl SlynxContext {
         ir.generate(hir.declarations, module);
 
         let out = compiler.compile(ir);
-        std::fs::write(self.entry_point.with_extension("js"), out)?;
+        let output = CompilationOutput::new(self.entry_point.as_ref(), out);
+        Ok(output)
+    }
+
+    pub fn start_compilation<S: SlynxCompiler>(self, compiler: S) -> Result<()> {
+        let output = self.compile(compiler)?;
+        output.write()?;
         Ok(())
     }
 }

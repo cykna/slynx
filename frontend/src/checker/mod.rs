@@ -328,6 +328,8 @@ impl TypeChecker {
 
 #[cfg(test)]
 mod tests {
+    use std::path::Path;
+
     use super::TypeChecker;
     use crate::{
         checker::error::{TypeError, TypeErrorKind},
@@ -340,7 +342,8 @@ mod tests {
     };
 
     fn load_hir(path: &str) -> SlynxHir {
-        let source = std::fs::read_to_string(path).expect("source file should exist");
+        let source_path = Path::new(env!("CARGO_MANIFEST_DIR")).join("..").join(path);
+        let source = std::fs::read_to_string(&source_path).expect("source file should exist");
         let tokens = Lexer::tokenize(&source).expect("source should tokenize");
         let declarations = Parser::new(tokens)
             .parse_declarations()

@@ -11,7 +11,7 @@ fn test_component_type_mismatch_errors() {
     )))
     .unwrap();
 
-    let result = context.start_compilation(WebCompiler::new());
+    let result = context.compile(WebCompiler::new());
     assert!(
         result.is_err(),
         "Expected type checker to reject incompatible component assignment",

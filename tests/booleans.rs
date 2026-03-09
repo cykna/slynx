@@ -6,5 +6,14 @@ use slynx::compiler::js::WebCompiler;
 fn test_variables() {
     let context =
         slynx::SlynxContext::new(Arc::new(PathBuf::from("slynx/booleans.slynx"))).unwrap();
-    context.start_compilation(WebCompiler::new()).unwrap();
+    let output = context.compile(WebCompiler::new()).unwrap();
+
+    assert_eq!(
+        output
+            .output_path()
+            .extension()
+            .and_then(|ext| ext.to_str()),
+        Some("js")
+    );
+    assert!(!output.bytes().is_empty());
 }
