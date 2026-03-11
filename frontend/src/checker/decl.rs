@@ -15,9 +15,9 @@ impl TypeChecker {
             } => {
                 self.resolve_statments(statements, &decl.ty)?;
             }
-            HirDeclarationKind::Object => {}
+            HirDeclarationKind::Object { .. } => {}
 
-            HirDeclarationKind::ComponentDeclaration { ref mut props } => {
+            HirDeclarationKind::ComponentDeclaration { ref mut props, .. } => {
                 let HirType::Component { props: mut typrops } =
                     self.types_module.get_type(&decl.ty).clone()
                 else {

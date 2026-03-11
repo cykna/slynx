@@ -6,9 +6,10 @@ use std::ops::Index;
 pub struct StringPool {
     pool: Vec<u8>,
     len: usize,
+    handles: Vec<StringHandle>,
 }
 
-#[derive(Debug, Clone)]
+#[derive(Debug, Clone, PartialEq, Eq, Hash)]
 ///A handle that is used to access some String inside a String pool.
 pub struct StringHandle {
     index: usize,
@@ -23,6 +24,7 @@ impl StringPool {
         Self {
             pool: Vec::new(),
             len: 0,
+            handles: Vec::new(),
         }
     }
 
@@ -51,7 +53,12 @@ impl StringPool {
         };
         self.pool.extend_from_slice(bytes);
         self.len += 1;
+        self.handles.push(handle.clone());
         handle
+    }
+
+    pub fn handles(&self) -> &[StringHandle] {
+        &self.handles
     }
 }
 

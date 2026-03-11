@@ -4,6 +4,7 @@ pub mod error;
 pub mod id; // New module for specific IDs
 mod implementation;
 pub mod names;
+mod render;
 mod scopes;
 pub mod symbols;
 pub mod types;
@@ -42,6 +43,7 @@ pub struct SlynxHir {
     /// Maps the types of top level things on the current scope to their types.
     /// An example is functions, which contain an HirType.
     types: HashMap<TypeId, HirType>,
+    variable_names: HashMap<VariableId, symbols::SymbolPointer>,
 
     /// The scopes of this HIR. On the final it's expected to have only one, which is the global one
     pub declarations: Vec<HirDeclaration>,
@@ -52,6 +54,7 @@ impl SlynxHir {
         Self {
             scope_module: ScopeModule::new(),
             types: HashMap::new(),
+            variable_names: HashMap::new(),
             declarations: Vec::new(),
             declarations_module: DeclarationsModule::new(),
             symbols_module: SymbolsModule::new(),
@@ -300,7 +303,10 @@ impl SlynxHir {
                 let defs = self.resolve_component_defs(members)?;
                 self.declarations.push(HirDeclaration {
                     id: decl,
-                    kind: HirDeclarationKind::ComponentDeclaration { props: defs },
+                    kind: HirDeclarationKind::ComponentDeclaration {
+                        name: name.identifier,
+                        props: defs,
+                    },
                     ty,
                     span: ast.span,
                 });

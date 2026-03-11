@@ -89,6 +89,7 @@ impl SlynxHir {
         let v = VariableId::new();
         self.scope_module.insert_name(ptr, v, mutable);
         self.types_module.insert_variable(v, ty);
+        self.variable_names.insert(v, ptr);
         v
     }
     ///Tries to retrieve a variable with the provided `name` on the current active scope

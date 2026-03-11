@@ -2,6 +2,7 @@ pub mod context;
 pub mod expr;
 pub mod id;
 pub mod node;
+mod render;
 pub mod string;
 pub mod types;
 use std::collections::HashMap;
@@ -29,6 +30,7 @@ pub struct IntermediateRepr {
     pub contexts: Vec<IntermediateContext>,
     pub context_mapping: HashMap<TyId, ContextHandle>,
     pub types_mapping: HashMap<TyId, IntermediateType>,
+    pub type_names: HashMap<TyId, String>,
     pub vars: HashMap<VariableId, VarId>,
     pub props: HashMap<PropertyId, VarId>,
     ///Mapping of high level types to low level types
@@ -202,11 +204,13 @@ impl IntermediateRepr {
     /// Creates a new component with the provided informations. Returns the component id and it's type id
     fn generate_component(
         &mut self,
+        name: String,
         props: Vec<ComponentMemberDeclaration>,
+        prop_names: Vec<String>,
         tys: &[IntermediateType],
     ) -> ContextHandle {
         let handle = ContextHandle(self.contexts.len());
-        let expr = IntermediateContext::new_component(handle);
+        let expr = IntermediateContext::new_component(handle, name);
 
         self.contexts.push(expr);
         for (idx, prop) in props.into_iter().enumerate() {
@@ -214,8 +218,11 @@ impl IntermediateRepr {
                 ComponentMemberDeclaration::Property { value, id, .. } => {
                     let default_value = value.map(|value| self.generate_expr(value));
 
-                    self.active_context()
-                        .insert_property(default_value, tys[idx].clone());
+                    self.active_context().insert_property(
+                        prop_names[idx].clone(),
+                        default_value,
+                        tys[idx].clone(),
+                    );
                     self.props.insert(id, VarId::new());
                 }
                 ComponentMemberDeclaration::Specialized(spec) => {
@@ -313,13 +320,14 @@ impl IntermediateRepr {
     pub fn generate(&mut self, decls: Vec<HirDeclaration>, module: TypesModule) {
         for decl in decls {
             match decl.kind {
-                HirDeclarationKind::Object => {
+                HirDeclarationKind::Object { name } => {
                     let HirType::Struct { fields } = module.get_type_from_ref(&decl.ty) else {
                         unreachable!("Type of a object declaration should be 'struct'");
                     };
                     let ty = self.retrieve_complex(fields.as_slice(), &module);
                     let tyid = TyId::new();
                     self.types.insert(decl.ty, tyid);
+                    self.type_names.insert(tyid, name);
                     self.types_mapping.insert(tyid, ty); // Convert DeclarationId to HirId
                 }
                 HirDeclarationKind::Function {
@@ -350,20 +358,25 @@ impl IntermediateRepr {
                     self.functions_mapping.insert(decl.id, handle);
                     self.context_mapping.insert(ty, handle);
                 }
-                HirDeclarationKind::ComponentDeclaration { props } => {
+                HirDeclarationKind::ComponentDeclaration { name, props } => {
                     let mut tys = Vec::new();
                     let HirType::Component { props: decl_ty } = module.get_type(&decl.ty) else {
                         unreachable!("Type of component decl should be component");
                     };
+                    let prop_names = decl_ty
+                        .iter()
+                        .map(|(_, name, _)| name.clone())
+                        .collect::<Vec<_>>();
                     for (_, _, ty) in decl_ty {
                         let typ = self.get_type(ty, &module);
                         tys.push(typ);
                     }
 
-                    let handle = self.generate_component(props, &tys); // Convert DeclarationId to HirId
+                    let handle = self.generate_component(name.clone(), props, prop_names, &tys); // Convert DeclarationId to HirId
                     let ty = TyId::new();
                     self.types.insert(decl.ty, ty);
                     self.context_mapping.insert(ty, handle);
+                    self.type_names.insert(ty, name);
                     self.types_mapping
                         .insert(ty, IntermediateType::Complex(tys));
                     // Convert DeclarationId to HirId

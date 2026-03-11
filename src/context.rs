@@ -75,6 +75,31 @@ impl CompilationOutput {
     }
 }
 
+#[derive(Debug)]
+pub struct CompilationStages {
+    hir: SlynxHir,
+    ir: IntermediateRepr,
+}
+
+impl CompilationStages {
+    pub fn hir_text(&self) -> String {
+        self.hir.render_text()
+    }
+
+    pub fn ir_text(&self) -> String {
+        self.ir.render_text()
+    }
+
+    pub fn compile_output<S: SlynxCompiler>(
+        self,
+        entry_point: &Path,
+        compiler: S,
+    ) -> CompilationOutput {
+        let out = compiler.compile(self.ir);
+        CompilationOutput::new(entry_point, out)
+    }
+}
+
 impl std::fmt::Display for SlynxError {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
         let type_error = self.ty.to_string();
@@ -187,7 +212,15 @@ impl SlynxContext {
         self.entry_point.to_string_lossy().to_string()
     }
 
-    pub fn compile<S: SlynxCompiler>(self, compiler: S) -> Result<CompilationOutput> {
+    pub fn entry_point_path(&self) -> &Path {
+        self.entry_point.as_ref()
+    }
+
+    pub fn dump_path(&self, extension: &str) -> PathBuf {
+        self.entry_point.with_extension(extension)
+    }
+
+    pub fn build_stages(&self) -> Result<CompilationStages> {
         let stream = match Lexer::tokenize(self.get_entry_point_source()) {
             Ok(value) => value,
             Err(e) => match e {
@@ -289,13 +322,16 @@ impl SlynxContext {
             },
             Ok(module) => module,
         };
+        hir.types_module = module.clone();
         let mut ir = IntermediateRepr::new();
+        ir.generate(hir.declarations.clone(), module);
 
-        ir.generate(hir.declarations, module);
+        Ok(CompilationStages { hir, ir })
+    }
 
-        let out = compiler.compile(ir);
-        let output = CompilationOutput::new(self.entry_point.as_ref(), out);
-        Ok(output)
+    pub fn compile<S: SlynxCompiler>(self, compiler: S) -> Result<CompilationOutput> {
+        let stages = self.build_stages()?;
+        Ok(stages.compile_output(self.entry_point.as_ref(), compiler))
     }
 
     pub fn start_compilation<S: SlynxCompiler>(self, compiler: S) -> Result<()> {

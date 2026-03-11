@@ -60,7 +60,7 @@ impl BuiltinTypes {
     }
 }
 
-#[derive(Debug, Default)]
+#[derive(Debug, Default, Clone)]
 pub struct TypesModule {
     ///A hashmap that maps a name of a global name to its type. This is not for variables, but only for global types, such as structs, functions and components
     type_names: HashMap<SymbolPointer, TypeId>,
@@ -157,6 +157,11 @@ impl TypesModule {
         self.type_names
             .get(name)
             .map(|id| &mut self.types[id.as_raw() as usize])
+    }
+    pub fn type_name(&self, id: &TypeId) -> Option<SymbolPointer> {
+        self.type_names
+            .iter()
+            .find_map(|(name, ty)| (*ty == *id).then_some(*name))
     }
     pub fn get_type_from_ref(&self, id: &TypeId) -> &HirType {
         if let HirType::Reference { rf, .. } = self.get_type(id) {

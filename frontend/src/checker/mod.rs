@@ -305,7 +305,7 @@ impl TypeChecker {
 
     fn set_default(&mut self, decl: &mut HirDeclaration) -> Result<()> {
         match decl.kind {
-            HirDeclarationKind::Object => {}
+            HirDeclarationKind::Object { .. } => {}
             HirDeclarationKind::Function {
                 ref mut statements, ..
             } => {
@@ -318,7 +318,7 @@ impl TypeChecker {
                     self.default_statement(statement, &return_type)?;
                 }
             }
-            HirDeclarationKind::ComponentDeclaration { ref mut props } => {
+            HirDeclarationKind::ComponentDeclaration { ref mut props, .. } => {
                 self.resolve_component_members(props, decl.ty)?;
             }
         }

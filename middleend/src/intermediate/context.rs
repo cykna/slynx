@@ -11,6 +11,7 @@ use crate::intermediate::{
 ///A Intermediate property used to bind an id to it's default value on the current context
 pub struct IntermediateProperty {
     pub id: PropId,
+    pub name: String,
     pub ty: IntermediateType,
     pub default_value: Option<ValueId>,
 }
@@ -24,6 +25,7 @@ pub enum IntermediateContextType {
         ret: IntermediateType,
     },
     Component {
+        name: String,
         properties: Vec<IntermediateProperty>,
         children: Vec<ValueId>,
     },
@@ -60,13 +62,14 @@ impl IntermediateContext {
             },
         }
     }
-    pub fn new_component(id: ContextHandle) -> Self {
+    pub fn new_component(id: ContextHandle, name: String) -> Self {
         Self {
             id,
             exprs: Vec::new(),
             vars: Vec::new(),
             names: HashMap::new(),
             ty: IntermediateContextType::Component {
+                name,
                 properties: Vec::new(),
                 children: Vec::new(),
             },
@@ -102,6 +105,7 @@ impl IntermediateContext {
     ///Returns None if this isn't an component
     pub fn insert_property(
         &mut self,
+        name: String,
         value: Option<ValueId>,
         ty: IntermediateType,
     ) -> Option<PropId> {
@@ -110,6 +114,7 @@ impl IntermediateContext {
                 let prop = PropId::from_raw(properties.len() as u64);
                 properties.push(IntermediateProperty {
                     id: prop,
+                    name,
                     ty,
                     default_value: value,
                 });

@@ -2,7 +2,7 @@ use crate::hir::{DeclarationId, ExpressionId, PropertyId, TypeId, VariableId};
 
 use common::ast::{Operator, Span};
 
-#[derive(Debug)]
+#[derive(Debug, Clone)]
 pub enum SpecializedComponent {
     Text {
         text: Box<HirExpression>,
@@ -12,7 +12,7 @@ pub enum SpecializedComponent {
     },
 }
 
-#[derive(Debug)]
+#[derive(Debug, Clone)]
 #[repr(C)]
 pub struct HirDeclaration {
     pub kind: HirDeclarationKind,
@@ -21,21 +21,24 @@ pub struct HirDeclaration {
     pub span: Span,
 }
 
-#[derive(Debug)]
+#[derive(Debug, Clone)]
 #[repr(C)]
 pub enum HirDeclarationKind {
-    Object,
+    Object {
+        name: String,
+    },
     Function {
         statements: Vec<HirStatement>,
         args: Vec<VariableId>, // Changed from HirId - function arguments are variables
         name: String,
     },
     ComponentDeclaration {
+        name: String,
         props: Vec<ComponentMemberDeclaration>,
     },
 }
 
-#[derive(Debug)]
+#[derive(Debug, Clone)]
 #[repr(C)]
 pub enum ComponentMemberDeclaration {
     Property {
@@ -53,14 +56,14 @@ pub enum ComponentMemberDeclaration {
     Specialized(SpecializedComponent),
 }
 
-#[derive(Debug)]
+#[derive(Debug, Clone)]
 #[repr(C)]
 pub struct HirStatement {
     pub kind: HirStatementKind,
     pub span: Span,
 }
 
-#[derive(Debug)]
+#[derive(Debug, Clone)]
 #[repr(C)]
 pub enum HirStatementKind {
     Assign {
@@ -79,7 +82,7 @@ pub enum HirStatementKind {
     },
 }
 
-#[derive(Debug)]
+#[derive(Debug, Clone)]
 #[repr(C)]
 pub struct HirExpression {
     pub id: ExpressionId,
@@ -88,7 +91,7 @@ pub struct HirExpression {
     pub span: Span,
 }
 
-#[derive(Debug)]
+#[derive(Debug, Clone)]
 #[repr(C)]
 pub enum HirExpressionKind {
     Int(i32),

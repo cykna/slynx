@@ -64,7 +64,9 @@ impl SlynxHir {
 
         ty_field.append(&mut fields);
         self.declarations.push(HirDeclaration {
-            kind: HirDeclarationKind::Object,
+            kind: HirDeclarationKind::Object {
+                name: name.identifier,
+            },
             id: decl,
             ty: declty,
             span,

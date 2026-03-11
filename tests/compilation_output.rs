@@ -63,3 +63,48 @@ fn compile_code_still_writes_js_output() {
 
     fs::remove_dir_all(case_dir).expect("temp case dir should be removed");
 }
+
+#[test]
+fn build_stages_produces_stable_hir_and_ir_dumps() {
+    let case_dir = temp_case_dir("stable-dumps");
+    let source_path = write_temp_source(&case_dir);
+
+    let first = SlynxContext::new(Arc::new(source_path.clone()))
+        .expect("context should be created")
+        .build_stages()
+        .expect("stages should build");
+    let second = SlynxContext::new(Arc::new(source_path))
+        .expect("context should be created")
+        .build_stages()
+        .expect("stages should build");
+
+    assert_eq!(first.hir_text(), second.hir_text());
+    assert_eq!(first.ir_text(), second.ir_text());
+
+    fs::remove_dir_all(case_dir).expect("temp case dir should be removed");
+}
+
+#[test]
+fn build_stages_can_write_hir_ir_and_js_outputs() {
+    let case_dir = temp_case_dir("dump-files");
+    let source_path = write_temp_source(&case_dir);
+    let hir_path = source_path.with_extension("hir");
+    let ir_path = source_path.with_extension("ir");
+    let js_path = source_path.with_extension("js");
+
+    let context = SlynxContext::new(Arc::new(source_path)).expect("context should be created");
+    let stages = context.build_stages().expect("stages should build");
+
+    fs::write(&hir_path, stages.hir_text()).expect("hir dump should be written");
+    fs::write(&ir_path, stages.ir_text()).expect("ir dump should be written");
+    stages
+        .compile_output(context.entry_point_path(), WebCompiler::new())
+        .write()
+        .expect("js output should be written");
+
+    assert!(hir_path.exists());
+    assert!(ir_path.exists());
+    assert!(js_path.exists());
+
+    fs::remove_dir_all(case_dir).expect("temp case dir should be removed");
+}
