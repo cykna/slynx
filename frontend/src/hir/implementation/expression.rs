@@ -4,7 +4,7 @@ use color_eyre::eyre::Result;
 
 use crate::hir::{
     ExpressionId, SlynxHir, TypeId,
-    definitions::{HirExpression, HirExpressionKind},
+    definitions::{HirExpression, HirExpressionKind, HirStatementKind},
     error::{HIRError, HIRErrorKind},
     types::{FieldMethod, HirType},
 };
@@ -110,6 +110,67 @@ impl SlynxHir {
         ty: Option<TypeId>,
     ) -> Result<HirExpression> {
         match expr.kind {
+            ASTExpressionKind::If {
+                condition,
+                body,
+                else_body,
+            } => {
+                let condition = self.resolve_expr(*condition, Some(self.types_module.bool_id()))?;
+                let then_block: Vec<_> = body
+                    .into_iter()
+                    .map(|stmt| self.resolve_statement(stmt))
+                    .collect::<Result<_>>()?;
+
+                let then_type = if let Some(last) = then_block.last() {
+                    match &last.kind {
+                        HirStatementKind::Expression { expr } => expr.ty,
+                        HirStatementKind::Variable { value, .. } => value.ty,
+                        _ => self.types_module.void_id(),
+                    }
+                } else {
+                    self.types_module.void_id()
+                };
+                let else_block: Option<Vec<_>> = if let Some(else_body) = else_body {
+                    Some(
+                        else_body
+                            .into_iter()
+                            .map(|stmt| self.resolve_statement(stmt))
+                            .collect::<Result<_>>()?,
+                    )
+                } else {
+                    None
+                };
+                let else_type = if let Some(ref block) = else_block {
+                    if let Some(last) = block.last() {
+                        match &last.kind {
+                            HirStatementKind::Expression { expr } => expr.ty,
+                            HirStatementKind::Variable { value, .. } => value.ty,
+                            _ => self.types_module.void_id(),
+                        }
+                    } else {
+                        self.types_module.void_id()
+                    }
+                } else {
+                    self.types_module.void_id()
+                };
+                let final_type = if then_type == self.types_module.infer_id() {
+                    else_type
+                } else {
+                    then_type
+                };
+
+                Ok(HirExpression {
+                    id: ExpressionId::new(),
+                    ty: final_type,
+                    kind: HirExpressionKind::If {
+                        condition: Box::new(condition),
+                        then_branch: then_block,
+                        else_branch: else_block,
+                    },
+                    span: expr.span,
+                })
+            }
+
             ASTExpressionKind::FunctionCall { name, args } => {
                 let func_symbol = self.get_symbol_of(&name.identifier, &expr.span)?;
                 let Some((decl, tyid)) = self

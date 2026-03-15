@@ -77,12 +77,6 @@ pub enum HirStatementKind {
     Return {
         expr: HirExpression,
     },
-
-    If {
-        condition: HirExpression,
-        body: Vec<HirStatement>,
-        else_body: Option<Vec<HirStatement>>,
-    },
 }
 
 #[derive(Debug)]
@@ -123,5 +117,10 @@ pub enum HirExpressionKind {
     FunctionCall {
         name: DeclarationId,
         args: Vec<HirExpression>,
+    },
+    If {
+        condition: Box<HirExpression>,
+        then_branch: Vec<HirStatement>,
+        else_branch: Option<Vec<HirStatement>>,
     },
 }

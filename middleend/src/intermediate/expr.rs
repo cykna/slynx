@@ -59,6 +59,11 @@ pub enum IntermediateExprKind {
         args: Vec<ValueId>,
     },
     Native(NativeComponent),
+    IfElse {
+        condition: ValueId,
+        body: Vec<ValueId>,
+        else_body: Option<Vec<ValueId>>,
+    },
 }
 
 impl IntermediateExpr {

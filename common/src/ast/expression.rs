@@ -1,4 +1,7 @@
-use crate::ast::{ComponentExpression, GenericIdentifier, Operator, Span};
+use crate::{
+    ASTStatement,
+    ast::{ComponentExpression, GenericIdentifier, Operator, Span},
+};
 
 #[derive(Debug)]
 ///Simply a name that comes before an expression. It represents anything like 'name: expr', '.name:expr' etc
@@ -38,5 +41,10 @@ pub enum ASTExpressionKind {
     FunctionCall {
         name: GenericIdentifier,
         args: Vec<ASTExpression>,
+    },
+    If {
+        condition: Box<ASTExpression>,
+        body: Vec<ASTStatement>,
+        else_body: Option<Vec<ASTStatement>>,
     },
 }

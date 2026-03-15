@@ -1,21 +1,33 @@
 use color_eyre::eyre::Result;
-use common::{ASTStatement, ASTStatementKind, Span};
+use common::{ASTExpression, ASTExpressionKind, ASTStatement, ASTStatementKind, Span};
 
 use crate::{lexer::tokens::TokenKind, parser::Parser};
 
 impl Parser {
     /// Parses an if statement. The provided `span` is the initial span for the 'if' keyword.
-    pub fn parse_if(&mut self, span: Span) -> Result<ASTStatement> {
+    pub fn parse_if(&mut self, span: Span) -> Result<ASTExpression> {
         self.set_flags(super::ParserFlags::None);
+
         let condition = self.parse_expression()?;
         let (body, block_span) = self.parse_block()?;
+
         let (else_body, end) = if self.peek()?.kind == TokenKind::Else {
             self.eat()?;
+
             if self.peek()?.kind == TokenKind::If {
                 let if_span = self.eat()?.span;
-                let stmt = self.parse_if(if_span)?;
-                let end = stmt.span.end;
-                (Some(vec![stmt]), end)
+                let expr = self.parse_if(if_span)?;
+                let end = expr.span.end;
+
+                let span = expr.span.clone();
+
+                (
+                    Some(vec![ASTStatement {
+                        span,
+                        kind: ASTStatementKind::Expression(expr),
+                    }]),
+                    end,
+                )
             } else {
                 let (eb, es) = self.parse_block()?;
                 (Some(eb), es.end)
@@ -24,12 +36,12 @@ impl Parser {
             (None, block_span.end)
         };
 
-        Ok(ASTStatement {
+        Ok(ASTExpression {
             span: Span {
                 start: span.start,
                 end,
             },
-            kind: ASTStatementKind::If {
+            kind: ASTExpressionKind::If {
                 condition: Box::new(condition),
                 body,
                 else_body,
@@ -45,9 +57,12 @@ impl Parser {
         while !matches!(self.peek()?.kind, TokenKind::RBrace) {
             let stmt = self.parse_statement()?;
             body.push(stmt);
-            if let ASTStatementKind::If { .. } = &body.last().unwrap().kind {
+            if let ASTStatementKind::Expression(expr) = &body.last().unwrap().kind
+                && matches!(expr.kind, ASTExpressionKind::If { .. })
+            {
                 continue;
             }
+
             if self.peek()?.kind == TokenKind::RBrace {
                 continue;
             }

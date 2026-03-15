@@ -245,6 +245,17 @@ impl SlynxCompiler for WebCompiler {
                 raw: None,
             })),
             IntermediateExprKind::Bool(b) => Expr::Lit(Lit::Bool((*b).into())),
+            IntermediateExprKind::IfElse { condition, .. } => {
+                let condition =
+                    Box::new(self.compile_expression(&ctx.exprs[*condition], ctx, ir, handle));
+                Expr::Cond(swc_ecma_ast::CondExpr {
+                    span: DUMMY_SP,
+                    test: condition,
+                    cons: Box::new(*Self::undefined()),
+                    alt: Box::new(*Self::undefined()),
+                })
+            }
+
             IntermediateExprKind::Native(native) => self.compile_native(native, ctx, ir, handle),
         }
     }

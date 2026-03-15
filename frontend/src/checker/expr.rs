@@ -193,19 +193,6 @@ impl TypeChecker {
                     value.ty = self.get_type_of_expr(value)?;
                     value.ty = self.unify(&ty, &value.ty, &value.span)?;
                 }
-                HirStatementKind::If {
-                    condition,
-                    body,
-                    else_body,
-                } => {
-                    condition.ty = self.get_type_of_expr(condition)?;
-                    let bool_ty = self.types_module.bool_id();
-                    condition.ty = self.unify(&condition.ty, &bool_ty, &condition.span)?;
-                    self.resolve_statments(body, ty)?;
-                    if let Some(else_body) = else_body {
-                        self.resolve_statments(else_body, ty)?;
-                    }
-                }
             }
         }
         Ok(())
@@ -238,6 +225,45 @@ impl TypeChecker {
         let expected = expr.ty;
 
         let calc = match expr.kind {
+            HirExpressionKind::If {
+                ref mut condition,
+                ref mut else_branch,
+                ref mut then_branch,
+            } => {
+                let if_ty = if !then_branch.is_empty() {
+                    let lasted_index = then_branch.len() - 1;
+                    for stmt in &mut then_branch[..lasted_index] {
+                        self.default_statement(stmt, &expected)?;
+                    }
+                    match &mut then_branch[lasted_index].kind {
+                        HirStatementKind::Expression { expr } => self.get_type_of_expr(expr)?,
+                        _ => self.types_module.void_id(),
+                    }
+                } else {
+                    self.types_module.void_id()
+                };
+                let else_ty = if let Some(else_branch) = else_branch {
+                    if !else_branch.is_empty() {
+                        let lasted_index = else_branch.len() - 1;
+                        for stmt in &mut else_branch[..lasted_index] {
+                            self.default_statement(stmt, &expected)?;
+                        }
+                        match &mut else_branch[lasted_index].kind {
+                            HirStatementKind::Expression { expr } => self.get_type_of_expr(expr)?,
+                            _ => self.types_module.void_id(),
+                        }
+                    } else {
+                        self.types_module.void_id()
+                    }
+                } else {
+                    self.types_module.void_id()
+                };
+
+                let result_ty = self.unify(&if_ty, &else_ty, &expr.span)?;
+                condition.ty =
+                    self.unify(&condition.ty, &self.types_module.bool_id(), &condition.span)?;
+                result_ty
+            }
             HirExpressionKind::FunctionCall {
                 name,
                 args: ref mut f_args,
@@ -337,6 +363,46 @@ impl TypeChecker {
 
     pub(super) fn default_expr(&mut self, expr: &mut HirExpression) -> Result<()> {
         match expr.kind {
+            HirExpressionKind::If {
+                ref mut condition,
+                ref mut then_branch,
+                ref mut else_branch,
+            } => {
+                self.default_expr(condition)?;
+                let unify =
+                    self.unify(&condition.ty, &self.types_module.bool_id(), &condition.span)?;
+                condition.ty = unify;
+                let if_ty = if !then_branch.is_empty() {
+                    let lasted_index = then_branch.len() - 1;
+                    for stmt in &mut then_branch[..lasted_index] {
+                        self.default_statement(stmt, &expr.ty)?;
+                    }
+                    match &mut then_branch[lasted_index].kind {
+                        HirStatementKind::Expression { expr } => self.get_type_of_expr(expr)?,
+                        _ => self.types_module.void_id(),
+                    }
+                } else {
+                    self.types_module.void_id()
+                };
+                let else_ty = if let Some(else_branch) = else_branch {
+                    if !else_branch.is_empty() {
+                        let lasted_index = else_branch.len() - 1;
+                        for stmt in &mut else_branch[..lasted_index] {
+                            self.default_statement(stmt, &expr.ty)?;
+                        }
+                        match &mut else_branch[lasted_index].kind {
+                            HirStatementKind::Expression { expr } => self.get_type_of_expr(expr)?,
+                            _ => self.types_module.void_id(),
+                        }
+                    } else {
+                        self.types_module.void_id()
+                    }
+                } else {
+                    self.types_module.void_id()
+                };
+
+                self.unify(&if_ty, &else_ty, &expr.span)?;
+            }
             HirExpressionKind::FunctionCall {
                 name,
                 args: ref mut f_args,

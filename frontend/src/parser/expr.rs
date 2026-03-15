@@ -186,7 +186,12 @@ impl Parser {
 
     /// Parses a primary expression, which can be a literal (integer, float, string, boolean), an identifier, a parenthesized expression, or a field access expression.
     pub fn parse_primary(&mut self) -> Result<ASTExpression> {
-        let expr = if let TokenKind::Identifier(_) = self.peek()?.kind
+        let current = self.peek()?;
+
+        let expr = if let TokenKind::If = current.kind {
+            let span = self.eat()?.span;
+            self.parse_if(span)?
+        } else if let TokenKind::Identifier(_) = self.peek()?.kind
             && let Some(value) = self.parse_identifier_exprs()?
         {
             value
@@ -364,6 +369,10 @@ impl Parser {
     }
     /// Parses an expression, which is the top-level function for parsing any kind of expression. It starts by parsing a logical expression, which can include comparisons, additive, multiplicative, and primary expressions, and returns the resulting ASTExpression.
     pub fn parse_expression(&mut self) -> Result<ASTExpression> {
+        if self.peek()?.kind == TokenKind::If {
+            let span = self.eat()?.span;
+            return self.parse_if(span);
+        }
         let expr = self.parse_logical()?;
         Ok(expr)
     }

@@ -8,7 +8,7 @@ use std::collections::HashMap;
 
 use crate::intermediate::{
     context::{IntermediateContext, IntermediateContextType},
-    expr::IntermediateExpr,
+    expr::{IntermediateExpr, IntermediateExprKind},
     id::{ContextHandle, TyId, ValueId, VarId},
     node::{IntermediateInstruction, IntermediatePlace},
     string::StringPool,
@@ -49,9 +49,55 @@ impl IntermediateRepr {
         &mut self.contexts[len - 1]
     }
 
+    fn generate_block(&mut self, statements: Vec<HirStatement>) -> ValueId {
+        let mut last = ValueId::default();
+
+        for stmt in statements {
+            match stmt.kind {
+                HirStatementKind::Expression { expr } => {
+                    last = self.generate_expr(expr);
+                }
+                HirStatementKind::Return { expr } => {
+                    let id = self.generate_expr(expr);
+                    self.active_context()
+                        .insert_instruction(IntermediateInstruction::ret(id));
+                }
+                HirStatementKind::Variable { name, value, .. } => {
+                    let v = VarId::new();
+                    self.vars.insert(name, v);
+                    self.generate_var(v, value);
+                }
+                HirStatementKind::Assign { lhs, value } => {
+                    self.generate_assign(lhs, value);
+                }
+            }
+        }
+
+        last
+    }
+
     /// Generates a new expression and returns it's id on the current context
     fn generate_expr(&mut self, expr: HirExpression) -> ValueId {
         match expr.kind {
+            HirExpressionKind::If {
+                condition,
+                then_branch,
+                else_branch,
+            } => {
+                let condition = self.generate_expr(*condition);
+
+                let then_branch = self.generate_block(then_branch);
+
+                let else_value = else_branch.map(|b| self.generate_block(b));
+
+                self.active_context().insert_expr(expr::IntermediateExpr {
+                    kind: IntermediateExprKind::IfElse {
+                        condition,
+                        body: vec![then_branch],
+                        else_body: else_value.map(|v| vec![v]),
+                    },
+                })
+            }
             HirExpressionKind::Bool(b) => {
                 self.active_context().insert_expr(IntermediateExpr::bool(b))
             }
@@ -305,7 +351,6 @@ impl IntermediateRepr {
                     self.active_context()
                         .insert_instruction(node::IntermediateInstruction::ret(id));
                 }
-                _ => {}
             };
         }
         handle
