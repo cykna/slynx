@@ -4,7 +4,7 @@ use frontend::hir::{
 };
 
 use crate::{
-    IRType, IRTypeId, SlynxIR,
+    IRError, IRType, IRTypeId, SlynxIR,
     ir::{
         model::{Context, IRPointer, Instruction, InstructionType, Operand, Value},
         temp::TempIRData,
@@ -14,14 +14,19 @@ use crate::{
 impl SlynxIR {
     #[inline]
     ///Gets the type of the ir based on the provided `hirty`. Uses `temp` and `tymod` as auxiliary
-    pub fn get_ir_type(&self, hirty: &TypeId, temp: &TempIRData, tymod: &TypesModule) -> IRTypeId {
-        match *hirty {
+    pub fn get_ir_type(
+        &self,
+        hirty: &TypeId,
+        temp: &TempIRData,
+        tymod: &TypesModule,
+    ) -> Result<IRTypeId, IRError> {
+        Ok(match *hirty {
             ty if ty == tymod.int_id() => self.types.int_type(),
             ty if ty == tymod.float_id() => self.types.float_type(),
             ty if ty == tymod.bool_id() => self.types.bool_type(),
             ty if ty == tymod.void_id() => self.types.void_type(),
-            ty => temp.get_type(ty),
-        }
+            ty => temp.get_type(ty)?,
+        })
     }
 
     pub fn get_operand_type(&self, operand: IRPointer<Operand, 1>, _temp: &TempIRData) -> IRTypeId {
@@ -72,8 +77,8 @@ impl SlynxIR {
         decl: TypeId,
         temp: &TempIRData,
         tys: &TypesModule,
-    ) {
-        let obj_handle = temp.get_type(decl);
+    ) -> Result<(), IRError> {
+        let obj_handle = temp.get_type(decl)?;
         let IRType::Struct(obj) = self.types.get_type(obj_handle) else {
             unreachable!();
         };
@@ -82,10 +87,11 @@ impl SlynxIR {
             unreachable!("{:?} should map to an Object, but it doesn't", decl);
         };
         for field in fields {
-            let ty = self.get_ir_type(field, &temp, &tys);
+            let ty = self.get_ir_type(field, &temp, &tys)?;
             let obj_ty = self.types.get_object_type_mut(obj);
             obj_ty.insert_field(ty);
         }
+        Ok(())
     }
     ///Inserts the contents of the provided `decl` type, asserting it's the TypeId for a function type, using both `temp` and `tys` to resolve the arguments and return type. Panics if `decl` is not a function type.
     pub(crate) fn insert_function_type_for(
@@ -93,24 +99,25 @@ impl SlynxIR {
         decl: TypeId,
         temp: &TempIRData,
         tys: &TypesModule,
-    ) {
+    ) -> Result<(), IRError> {
         let HirType::Function { args, return_type } = tys.get_type(&decl) else {
             unreachable!();
         };
-        let irty_id = temp.get_type(decl);
+        let irty_id = temp.get_type(decl)?;
         let IRType::Function(func_tyid) = self.types.get_type(irty_id) else {
             unreachable!();
         };
 
         let mut extended_args = Vec::with_capacity(args.len());
         for arg in args {
-            let arg_ty = self.get_ir_type(arg, &temp, &tys);
+            let arg_ty = self.get_ir_type(arg, &temp, &tys)?;
             extended_args.push(arg_ty);
         }
-        let ret = self.get_ir_type(return_type, &temp, &tys);
+        let ret = self.get_ir_type(return_type, &temp, &tys)?;
         let ty = self.types.get_function_type_mut(func_tyid);
         ty.insert_arg_types(&extended_args);
         ty.set_return_type(ret);
+        Ok(())
     }
     /// Inserts the contents of the provided `decl` into an IR struct type asserting it's a slynx component. This is made because component can be lowered to the equivalent of a struct with methods, thus 'classes'.
     /// The thing is that this is made interanlly with the minimum of abstraction as possible, so it becomes a struct and the components as well as methods are inserted directly into the struct as fields
@@ -119,8 +126,8 @@ impl SlynxIR {
         decl: TypeId,
         temp: &TempIRData,
         tys: &TypesModule,
-    ) {
-        let obj_handle = temp.get_type(decl);
+    ) -> Result<(), IRError> {
+        let obj_handle = temp.get_type(decl)?;
         let IRType::Struct(obj) = self.types.get_type(obj_handle) else {
             unreachable!();
         };
@@ -130,9 +137,10 @@ impl SlynxIR {
         };
 
         for (_, _, prop) in ty_props {
-            let ty = self.get_ir_type(prop, &temp, &tys);
+            let ty = self.get_ir_type(prop, &temp, &tys)?;
             let obj_ty = self.types.get_object_type_mut(obj);
             obj_ty.insert_field(ty);
         }
+        Ok(())
     }
 }

@@ -3,7 +3,7 @@ use std::collections::HashMap;
 use frontend::hir::{TypeId, VariableId};
 
 use crate::{
-    IRTypeId,
+    IRError, IRTypeId,
     ir::model::{Context, IRPointer, Label, Value},
 };
 
@@ -59,11 +59,12 @@ impl TempIRData {
 
     #[inline]
     ///Gets the IR type for the provided `ty`(hir type)
-    pub fn get_type(&self, ty: TypeId) -> IRTypeId {
-        self.types_mapping
-            .get(&ty)
-            .cloned()
-            .expect("For some reason the provided HIR type was not defined")
+    pub fn get_type(&self, ty: TypeId) -> Result<IRTypeId, IRError> {
+        if let Some(ty) = self.types_mapping.get(&ty) {
+            Ok(ty.clone())
+        } else {
+            Err(IRError::IRTypeNotRecognized(ty))
+        }
     }
 
     #[inline]

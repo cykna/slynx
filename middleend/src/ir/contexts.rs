@@ -4,9 +4,9 @@ use frontend::hir::{
 };
 
 use crate::{
-    IRTypeId, SlynxIR,
+    IRError, IRTypeId, SlynxIR,
     ir::{
-        model::{Context, IRPointer, Instruction, InstructionType, Label, Operand, Value},
+        model::{Context, IRPointer, Instruction, Label, Operand, Value},
         temp::TempIRData,
     },
 };
@@ -121,24 +121,24 @@ impl SlynxIR {
         statements: &[HirStatement],
         args: &[VariableId],
         temp: &mut TempIRData,
-    ) {
+    ) -> Result<(), IRError> {
         temp.set_current_function(ir.clone());
         let ptr = IRPointer::new(self.values.len(), args.len());
         for (idx, _) in args.iter().enumerate() {
             self.insert_value(Value::FuncArg(idx));
         }
         temp.set_function_args(args, ptr);
-        let ctx = self.get_context(ir.clone());
-        let label = self.insert_label(ir.clone(), "entry");
+        let _ = self.get_context(ir.clone());
+        let _ = self.insert_label(ir.clone(), "entry");
         for statement in statements {
             match &statement.kind {
                 HirStatementKind::Variable { name, value } => {
                     let value = self.get_value_for(value, temp);
                     temp.add_variable(*name, value);
                 }
-                HirStatementKind::Assign { lhs, value } => {}
+                HirStatementKind::Assign { .. } => {}
 
-                HirStatementKind::Expression { expr } => {}
+                HirStatementKind::Expression { .. } => {}
                 HirStatementKind::Return { expr } => {
                     let val = self.get_value_for(expr, temp);
                     let ty = self.get_type_of_value(val.clone(), temp);
@@ -146,5 +146,6 @@ impl SlynxIR {
                 }
             }
         }
+        Ok(())
     }
 }

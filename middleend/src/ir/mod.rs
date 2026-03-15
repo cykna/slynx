@@ -9,7 +9,7 @@ use frontend::hir::{
     types::TypesModule,
 };
 
-use crate::IRTypes;
+use crate::{BUILTIN_TYPES, IRError, IRTypes};
 use model::{
     Label, {Instruction, Operand},
 };
@@ -39,15 +39,19 @@ impl SlynxIR {
         }
     }
 
-    pub fn generate(&mut self, hir: Vec<HirDeclaration>, tys: TypesModule) {
+    pub fn generate(&mut self, hir: Vec<HirDeclaration>, tys: TypesModule) -> Result<(), IRError> {
         let mut temp = TempIRData::new();
         //hoist of the objects
         for declaration in &hir {
             match &declaration.kind {
                 frontend::hir::definitions::HirDeclarationKind::Object => {
                     let out = self.types.create_empty_struct();
+
                     temp.define_type(declaration.ty, out);
-                    debug_assert!(out.0 == declaration.id.as_raw() as usize);
+                    debug_assert_eq!(
+                        out.0 - BUILTIN_TYPES.len(),
+                        declaration.id.as_raw() as usize
+                    );
                 }
                 frontend::hir::definitions::HirDeclarationKind::Function { .. } => {
                     let out = self.create_blank_function().with_length();
@@ -58,7 +62,7 @@ impl SlynxIR {
                 HirDeclarationKind::ComponentDeclaration { .. } => {
                     let out = self.types.create_empty_struct();
                     temp.define_type(declaration.ty, out);
-                    debug_assert!(out.0 == declaration.id.as_raw() as usize);
+                    debug_assert!(out.0 - BUILTIN_TYPES.len() == declaration.id.as_raw() as usize);
                 }
             }
         }
@@ -70,7 +74,7 @@ impl SlynxIR {
                 HirDeclarationKind::Function {
                     args, statements, ..
                 } => {
-                    self.insert_function_type_for(declaration.ty, &temp, &tys);
+                    self.insert_function_type_for(declaration.ty, &temp, &tys)?;
                     let func = temp.get_function(declaration.id);
                     debug_assert!(func.len() == 1);
                     self.initialize_function(
@@ -78,7 +82,7 @@ impl SlynxIR {
                         &statements,
                         &args,
                         &mut temp,
-                    );
+                    )?;
                 }
                 HirDeclarationKind::ComponentDeclaration { props } => {
                     self.insert_component_fields_for(declaration.ty, &temp, &tys);
@@ -92,5 +96,6 @@ impl SlynxIR {
                 }
             }
         }
+        Ok(())
     }
 }
