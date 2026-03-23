@@ -211,4 +211,11 @@ impl Instruction {
             value_type: ty,
         }
     }
+    pub fn read(ty: IRTypeId, value: IRPointer<Value, 1>) -> Self {
+        Self {
+            operands: value.with_length(),
+            instruction_type: InstructionType::Read,
+            value_type: ty,
+        }
+    }
 }

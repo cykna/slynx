@@ -149,17 +149,23 @@ impl SlynxIR {
                     let value = self.get_value_for(value, temp)?;
                     let vty = self.get_type_of_value(value.clone(), temp);
                     let slotptr = self.allocate(vty, temp);
-                    let Value::Slot(slot) = self.get_value(slotptr) else {
+                    let Value::Slot(slot) = self.get_value(slotptr.clone()) else {
                         unreachable!("Allocate should return a value which is a Slot")
                     };
 
                     self.write(slot, value.clone(), temp);
 
-                    temp.add_variable(*name, value);
+                    temp.add_variable(*name, slotptr);
                 }
-                HirStatementKind::Assign { .. } => {}
+                HirStatementKind::Assign { lhs, value } => {
+                    unimplemented!(
+                        "Como que implementa assing pra expressao meu deus? {lhs:?} = {value:?}"
+                    )
+                }
 
-                HirStatementKind::Expression { .. } => {}
+                HirStatementKind::Expression { expr } => {
+                    self.get_value_for(expr, temp)?;
+                }
                 HirStatementKind::Return { expr } => {
                     let val = self.get_value_for(expr, temp)?;
                     let ty = self.get_type_of_value(val.clone(), temp);

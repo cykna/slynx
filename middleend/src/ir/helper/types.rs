@@ -6,7 +6,7 @@ use frontend::hir::{
 use crate::{
     IRError, IRType, IRTypeId, Slot, SlynxIR,
     ir::{
-        model::{Context, IRPointer, Instruction, InstructionType, Operand, Value},
+        model::{Context, IRPointer, Instruction, Operand, Value},
         temp::TempIRData,
     },
 };
