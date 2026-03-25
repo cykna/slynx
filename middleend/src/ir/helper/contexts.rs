@@ -1,5 +1,5 @@
 use crate::{
-    IRType, IRTypeId, SlynxIR,
+    Component, IRType, IRTypeId, SlynxIR,
     ir::model::{Context, IRPointer, Label, Value},
 };
 
@@ -9,11 +9,18 @@ impl SlynxIR {
     pub(crate) fn get_context(&self, ctx: IRPointer<Context, 1>) -> &Context {
         &self.contexts[ctx.ptr()]
     }
-
+    ///Retrieves the component from its provided `comp`
+    pub(crate) fn get_component(&self, comp: IRPointer<Component, 1>) -> &Component {
+        &self.components[comp.ptr()]
+    }
     #[inline]
     ///Retrieves the context from its provided `ctx`
     pub(crate) fn get_context_mut(&mut self, ctx: IRPointer<Context, 1>) -> &Context {
         &mut self.contexts[ctx.ptr()]
+    }
+    ///Retrieves the component from its provided `comp`
+    pub(crate) fn get_component_mut(&mut self, comp: IRPointer<Component, 1>) -> &mut Component {
+        &mut self.components[comp.ptr()]
     }
     ///Returns the return type of the given context `ir`.
     pub fn return_type_of_context(&self, ir: IRPointer<Context, 1>) -> IRTypeId {

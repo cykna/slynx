@@ -3,7 +3,7 @@ use std::collections::HashMap;
 use frontend::hir::{TypeId, VariableId};
 
 use crate::{
-    IRError, IRTypeId,
+    Component, IRError, IRTypeId,
     ir::model::{Context, IRPointer, Label, Value},
 };
 
@@ -14,6 +14,8 @@ pub struct TempIRData {
     types_mapping: HashMap<TypeId, IRTypeId>,
     ///Maps HIR functions to IR functions
     functions: HashMap<frontend::hir::DeclarationId, IRPointer<Context, 1>>,
+    ///Maps HIR components to IR functions
+    components: HashMap<frontend::hir::DeclarationId, IRPointer<Component, 1>>,
     ///The current function being generated
     current_function: IRPointer<Context, 1>,
     ///The current lavel that is being generated on the current function
@@ -30,6 +32,7 @@ impl TempIRData {
             types_mapping: HashMap::new(),
             functions: HashMap::new(),
             current_function: IRPointer::null(),
+            components: HashMap::new(),
             current_label: IRPointer::null(),
             args: Vec::new(),
             variables: Vec::new(),
@@ -47,7 +50,15 @@ impl TempIRData {
     pub fn map_function(&mut self, fid: frontend::hir::DeclarationId, func: IRPointer<Context, 1>) {
         self.functions.insert(fid, func);
     }
-
+    #[inline]
+    ///Maps the provided `fid`(hir function id) to the provided `func`(ir function)
+    pub fn map_component(
+        &mut self,
+        fid: frontend::hir::DeclarationId,
+        comp: IRPointer<Component, 1>,
+    ) {
+        self.components.insert(fid, comp);
+    }
     #[inline]
     ///Maps the provided `fid`(hir function id) to the provided `func`(ir function)
     pub fn get_function(&self, fid: frontend::hir::DeclarationId) -> IRPointer<Context, 1> {
@@ -56,7 +67,14 @@ impl TempIRData {
             .cloned()
             .expect("For some reason the provided Function Id is not declared")
     }
-
+    #[inline]
+    ///Maps the provided `fid`(hir function id) to the provided `func`(ir function)
+    pub fn get_component(&self, fid: frontend::hir::DeclarationId) -> IRPointer<Component, 1> {
+        self.components
+            .get(&fid)
+            .cloned()
+            .expect("For some reason the provided Function Id is not declared")
+    }
     #[inline]
     ///Gets the IR type for the provided `ty`(hir type)
     pub fn get_type(&self, ty: TypeId) -> Result<IRTypeId, IRError> {

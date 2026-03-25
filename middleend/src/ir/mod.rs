@@ -20,6 +20,8 @@ use temp::TempIRData;
 pub struct SlynxIR {
     ///The contexts of this IR
     contexts: Vec<Context>,
+    ///The Components of this IR
+    components: Vec<Component>,
     ///The labels of this IR
     labels: Vec<Label>,
     ///The instructions of this IR
@@ -36,6 +38,7 @@ impl SlynxIR {
     ///Creates a new empty IR
     pub fn new() -> Self {
         Self {
+            components: Vec::new(),
             contexts: Vec::new(),
             labels: Vec::new(),
             instructions: Vec::new(),
@@ -74,9 +77,10 @@ impl SlynxIR {
                     temp.map_function(declaration.id, out.with_length());
                 }
                 HirDeclarationKind::ComponentDeclaration { .. } => {
-                    let out = self.types.create_empty_struct();
-                    temp.define_type(declaration.ty, out);
-                    debug_assert!(out.0 - BUILTIN_TYPES.len() == declaration.id.as_raw() as usize);
+                    let out = self.create_blank_component();
+                    let fnc = self.get_component(out.clone());
+                    temp.define_type(declaration.ty, fnc.ty);
+                    temp.map_component(declaration.id, out);
                 }
             }
         }
@@ -99,7 +103,8 @@ impl SlynxIR {
                     )?;
                 }
                 HirDeclarationKind::ComponentDeclaration { props } => {
-                    self.insert_component_fields_for(declaration.ty, &temp, &tys)?;
+                    self.insert_component_fields_for(declaration.ty, &mut temp, &tys)?;
+                    temp.get_component(declaration.id);
                     for prop in props {
                         match prop {
                             ComponentMemberDeclaration::Property { .. } => {}

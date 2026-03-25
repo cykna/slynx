@@ -1,10 +1,11 @@
 use frontend::hir::{
     TypeId,
+    definitions::ComponentMemberDeclaration,
     types::{HirType, TypesModule},
 };
 
 use crate::{
-    IRError, IRType, IRTypeId, Slot, SlynxIR,
+    Component, IRComponent, IRError, IRType, IRTypeId, Slot, SlynxIR,
     ir::{
         model::{Context, IRPointer, Instruction, Operand, Value},
         temp::TempIRData,
@@ -63,13 +64,19 @@ impl SlynxIR {
     }
 
     ///Creates a new blank function with no arguments and returning void. Returns its context handle
-    pub fn create_blank_function(&mut self) -> IRPointer<Context> {
+    pub fn create_blank_function(&mut self) -> IRPointer<Context, 1> {
         let context = Context::new(self.types.create_empty_function());
         let ptr = self.contexts.len();
         self.contexts.push(context);
         IRPointer::new(ptr, 0)
     }
-
+    ///Creates a new blank component with no arguments. Returns its context handle
+    pub fn create_blank_component(&mut self) -> IRPointer<Component, 1> {
+        let component = Component::new(self.types.create_empty_component());
+        let ptr = self.components.len();
+        self.components.push(component);
+        IRPointer::new(ptr, 0)
+    }
     ///Inserts the contents of the provided `decl` type, asserting it's the TypeId for a struct type, using both `temp` and `tys` to resolve the fields. Panics if `decl` is not a struct type.
     pub(crate) fn insert_object_fields_for(
         &mut self,
@@ -123,22 +130,22 @@ impl SlynxIR {
     pub(crate) fn insert_component_fields_for(
         &mut self,
         decl: TypeId,
-        temp: &TempIRData,
+        temp: &mut TempIRData,
         tys: &TypesModule,
     ) -> Result<(), IRError> {
-        let obj_handle = temp.get_type(decl)?;
-        let IRType::Struct(obj) = self.types.get_type(obj_handle) else {
-            unreachable!();
+        let component_type = self.get_ir_type(&decl, temp, tys)?;
+        let IRType::Component(cid) = self.types.get_type(component_type) else {
+            unreachable!("Something errored that type of component simply isnt Component on ir");
         };
 
         let Some(HirType::Component { props: ty_props }) = tys.get_component(&decl) else {
-            unreachable!("{:?} should map to an Object, but it doesn't", decl);
+            unreachable!("{:?} should map to an Component, but it doesn't", decl);
         };
 
         for (_, _, prop) in ty_props {
             let ty = self.get_ir_type(prop, &temp, &tys)?;
-            let obj_ty = self.types.get_object_type_mut(obj);
-            obj_ty.insert_field(ty);
+            let comp_ty = self.types.get_component_type_mut(cid);
+            comp_ty.insert_field(ty);
         }
         Ok(())
     }
