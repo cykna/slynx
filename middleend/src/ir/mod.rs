@@ -1,3 +1,4 @@
+mod components;
 mod contexts;
 mod helper;
 mod instructions;
@@ -104,14 +105,8 @@ impl SlynxIR {
                 }
                 HirDeclarationKind::ComponentDeclaration { props } => {
                     self.insert_component_fields_for(declaration.ty, &mut temp, &tys)?;
-                    temp.get_component(declaration.id);
-                    for prop in props {
-                        match prop {
-                            ComponentMemberDeclaration::Property { .. } => {}
-                            ComponentMemberDeclaration::Specialized(_) => {}
-                            ComponentMemberDeclaration::Child { .. } => {}
-                        }
-                    }
+                    let comp = temp.get_component(declaration.id);
+                    self.initialize_component(comp, &props, &mut temp)?;
                 }
             }
         }

@@ -7,8 +7,6 @@ pub use functions::*;
 pub use irtype::*;
 pub use structs::*;
 
-use crate::Component;
-
 pub const BUILTIN_TYPES: &[IRType] = &[
     IRType::I8,
     IRType::U8,
@@ -58,7 +56,7 @@ impl IRTypes {
         &self.structs[id.0]
     }
     ///Gets a mutable referente to the type of the function with the provided `id`
-    pub fn get_component_type(&mut self, id: IRComponentId) -> &IRComponent {
+    pub fn get_component_type(&self, id: IRComponentId) -> &IRComponent {
         &self.components[id.0]
     }
     ///Gets a mutable referente to the type of the function with the provided `id`

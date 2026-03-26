@@ -1,6 +1,5 @@
 use frontend::hir::{
     TypeId,
-    definitions::ComponentMemberDeclaration,
     types::{HirType, TypesModule},
 };
 
@@ -52,6 +51,16 @@ impl SlynxIR {
             Value::LabelArg(_) => unimplemented!("Unimplemented type for label args"),
             Value::Slot(v) => self.get_slot_type(v.clone()),
         }
+    }
+
+    pub fn get_type_of_component(&self, component: IRPointer<Component, 1>) -> &IRComponent {
+        let comp = self.get_component(component);
+        let ty = self.types.get_type(comp.ty);
+        let IRType::Component(c) = ty else {
+            unreachable!("Type of component internally isnt a component? {ty:?}")
+        };
+        let c = self.types.get_component_type(c);
+        c
     }
 
     pub fn get_type_of_instruction(
