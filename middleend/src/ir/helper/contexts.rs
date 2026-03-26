@@ -13,15 +13,7 @@ impl SlynxIR {
     pub(crate) fn get_component(&self, comp: IRPointer<Component, 1>) -> &Component {
         &self.components[comp.ptr()]
     }
-    #[inline]
-    ///Retrieves the context from its provided `ctx`
-    pub(crate) fn get_context_mut(&mut self, ctx: IRPointer<Context, 1>) -> &Context {
-        &mut self.contexts[ctx.ptr()]
-    }
-    ///Retrieves the component from its provided `comp`
-    pub(crate) fn get_component_mut(&mut self, comp: IRPointer<Component, 1>) -> &mut Component {
-        &mut self.components[comp.ptr()]
-    }
+
     ///Returns the return type of the given context `ir`.
     pub fn return_type_of_context(&self, ir: IRPointer<Context, 1>) -> IRTypeId {
         let ctx = self.get_context(ir);
@@ -71,10 +63,16 @@ impl SlynxIR {
         self.create_label()
     }
 
+    pub fn insert_values(&mut self, value: &[Value]) -> IRPointer<Value> {
+        let ptr = self.values.len();
+        self.values.extend_from_slice(value);
+        IRPointer::new(ptr, value.len())
+    }
+
+    ///Inserts the given value and returns its pointer
     pub fn insert_value(&mut self, value: Value) -> IRPointer<Value, 1> {
         let ptr = self.values.len();
         self.values.push(value);
-        let out = IRPointer::new(ptr, 1);
-        out
+        IRPointer::new(ptr, 1)
     }
 }

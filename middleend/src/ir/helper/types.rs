@@ -50,6 +50,7 @@ impl SlynxIR {
             Value::Instruction(instr) => self.get_type_of_instruction(instr.clone(), temp),
             Value::LabelArg(_) => unimplemented!("Unimplemented type for label args"),
             Value::Slot(v) => self.get_slot_type(v.clone()),
+            Value::StructLiteral(ir, _) => *ir,
         }
     }
 
@@ -59,8 +60,7 @@ impl SlynxIR {
         let IRType::Component(c) = ty else {
             unreachable!("Type of component internally isnt a component? {ty:?}")
         };
-        let c = self.types.get_component_type(c);
-        c
+        self.types.get_component_type(c)
     }
 
     pub fn get_type_of_instruction(
@@ -102,7 +102,7 @@ impl SlynxIR {
             unreachable!("{:?} should map to an Object, but it doesn't", decl);
         };
         for field in fields {
-            let ty = self.get_ir_type(field, &temp, &tys)?;
+            let ty = self.get_ir_type(field, temp, tys)?;
             let obj_ty = self.types.get_object_type_mut(obj);
             obj_ty.insert_field(ty);
         }
@@ -125,10 +125,10 @@ impl SlynxIR {
 
         let mut extended_args = Vec::with_capacity(args.len());
         for arg in args {
-            let arg_ty = self.get_ir_type(arg, &temp, &tys)?;
+            let arg_ty = self.get_ir_type(arg, temp, tys)?;
             extended_args.push(arg_ty);
         }
-        let ret = self.get_ir_type(return_type, &temp, &tys)?;
+        let ret = self.get_ir_type(return_type, temp, tys)?;
         let ty = self.types.get_function_type_mut(func_tyid);
         ty.insert_arg_types(&extended_args);
         ty.set_return_type(ret);
@@ -152,7 +152,7 @@ impl SlynxIR {
         };
 
         for (_, _, prop) in ty_props {
-            let ty = self.get_ir_type(prop, &temp, &tys)?;
+            let ty = self.get_ir_type(prop, temp, tys)?;
             let comp_ty = self.types.get_component_type_mut(cid);
             comp_ty.insert_field(ty);
         }

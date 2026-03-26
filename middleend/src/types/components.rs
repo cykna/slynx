@@ -2,7 +2,7 @@ use smallvec::SmallVec;
 
 use crate::IRTypeId;
 
-#[derive(Debug, Clone)]
+#[derive(Debug, Clone, Default)]
 pub struct IRComponent {
     pub(crate) fields: SmallVec<[IRTypeId; 16]>,
 }

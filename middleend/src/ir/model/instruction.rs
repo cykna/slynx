@@ -13,6 +13,7 @@ pub struct Slot {
 #[derive(Debug, Clone)]
 ///A value inside the IR. Can be a function arg, a label arg or the result of a instruction
 pub enum Value {
+    StructLiteral(IRTypeId, IRPointer<Value, 1>),
     Raw(IRPointer<Operand, 1>),
     Instruction(IRPointer<Instruction, 1>),
     Slot(IRPointer<Slot, 1>),
@@ -66,6 +67,8 @@ pub enum InstructionType {
     Write(IRPointer<Slot, 1>),
     Read,
     Reinterpret,
+    GetField(usize),
+    SetField(usize),
     ///Returns the operand
     Ret,
 }
@@ -84,6 +87,27 @@ impl Instruction {
         Instruction {
             operands: value.with_length::<0>(),
             instruction_type: InstructionType::RawValue,
+            value_type: ty,
+        }
+    }
+
+    ///Gets the `index`'th propertie of the given `value`
+    pub fn getfield(index: usize, value: IRPointer<Value, 1>, ty: IRTypeId) -> Self {
+        Self {
+            operands: value.with_length(),
+            instruction_type: InstructionType::GetField(index),
+            value_type: ty,
+        }
+    }
+    ///Sets on the first value of the target, the given `index`th property value to be the second value on `target`.
+    ///# Example
+    /// insert_value(obj)
+    /// insert_value(5)
+    /// insert_instruction(setfield(0, obj, value)); //will set obj.0 = value
+    pub fn setfield(index: usize, target: IRPointer<Value, 2>, ty: IRTypeId) -> Self {
+        Self {
+            operands: target.with_length(),
+            instruction_type: InstructionType::GetField(index),
             value_type: ty,
         }
     }

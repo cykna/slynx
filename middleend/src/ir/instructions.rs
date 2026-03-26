@@ -1,5 +1,5 @@
 use common::Operator;
-use frontend::hir::definitions::HirExpression;
+use frontend::hir::definitions::{HirExpression, HirStatement, HirStatementKind};
 
 use crate::{
     IRError, IRPointer, IRTypeId, Instruction, Label, Operand, Slot, SlynxIR, Value,
@@ -7,6 +7,41 @@ use crate::{
 };
 
 impl SlynxIR {
+    pub fn get_instruction(
+        &mut self,
+        statement: &HirStatement,
+        temp: &mut TempIRData,
+    ) -> Result<Option<IRPointer<Instruction, 1>>, IRError> {
+        match &statement.kind {
+            HirStatementKind::Variable { name, value } => {
+                let value = self.get_value_for(value, temp)?;
+                let vty = self.get_type_of_value(value.clone(), temp);
+                let (slotvalue, slotptr) = self.allocate(vty, temp);
+
+                self.write(slotptr.clone(), value.clone(), temp);
+
+                temp.add_variable(*name, slotvalue);
+                Ok(None)
+            }
+            HirStatementKind::Assign { lhs, value } => {
+                unimplemented!(
+                    "Como que implementa assing pra expressao meu deus? {lhs:?} = {value:?}"
+                )
+            }
+
+            HirStatementKind::Expression { expr } => {
+                self.get_value_for(expr, temp)?;
+                Ok(None)
+            }
+            HirStatementKind::Return { expr } => {
+                let val = self.get_value_for(expr, temp)?;
+                let ty = self.get_type_of_value(val.clone(), temp);
+                let instruction =
+                    self.insert_instruction(temp.current_label(), Instruction::ret(val, ty));
+                Ok(Some(instruction))
+            }
+        }
+    }
     pub fn insert_instruction(
         &mut self,
         label: IRPointer<Label, 1>,
@@ -132,12 +167,10 @@ impl SlynxIR {
         op: &Operator,
         temp: &mut TempIRData,
     ) -> Result<Value, IRError> {
-        let lhs_value = self.get_value_for(&*lhs, temp)?;
-        let rhs_value = self.get_value_for(&*rhs, temp)?;
+        let lhs_value = self.get_value_for(lhs, temp)?;
+        let rhs_value = self.get_value_for(rhs, temp)?;
         let lty = self.get_type_of_value(lhs_value.clone(), temp);
-        let rty = self.get_type_of_value(rhs_value.clone(), temp);
-
-        if lty != rty {}
+        let _rty = self.get_type_of_value(rhs_value.clone(), temp);
 
         let bin_instruction = match op {
             common::Operator::Add => {
@@ -256,12 +289,16 @@ impl SlynxIR {
         Ok(Value::Instruction(bin_instruction))
     }
 
-    pub fn allocate(&mut self, ty: IRTypeId, temp: &TempIRData) -> IRPointer<Value, 1> {
+    pub fn allocate(
+        &mut self,
+        ty: IRTypeId,
+        temp: &TempIRData,
+    ) -> (IRPointer<Value, 1>, IRPointer<Slot, 1>) {
         let ptr = self.slots.len();
         self.slots.push(Slot { ty });
         let out = IRPointer::new(ptr, 1);
         self.insert_instruction(temp.current_label(), Instruction::allocate(ty));
-        self.insert_value(Value::Slot(out))
+        (self.insert_value(Value::Slot(out.clone())), out)
     }
 
     pub fn write(

@@ -6,7 +6,7 @@ use frontend::hir::{
 use crate::{
     IRError, IRTypeId, SlynxIR,
     ir::{
-        model::{Context, IRPointer, Instruction, Label, Operand, Value},
+        model::{Context, IRPointer, Instruction, Operand, Value},
         temp::TempIRData,
     },
 };
@@ -67,6 +67,9 @@ impl SlynxIR {
         temp: &mut TempIRData,
     ) -> Result<IRPointer<Value, 1>, IRError> {
         let value = match &expr.kind {
+            HirExpressionKind::StringLiteral(_v) => {
+                unimplemented!("String literal not implemented");
+            }
             HirExpressionKind::Bool(_)
             | HirExpressionKind::Float(_)
             | HirExpressionKind::Int(_) => {
@@ -109,7 +112,108 @@ impl SlynxIR {
                     return Err(IRError::UnrecognizedVariable(*id));
                 }
             }
-            v => unreachable!("{v:?} not implemented"),
+            HirExpressionKind::Object { name, fields } => {
+                let ty = temp.get_type(*name)?;
+                let values = {
+                    let fields = fields
+                        .iter()
+                        .map(|v| self.get_value_for(v, temp))
+                        .collect::<Result<Vec<_>, _>>()?;
+                    #[cfg(debug_assertions)]
+                    {
+                        for (index, field) in fields.iter().enumerate() {
+                            if index == 0 {
+                                continue;
+                            }
+                            assert!(field.ptr() - fields[index - 1].ptr() == 1);
+                        }
+                    }
+                    IRPointer::new(fields[0].ptr(), fields.len())
+                };
+                Value::StructLiteral(ty, values)
+            }
+            HirExpressionKind::FieldAccess { expr, field_index } => {
+                let value = self.get_value_for(expr, temp)?;
+                let ty = self.get_type_of_value(value.clone(), temp);
+                let i = self.insert_instruction(
+                    temp.current_label(),
+                    Instruction::getfield(*field_index, value, ty),
+                );
+                Value::Instruction(i)
+            }
+            HirExpressionKind::Component { .. } => {
+                unimplemented!("Component expression is not implemented");
+            }
+            HirExpressionKind::If {
+                condition,
+                then_branch,
+                else_branch,
+            } => {
+                let value = self.get_value_for(condition, temp)?;
+                let then_label = self.insert_label(temp.current_function(), "then_label");
+                let else_label = self.insert_label(temp.current_function(), "else_label");
+                let end_label = {
+                    let label = self.insert_label(temp.current_function(), "end_label");
+                    let v = self.get_type_of_value(value.clone(), temp);
+                    self.get_label_mut(label.clone()).add_argument(v);
+                    label
+                };
+
+                self.insert_instruction(
+                    temp.current_label(),
+                    Instruction::cbr(
+                        value.clone(),
+                        then_label.clone(),
+                        else_label.clone(),
+                        IRPointer::null(),
+                        IRPointer::null(),
+                        self.get_type_of_value(value, temp),
+                    ),
+                );
+                temp.set_current_label(then_label);
+                for (idx, instruction) in then_branch.iter().enumerate() {
+                    let value = if idx == then_branch.len() - 1
+                        && let HirStatementKind::Expression { ref expr } = instruction.kind
+                    {
+                        self.get_value_for(expr, temp)?
+                    } else {
+                        self.get_instruction(instruction, temp)?;
+                        continue;
+                    };
+
+                    let ty = self.get_type_of_value(value.clone(), temp);
+
+                    self.insert_instruction(
+                        temp.current_label(),
+                        Instruction::br(end_label.clone(), value.with_length(), ty),
+                    );
+                }
+                temp.set_current_label(else_label);
+                if let Some(else_branch) = else_branch {
+                    for (idx, instruction) in else_branch.iter().enumerate() {
+                        let value = if idx == then_branch.len() - 1
+                            && let HirStatementKind::Expression { ref expr } = instruction.kind
+                        {
+                            self.get_value_for(expr, temp)?
+                        } else {
+                            self.get_instruction(instruction, temp)?;
+                            continue;
+                        };
+
+                        let ty = self.get_type_of_value(value.clone(), temp);
+
+                        self.insert_instruction(
+                            temp.current_label(),
+                            Instruction::br(end_label.clone(), value.with_length(), ty),
+                        );
+                    }
+                    temp.set_current_label(end_label);
+                }
+                unimplemented!("If expression not implemented");
+            }
+            HirExpressionKind::Specialized(_) => {
+                unimplemented!("Not implemented IR for specialized components");
+            }
         };
         Ok(self.insert_value(value))
     }
@@ -133,34 +237,7 @@ impl SlynxIR {
         temp.set_function_args(args, ptr);
 
         for statement in statements {
-            match &statement.kind {
-                HirStatementKind::Variable { name, value } => {
-                    let value = self.get_value_for(value, temp)?;
-                    let vty = self.get_type_of_value(value.clone(), temp);
-                    let slotptr = self.allocate(vty, temp);
-                    let Value::Slot(slot) = self.get_value(slotptr.clone()) else {
-                        unreachable!("Allocate should return a value which is a Slot")
-                    };
-
-                    self.write(slot, value.clone(), temp);
-
-                    temp.add_variable(*name, slotptr);
-                }
-                HirStatementKind::Assign { lhs, value } => {
-                    unimplemented!(
-                        "Como que implementa assing pra expressao meu deus? {lhs:?} = {value:?}"
-                    )
-                }
-
-                HirStatementKind::Expression { expr } => {
-                    self.get_value_for(expr, temp)?;
-                }
-                HirStatementKind::Return { expr } => {
-                    let val = self.get_value_for(expr, temp)?;
-                    let ty = self.get_type_of_value(val.clone(), temp);
-                    self.insert_instruction(temp.current_label(), Instruction::ret(val, ty));
-                }
-            }
+            self.get_instruction(statement, temp)?;
         }
         Ok(())
     }

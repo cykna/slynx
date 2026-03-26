@@ -2,7 +2,7 @@ use smallvec::SmallVec;
 
 use crate::IRTypeId;
 
-#[derive(Debug)]
+#[derive(Debug, Default)]
 pub struct IRStruct {
     fields: SmallVec<[IRTypeId; 8]>,
 }
@@ -21,5 +21,9 @@ impl IRStruct {
     ///Inserts the provided `field` onto this struct's fields
     pub fn insert_field(&mut self, field: IRTypeId) {
         self.fields.push(field);
+    }
+
+    pub fn get_fields(&self) -> &[IRTypeId] {
+        &self.fields
     }
 }

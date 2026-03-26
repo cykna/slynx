@@ -297,8 +297,8 @@ impl SlynxContext {
 
         if let Err(e) = ir.generate(hir.declarations, &types_module, &hir.symbols_module) {
             match e {
-                IRError::UnrecognizedVariable(value) => {}
-                IRError::DeclarationNotRecognized(e) => {}
+                IRError::UnrecognizedVariable(_) => {}
+                IRError::DeclarationNotRecognized(_) => {}
                 IRError::IRTypeNotRecognized(e) => {
                     let Some(name) = types_module.get_type_name(&e).cloned() else {
                         unreachable!(

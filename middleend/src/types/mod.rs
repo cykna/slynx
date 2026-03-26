@@ -23,7 +23,7 @@ pub const BUILTIN_TYPES: &[IRType] = &[
     IRType::GenericComponent,
 ];
 
-#[derive(Debug)]
+#[derive(Debug, Default)]
 pub struct IRTypes {
     types: Vec<IRType>,
     structs: Vec<IRStruct>,

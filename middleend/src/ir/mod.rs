@@ -7,7 +7,7 @@ mod temp;
 pub use model::*;
 
 use frontend::hir::{
-    definitions::{ComponentMemberDeclaration, HirDeclaration, HirDeclarationKind},
+    definitions::{HirDeclaration, HirDeclarationKind},
     symbols::SymbolsModule,
     types::TypesModule,
 };
@@ -35,6 +35,12 @@ pub struct SlynxIR {
     types: IRTypes,
 }
 
+impl Default for SlynxIR {
+    fn default() -> Self {
+        Self::new()
+    }
+}
+
 impl SlynxIR {
     ///Creates a new empty IR
     pub fn new() -> Self {
@@ -56,7 +62,7 @@ impl SlynxIR {
         &mut self,
         hir: Vec<HirDeclaration>,
         tys: &TypesModule,
-        symbols: &SymbolsModule,
+        _symbols: &SymbolsModule,
     ) -> Result<(), IRError> {
         let mut temp = TempIRData::new();
         //hoist of the objects
@@ -88,12 +94,12 @@ impl SlynxIR {
         for declaration in hir {
             match declaration.kind {
                 HirDeclarationKind::Object => {
-                    self.insert_object_fields_for(declaration.ty, &temp, &tys)?;
+                    self.insert_object_fields_for(declaration.ty, &temp, tys)?;
                 }
                 HirDeclarationKind::Function {
                     args, statements, ..
                 } => {
-                    self.insert_function_type_for(declaration.ty, &temp, &tys)?;
+                    self.insert_function_type_for(declaration.ty, &temp, tys)?;
                     let func = temp.get_function(declaration.id);
                     debug_assert!(func.len() == 1);
                     self.initialize_function(
@@ -104,7 +110,7 @@ impl SlynxIR {
                     )?;
                 }
                 HirDeclarationKind::ComponentDeclaration { props } => {
-                    self.insert_component_fields_for(declaration.ty, &mut temp, &tys)?;
+                    self.insert_component_fields_for(declaration.ty, &mut temp, tys)?;
                     let comp = temp.get_component(declaration.id);
                     self.initialize_component(comp, &props, &mut temp)?;
                 }

@@ -79,7 +79,7 @@ impl TempIRData {
     ///Gets the IR type for the provided `ty`(hir type)
     pub fn get_type(&self, ty: TypeId) -> Result<IRTypeId, IRError> {
         if let Some(ty) = self.types_mapping.get(&ty) {
-            Ok(ty.clone())
+            Ok(*ty)
         } else {
             Err(IRError::IRTypeNotRecognized(ty))
         }

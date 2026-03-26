@@ -17,6 +17,12 @@ impl<T, const N: usize> Clone for IRPointer<T, N> {
     }
 }
 
+impl<T, const N: usize> Default for IRPointer<T, N> {
+    fn default() -> Self {
+        Self::null()
+    }
+}
+
 impl<T, const N: usize> IRPointer<T, N> {
     ///Creates a new IRPointer with the provided `ptr` getting the next `len` values after it.
     pub fn new(ptr: usize, len: usize) -> Self {
@@ -67,6 +73,8 @@ impl<T, const N: usize> IRPointer<T, N> {
 
     #[inline]
     ///Gets the raw value of the pointer
+    ///# Safety
+    /// The value won't represent the length nor the pointer inside the IR
     pub unsafe fn raw(&self) -> u64 {
         self.inner
     }
@@ -81,6 +89,11 @@ impl<T, const N: usize> IRPointer<T, N> {
     ///Gets the pointer part of the IRPointer, i.e. the location of the thing we are pointing to on the IR.
     pub fn ptr(&self) -> usize {
         (self.inner >> 16) as usize
+    }
+
+    #[inline]
+    pub fn is_empty(&self) -> bool {
+        N == 0 || (self.inner & 0xffff) == 0
     }
 
     #[inline]

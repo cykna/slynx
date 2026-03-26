@@ -23,7 +23,7 @@ pub const BUILTIN_TYPES: [HirType; BUILTIN_TYPES_SIZE] = [
     HirType::GenericComponent,
     HirType::Bool,
 ];
-pub const BUILTIN_NAMES: [&'static str; BUILTIN_TYPES_SIZE] = [
+pub const BUILTIN_NAMES: [&str; BUILTIN_TYPES_SIZE] = [
     "int",
     "float",
     "str",
@@ -151,7 +151,7 @@ impl TypesModule {
     ///Returns the inner object from the provided `ty`, returns None if the type is not a object
     pub fn get_object(&self, ty: &TypeId) -> Option<&HirType> {
         match self.get_type(ty) {
-            v @ HirType::Struct { .. } => Some(&v),
+            v @ HirType::Struct { .. } => Some(v),
             HirType::Reference { rf, .. } => self.get_object(rf),
             _ => None,
         }
@@ -160,7 +160,7 @@ impl TypesModule {
     ///Returns the inner component from the provided `ty`, returns None if the type is not a object
     pub fn get_component(&self, ty: &TypeId) -> Option<&HirType> {
         match self.get_type(ty) {
-            v @ HirType::Component { .. } => Some(&v),
+            v @ HirType::Component { .. } => Some(v),
             HirType::Reference { rf, .. } => self.get_object(rf),
             _ => None,
         }
