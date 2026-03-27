@@ -13,6 +13,8 @@ use crate::hir::{
 };
 use common::ast::Span;
 impl TypeChecker {
+    /// Normalizes field access metadata so expressions and assignments resolve
+    /// fields through the same checked path.
     fn resolve_field_access_type(
         &mut self,
         field_ty: &mut TypeId,
@@ -32,6 +34,9 @@ impl TypeChecker {
                 self.resolve(field_ty, span)
             }
             FieldMethod::Variable(variable_id, field_name) => {
+                // Field accesses first enter the checker attached to the source
+                // variable name. Resolve that symbolic access once and rewrite it
+                // into an indexed field lookup for the rest of the pipeline.
                 let object_ty = *self
                     .types_module
                     .get_variable(&variable_id)
