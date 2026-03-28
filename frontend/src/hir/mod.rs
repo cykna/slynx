@@ -215,10 +215,7 @@ impl SlynxHir {
                 self.resolve_object(name, fields, ast.span)?
             }
             ASTDeclarationKind::FuncDeclaration {
-                name,
-                args,
-                mut body,
-                ..
+                name, args, body, ..
             } => {
                 let (decl, tyid) = if let Some(symb) =
                     self.symbols_module.retrieve(&name.identifier)
@@ -249,23 +246,25 @@ impl SlynxHir {
                     })
                     .collect::<Result<Vec<_>, _>>()?;
 
-                let statements = if let Some(last) = body.pop() {
-                    let mut statements = body
-                        .into_iter()
-                        .map(|ast| self.resolve_statement(ast))
-                        .collect::<Result<Vec<_>, _>>()?;
-
-                    if let ASTStatementKind::Expression(expr) = last.kind {
-                        let expr = self.resolve_expr(expr, None)?;
-                        statements.push(HirStatement {
-                            span: expr.span.clone(),
-                            kind: HirStatementKind::Return { expr },
-                        });
+                let mut statements = Vec::with_capacity(body.len());
+                let body_len = body.len();
+                for (index, statement) in body.into_iter().enumerate() {
+                    let is_last = index + 1 == body_len;
+                    match statement {
+                        // The last expression in a function body becomes the implicit return.
+                        common::ast::ASTStatement {
+                            kind: ASTStatementKind::Expression(expr),
+                            ..
+                        } if is_last => {
+                            let expr = self.resolve_expr(expr, None)?;
+                            statements.push(HirStatement {
+                                span: expr.span.clone(),
+                                kind: HirStatementKind::Return { expr },
+                            });
+                        }
+                        statement => statements.push(self.resolve_statement(statement)?),
                     }
-                    statements
-                } else {
-                    Vec::new()
-                };
+                }
 
                 self.declarations.push(HirDeclaration {
                     kind: HirDeclarationKind::Function {

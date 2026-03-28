@@ -36,6 +36,9 @@ pub enum TypeErrorKind {
         declaration: DeclarationId,
         received: HirType,
     },
+    MissingReturnValue {
+        expected: HirType,
+    },
     NotARef(VariableId, HirType),
     Unrecognized,
 }
@@ -67,6 +70,9 @@ impl std::fmt::Display for TypeError {
             } => format!(
                 "Invalid function call target at declaration {declaration:?}. Expected function type but received {received:?}"
             ),
+            TypeErrorKind::MissingReturnValue { expected } => {
+                format!("Function is missing a return value of type '{expected:?}'")
+            }
             TypeErrorKind::NotARef(v, ty) => format!(
                 "Variable with id {v:?} has got type {ty:?} instead was expecting to be an object"
             ),

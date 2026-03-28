@@ -314,15 +314,45 @@ impl TypeChecker {
                 else {
                     unreachable!("A function should have function type");
                 };
-                for statement in statements {
+                for statement in &mut *statements {
                     self.default_statement(statement, &return_type)?;
                 }
+                self.ensure_function_returns(statements, return_type, &decl.span)?;
             }
             HirDeclarationKind::ComponentDeclaration { ref mut props } => {
                 self.resolve_component_members(props, decl.ty)?;
             }
         }
         Ok(())
+    }
+
+    fn ensure_function_returns(
+        &mut self,
+        statements: &[crate::hir::definitions::HirStatement],
+        return_type: TypeId,
+        span: &Span,
+    ) -> Result<()> {
+        let return_type = self.resolve(&return_type, span)?;
+        if return_type == self.types_module.void_id() {
+            return Ok(());
+        }
+
+        // Functions return implicitly through their tail expression today,
+        // so a non-void function must end with a lowered `Return`.
+        if matches!(
+            statements.last().map(|statement| &statement.kind),
+            Some(crate::hir::definitions::HirStatementKind::Return { .. })
+        ) {
+            return Ok(());
+        }
+
+        Err(TypeError {
+            kind: TypeErrorKind::MissingReturnValue {
+                expected: self.types_module.get_type(&return_type).clone(),
+            },
+            span: span.clone(),
+        }
+        .into())
     }
 }
 
@@ -341,16 +371,20 @@ mod tests {
         parser::Parser,
     };
 
-    fn load_hir(path: &str) -> SlynxHir {
-        let source_path = Path::new(env!("CARGO_MANIFEST_DIR")).join("..").join(path);
-        let source = std::fs::read_to_string(&source_path).expect("source file should exist");
-        let tokens = Lexer::tokenize(&source).expect("source should tokenize");
+    fn load_hir_from_source(source: &str) -> SlynxHir {
+        let tokens = Lexer::tokenize(source).expect("source should tokenize");
         let declarations = Parser::new(tokens)
             .parse_declarations()
             .expect("source should parse");
         let mut hir = SlynxHir::new();
         hir.generate(declarations).expect("HIR should generate");
         hir
+    }
+
+    fn load_hir(path: &str) -> SlynxHir {
+        let source_path = Path::new(env!("CARGO_MANIFEST_DIR")).join("..").join(path);
+        let source = std::fs::read_to_string(&source_path).expect("source file should exist");
+        load_hir_from_source(&source)
     }
 
     fn main_call_args(hir: &mut SlynxHir) -> Option<&mut Vec<HirExpression>> {
@@ -460,6 +494,68 @@ mod tests {
             matches!(type_error.kind, TypeErrorKind::IncompatibleTypes { .. }),
             "expected IncompatibleTypes, got {:?}",
             type_error.kind
+        );
+    }
+
+    #[test]
+    fn rejects_function_without_return_value_for_non_void_return_type() {
+        let mut hir = load_hir_from_source(
+            r#"
+            func main(): int {
+                let x = 12;
+            }
+            "#,
+        );
+
+        let err = TypeChecker::check(&mut hir).expect_err("non-void functions must return a value");
+        let type_error = err
+            .downcast_ref::<TypeError>()
+            .expect("error should come from type checker");
+
+        match &type_error.kind {
+            TypeErrorKind::MissingReturnValue { expected } => {
+                assert!(
+                    matches!(expected, crate::hir::types::HirType::Int),
+                    "expected missing int return, got {expected:?}"
+                );
+            }
+            other => panic!("expected MissingReturnValue, got {other:?}"),
+        }
+    }
+
+    #[test]
+    fn preserves_non_expression_tail_statement_in_function_body() {
+        let hir = load_hir_from_source(
+            r#"
+            func main(): void {
+                let x = 12;
+            }
+            "#,
+        );
+
+        let main_fn = hir
+            .declarations
+            .iter()
+            .find(|declaration| {
+                matches!(
+                    declaration.kind,
+                    HirDeclarationKind::Function { ref name, .. } if name == "main"
+                )
+            })
+            .expect("main function should exist");
+
+        let HirDeclarationKind::Function { statements, .. } = &main_fn.kind else {
+            unreachable!();
+        };
+
+        assert_eq!(
+            statements.len(),
+            1,
+            "last non-expression statement should be preserved"
+        );
+        assert!(
+            matches!(statements[0].kind, HirStatementKind::Variable { .. }),
+            "expected trailing let statement to stay in the body"
         );
     }
 }
