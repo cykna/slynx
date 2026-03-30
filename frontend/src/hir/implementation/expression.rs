@@ -297,7 +297,7 @@ impl SlynxHir {
                     HirType::Reference { rf, .. } => {
                         if let Some(index) = self
                             .declarations_module
-                            .retrieve_object_body(*rf)
+                            .retrieve_object_body(*ty)
                             .expect("Object should have been defined")
                             .iter()
                             .position(|struct_field| {
