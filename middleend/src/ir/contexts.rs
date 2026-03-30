@@ -191,7 +191,11 @@ impl SlynxIR {
                             .collect::<Vec<_>>(),
                     )
                 };
-                Value::StructLiteral(ty, values)
+                let strts = self.insert_instruction(
+                    temp.current_label(),
+                    Instruction::struct_literal(ty, values),
+                );
+                Value::Instruction(strts)
             }
             HirExpressionKind::FieldAccess { expr, field_index } => {
                 let value = self.get_value_for(expr, temp)?;
