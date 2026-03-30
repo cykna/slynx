@@ -146,7 +146,6 @@ impl SlynxIR {
                 Value::Instruction(i)
             }
             HirExpressionKind::Component { name, values } => {
-                let component = temp.get_component(*name)
                 unimplemented!("Component expression is not implemented");
             }
             HirExpressionKind::If {

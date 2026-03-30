@@ -14,20 +14,22 @@ impl Parser {
 
         self.expect(&TokenKind::LParen)?;
         let mut params = Vec::new();
-        loop {
-            let param = self.parse_expression()?;
-            params.push(param);
-            match self.peek()?.kind {
-                TokenKind::RParen => break,
-                TokenKind::Comma => {
-                    self.eat()?;
-                }
-                _ => {
-                    return Err(ParseError::UnexpectedToken(
-                        self.eat()?,
-                        "an expression or ','".to_string(),
-                    )
-                    .into());
+        if self.peek()?.kind != TokenKind::RParen {
+            loop {
+                let param = self.parse_expression()?;
+                params.push(param);
+                match self.peek()?.kind {
+                    TokenKind::RParen => break,
+                    TokenKind::Comma => {
+                        self.eat()?;
+                    }
+                    _ => {
+                        return Err(ParseError::UnexpectedToken(
+                            self.eat()?,
+                            "an expression or ','".to_string(),
+                        )
+                        .into());
+                    }
                 }
             }
         }
