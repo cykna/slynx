@@ -15,7 +15,6 @@ pub struct Slot {
 #[derive(Debug, Clone)]
 ///A value inside the IR. Can be a function arg, a label arg or the result of a instruction
 pub enum Value {
-    StructLiteral(IRTypeId, IRPointer<Value>),
     Raw(IRPointer<Operand, 1>),
     Instruction(IRPointer<Instruction, 1>),
     Slot(IRPointer<Slot, 1>),
@@ -37,6 +36,7 @@ pub enum Operand {
 pub enum InstructionType {
     ///Variant used for raw values. Their actual value is their operand
     RawValue,
+    Struct,
     ///Variant used for function calls. The `func` field is the pointer to the function context
     FunctionCall(IRPointer<Context, 1>),
     ///Variant used for binary add. The type is determines by the `value_type` and the left and right hand side are the `operands`
@@ -297,6 +297,14 @@ impl Instruction {
         Self {
             operands: value.with_length(),
             instruction_type: InstructionType::Read,
+            value_type: ty,
+        }
+    }
+
+    pub fn struct_literal(ty: IRTypeId, value: IRPointer<Value>) -> Self {
+        Self {
+            operands: value,
+            instruction_type: InstructionType::Struct,
             value_type: ty,
         }
     }
