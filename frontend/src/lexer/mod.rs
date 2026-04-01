@@ -187,6 +187,7 @@ impl Lexer {
                     let start = idx;
                     let mut float_value = false;
                     let mut last_is_underscore = false;
+                    let mut last_is_dot = false;
                     let mut should_err = false;
                     while let Some(c) = chars.get(idx)
                         && (c.is_ascii_digit() || *c == '.' || *c == '_')
@@ -194,9 +195,11 @@ impl Lexer {
                         if *c == '.' {
                             float_value = true;
                         }
-                        if *c == '_' && last_is_underscore {
+                        if (*c == '.' && last_is_dot) || (*c == '_' && last_is_underscore) {
                             should_err = true;
                         }
+
+                        last_is_dot = *c == '.';
                         last_is_underscore = *c == '_';
                         buffer.push(*c);
                         idx += 1;
