@@ -186,8 +186,9 @@ impl Lexer {
                     let mut buffer = String::new();
                     let start = idx;
                     let mut float_value = false;
+
                     while let Some(c) = chars.get(idx)
-                        && (c.is_ascii_digit() || *c == '.')
+                        && (c.is_ascii_digit() || *c == '.' || *c == '_')
                     {
                         if *c == '.' {
                             float_value = true;
@@ -196,6 +197,7 @@ impl Lexer {
                         idx += 1;
                     }
                     idx -= 1;
+                    let buffer = buffer.replace('_', "");
                     if float_value {
                         match buffer.parse::<f32>() {
                             Ok(value) => Token::float(value, start, idx),
