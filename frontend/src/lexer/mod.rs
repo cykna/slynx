@@ -195,7 +195,7 @@ impl Lexer {
                         if *c == '.' {
                             float_value = true;
                         }
-                        if (*c == '.' && last_is_dot) || (*c == '_' && last_is_underscore) {
+                        if (*c == '_' || *c == '.') && (last_is_underscore || last_is_dot) {
                             should_err = true;
                         }
 
@@ -204,7 +204,7 @@ impl Lexer {
                         buffer.push(*c);
                         idx += 1;
                     }
-                    if should_err || buffer.ends_with("_") {
+                    if should_err || buffer.ends_with('_') || buffer.ends_with('.') {
                         return Err(LexerError::MalformedNumber {
                             number: buffer,
                             init: start,

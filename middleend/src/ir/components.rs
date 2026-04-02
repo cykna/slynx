@@ -5,7 +5,7 @@ use crate::{Component, IRError, IRPointer, SlynxIR, ir::temp::TempIRData};
 impl SlynxIR {
     pub fn initialize_component(
         &mut self,
-        comp: IRPointer<Component, 1>,
+        _comp: IRPointer<Component, 1>,
         props: &[ComponentMemberDeclaration],
         _temp: &mut TempIRData,
     ) -> Result<(), IRError> {
@@ -13,12 +13,16 @@ impl SlynxIR {
         for prop in props {
             match prop {
                 ComponentMemberDeclaration::Property {
-                    id,
-                    index,
-                    value,
-                    span,
+                    id: _,
+                    index: _,
+                    value: _,
+                    span: _,
                 } => {}
-                ComponentMemberDeclaration::Child { name, values, span } => {}
+                ComponentMemberDeclaration::Child {
+                    name: _,
+                    values: _,
+                    span: _,
+                } => {}
                 ComponentMemberDeclaration::Specialized(_) => {}
             }
         }
