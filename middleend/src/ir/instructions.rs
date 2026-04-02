@@ -44,6 +44,50 @@ impl SlynxIR {
         temp: &mut TempIRData,
     ) -> Result<Option<IRPointer<Instruction, 1>>, IRError> {
         match &statement.kind {
+
+            HirStatementKind::While { condition, body } => {
+                let cond_label = self.insert_label(temp.current_function(), "while_cond");
+                let body_label = self.insert_label(temp.current_function(), "while_body");
+                let end_label = self.insert_label(temp.current_function(), "while_end");
+
+                let bool_type = self.types.bool_type();
+
+             
+                self.insert_instruction(
+                    temp.current_label(),
+                    Instruction::br(cond_label.clone(), IRPointer::null(), bool_type),
+                );
+
+                temp.set_current_label(cond_label.clone());
+                let cond_value = self.get_value_for(condition, temp)?;
+
+                self.insert_instruction(
+                    temp.current_label(),
+                    Instruction::cbr(
+                        cond_value,
+                        body_label.clone(),
+                        end_label.clone(),
+                        IRPointer::null(),
+                        IRPointer::null(),
+                        bool_type,
+                    ),
+                );
+
+                temp.set_current_label(body_label.clone());
+                for stmt in body {
+                    self.get_instruction(stmt, temp)?;
+                }
+
+                self.insert_instruction(
+                    temp.current_label(),
+                    Instruction::br(cond_label.clone(), IRPointer::null(), bool_type),
+                );
+
+                temp.set_current_label(end_label);
+
+                Ok(None)
+            }
+
             HirStatementKind::Variable { name, value } => {
                 let value = self.get_value_for(value, temp)?;
                 let vty = self.get_type_of_value(value.clone(), temp);
