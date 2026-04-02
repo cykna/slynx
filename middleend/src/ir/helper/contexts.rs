@@ -14,6 +14,7 @@ impl SlynxIR {
         &self.components[comp.ptr()]
     }
 
+    #[allow(dead_code)]
     pub(crate) fn get_component_mut(&mut self, comp: IRPointer<Component, 1>) -> &mut Component {
         &mut self.components[comp.ptr()]
     }

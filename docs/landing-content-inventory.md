@@ -22,6 +22,10 @@ These files are the main factual references for landing-page content:
 
 - [README.md](../README.md): project overview, workspace layout, current status, and current
   release/tag status
+- [docs/language-surface.md](language-surface.md): grounded overview of the current syntax that
+  `main` already supports
+- [docs/first-slynx-file.md](first-slynx-file.md): short onboarding guide with a real `.slynx`
+  example
 - [CONTRIBUTING.md](../CONTRIBUTING.md): contribution workflow and validation expectations
 - [GOVERNANCE.md](../GOVERNANCE.md): maintainership and decision structure
 - [RELEASING.md](../RELEASING.md): release/tag process
@@ -95,8 +99,32 @@ Evidence:
 
 - [README.md](../README.md)
 - [CONTRIBUTING.md](../CONTRIBUTING.md)
+- [docs/first-slynx-file.md](first-slynx-file.md)
 
-### 4. Public Library Entry Points
+### 4. Current Language Surface
+
+Status: `Implemented`
+
+Safe content:
+
+- top-level `object`, `component`, and `func` declarations
+- block-bodied and arrow-bodied functions
+- `let` / `let mut`
+- assignment
+- function calls, including zero-argument calls
+- object expressions
+- component expressions
+- field access
+- arithmetic/comparison/logical binary expressions
+- `if` expressions
+
+Evidence:
+
+- [docs/language-surface.md](language-surface.md)
+- [frontend/src/parser](../frontend/src/parser)
+- [frontend/tests/parser.rs](../frontend/tests/parser.rs)
+
+### 5. Public Library Entry Points
 
 Status: `Implemented`, but narrow
 
@@ -118,7 +146,7 @@ Important limitation:
 - landing content can mention the public entry points, but should not pretend a complete API
   reference already exists
 
-### 5. Governance / Community / Releases
+### 6. Governance / Community / Releases
 
 Status: `Implemented`
 
