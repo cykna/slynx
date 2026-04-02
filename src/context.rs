@@ -8,7 +8,8 @@ use color_eyre::{Report, eyre::Result, owo_colors::OwoColorize};
 
 use frontend::checker::{TypeChecker, error::TypeError};
 use frontend::hir::{
-    SlynxHir, declarations::DeclarationsModule, error::HIRError, types::TypesModule,
+    SlynxHir, VariableId, declarations::DeclarationsModule, error::HIRError,
+    symbols::SymbolPointer, types::TypesModule,
 };
 use frontend::lexer::{Lexer, error::LexerError};
 use frontend::parser::{Parser, error::ParseError};
@@ -196,6 +197,7 @@ impl SlynxContext {
         &self,
         error: &IRError,
         ir: &SlynxIR,
+        variable_names: &HashMap<VariableId, SymbolPointer>,
         types_module: &TypesModule,
         declarations_module: &DeclarationsModule,
     ) -> SlynxError {
@@ -210,7 +212,13 @@ impl SlynxContext {
             line: 1,
             column_start: 1,
             ty: SlynxErrorType::Compilation,
-            message: format_ir_generation_error(error, ir, types_module, declarations_module),
+            message: format_ir_generation_error(
+                error,
+                ir,
+                variable_names,
+                types_module,
+                declarations_module,
+            ),
             file: self.file_name(),
             source_code,
         }
@@ -319,11 +327,18 @@ impl SlynxContext {
             },
             Ok(module) => module,
         };
+        let variable_names = hir.variable_names().clone();
         let mut ir = SlynxIR::new(hir.symbols_module);
 
         if let Err(e) = ir.generate(hir.declarations, &types_module) {
             return Err(self
-                .build_ir_generation_error(&e, &ir, &types_module, &hir.declarations_module)
+                .build_ir_generation_error(
+                    &e,
+                    &ir,
+                    &variable_names,
+                    &types_module,
+                    &hir.declarations_module,
+                )
                 .into());
         };
         let output = CompilationOutput::new(self.entry_point.as_ref(), ir);
@@ -340,13 +355,14 @@ impl SlynxContext {
 fn format_ir_generation_error(
     error: &IRError,
     ir: &SlynxIR,
+    variable_names: &HashMap<VariableId, SymbolPointer>,
     types_module: &TypesModule,
     declarations_module: &DeclarationsModule,
 ) -> String {
     match error {
         IRError::UnrecognizedVariable(id) => {
-            if let Some(name) = types_module
-                .get_variable_name(id)
+            if let Some(name) = variable_names
+                .get(id)
                 .copied()
                 .map(|symbol| ir.string_pool().get_name(symbol))
             {
@@ -399,6 +415,7 @@ mod tests {
         types::{BUILTIN_NAMES, HirType, TypesModule},
     };
     use middleend::{IRError, SlynxIR};
+    use std::collections::HashMap;
 
     #[test]
     fn formats_variable_ir_errors_with_source_names() {
@@ -406,17 +423,19 @@ mod tests {
         let builtins = BUILTIN_NAMES.map(|name| symbols.intern(name));
         let variable_name = symbols.intern("count");
         let mut types = TypesModule::new(&builtins);
+        let mut variable_names = HashMap::new();
         let declarations = DeclarationsModule::new();
         let ir = SlynxIR::new(symbols);
 
         let variable = VariableId::from_raw(77);
         types.insert_variable(variable, types.int_id());
-        types.set_variable_name(variable, variable_name);
+        variable_names.insert(variable, variable_name);
 
         assert_eq!(
             format_ir_generation_error(
                 &IRError::UnrecognizedVariable(variable),
                 &ir,
+                &variable_names,
                 &types,
                 &declarations
             ),
@@ -430,6 +449,7 @@ mod tests {
         let builtins = BUILTIN_NAMES.map(|name| symbols.intern(name));
         let declaration_name = symbols.intern("Bordered");
         let mut types = TypesModule::new(&builtins);
+        let variable_names = HashMap::new();
         let mut declarations = DeclarationsModule::new();
         let ir = SlynxIR::new(symbols);
 
@@ -440,6 +460,7 @@ mod tests {
             format_ir_generation_error(
                 &IRError::DeclarationNotRecognized(declaration),
                 &ir,
+                &variable_names,
                 &types,
                 &declarations
             ),
@@ -453,6 +474,7 @@ mod tests {
         let builtins = BUILTIN_NAMES.map(|name| symbols.intern(name));
         let type_name = symbols.intern("User");
         let mut types = TypesModule::new(&builtins);
+        let variable_names = HashMap::new();
         let declarations = DeclarationsModule::new();
         let ir = SlynxIR::new(symbols);
 
@@ -462,6 +484,7 @@ mod tests {
             format_ir_generation_error(
                 &IRError::IRTypeNotRecognized(ty),
                 &ir,
+                &variable_names,
                 &types,
                 &declarations
             ),
@@ -474,6 +497,7 @@ mod tests {
         let mut symbols = SymbolsModule::new();
         let builtins = BUILTIN_NAMES.map(|name| symbols.intern(name));
         let types = TypesModule::new(&builtins);
+        let variable_names = HashMap::new();
         let declarations = DeclarationsModule::new();
         let ir = SlynxIR::new(symbols);
 
@@ -481,6 +505,7 @@ mod tests {
             format_ir_generation_error(
                 &IRError::UnrecognizedVariable(VariableId::from_raw(5)),
                 &ir,
+                &variable_names,
                 &types,
                 &declarations
             ),
@@ -490,6 +515,7 @@ mod tests {
             format_ir_generation_error(
                 &IRError::DeclarationNotRecognized(DeclarationId::from_raw(9)),
                 &ir,
+                &variable_names,
                 &types,
                 &declarations
             ),

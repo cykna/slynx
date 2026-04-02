@@ -79,8 +79,6 @@ pub struct TypesModule {
     name_of_types: HashMap<TypeId, SymbolPointer>,
     ///Maps a variable to it's type
     pub variables: HashMap<VariableId, TypeId>,
-    ///Maps a variable to the symbol of its original source-level name
-    variable_names: HashMap<VariableId, SymbolPointer>,
 
     types: Vec<HirType>,
     builtins: BuiltinTypes,
@@ -107,7 +105,6 @@ impl TypesModule {
             builtins,
             type_names: HashMap::new(),
             variables: HashMap::new(),
-            variable_names: HashMap::new(),
         };
         for (idx, name) in builtin_names.iter().enumerate() {
             out.insert_type(*name, BUILTIN_TYPES[idx].clone());
@@ -139,11 +136,6 @@ impl TypesModule {
     ///Inserts a new variable on this module
     pub fn insert_variable(&mut self, varid: VariableId, ty: TypeId) {
         self.variables.insert(varid, ty);
-    }
-
-    ///Maps the provided variable id back to its source-level name.
-    pub fn set_variable_name(&mut self, varid: VariableId, name: SymbolPointer) {
-        self.variable_names.insert(varid, name);
     }
 
     ///Inserts the provided `ty` to have the provided `name`
@@ -193,9 +185,6 @@ impl TypesModule {
     }
     pub fn get_variable(&self, id: &VariableId) -> Option<&TypeId> {
         self.variables.get(id)
-    }
-    pub fn get_variable_name(&self, id: &VariableId) -> Option<&SymbolPointer> {
-        self.variable_names.get(id)
     }
     pub fn get_type_from_name(&self, name: &SymbolPointer) -> Option<&HirType> {
         self.type_names.get(name).map(|id| self.get_type(id))

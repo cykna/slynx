@@ -43,6 +43,8 @@ pub struct SlynxHir {
     /// Maps the types of top level things on the current scope to their types.
     /// An example is functions, which contain an HirType.
     types: HashMap<TypeId, HirType>,
+    /// Tracks the original source-level symbol for each variable id.
+    variable_names: HashMap<VariableId, SymbolPointer>,
 
     /// The scopes of this HIR. On the final it's expected to have only one, which is the global one
     pub declarations: Vec<HirDeclaration>,
@@ -56,6 +58,7 @@ impl SlynxHir {
             symbols_module: symbols,
             scope_module: ScopeModule::new(),
             types: HashMap::new(),
+            variable_names: HashMap::new(),
             declarations: Vec::new(),
             declarations_module: DeclarationsModule::new(),
             types_module: TypesModule::new(&builtins),

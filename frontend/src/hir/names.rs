@@ -89,8 +89,12 @@ impl SlynxHir {
         let v = VariableId::new();
         self.scope_module.insert_name(ptr, v, mutable);
         self.types_module.insert_variable(v, ty);
-        self.types_module.set_variable_name(v, ptr);
+        self.variable_names.insert(v, ptr);
         v
+    }
+
+    pub fn variable_names(&self) -> &std::collections::HashMap<VariableId, SymbolPointer> {
+        &self.variable_names
     }
     ///Tries to retrieve a variable with the provided `name` on the current active scope
     pub fn get_variable(&mut self, name: &str, span: &Span) -> Result<&VariableId> {
