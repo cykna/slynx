@@ -44,7 +44,6 @@ impl SlynxIR {
         temp: &mut TempIRData,
     ) -> Result<Option<IRPointer<Instruction, 1>>, IRError> {
         match &statement.kind {
-
             HirStatementKind::While { condition, body } => {
                 let cond_label = self.insert_label(temp.current_function(), "while_cond");
                 let body_label = self.insert_label(temp.current_function(), "while_body");
@@ -52,7 +51,6 @@ impl SlynxIR {
 
                 let bool_type = self.types.bool_type();
 
-             
                 self.insert_instruction(
                     temp.current_label(),
                     Instruction::br(cond_label.clone(), IRPointer::null(), bool_type),
