@@ -122,6 +122,7 @@ pub enum TokenKind {
     Func,
     Pub,
     Prop,
+    Alias,
 
     Object,
 
