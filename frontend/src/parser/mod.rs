@@ -106,8 +106,9 @@ impl Parser {
                 _ => {
                     return Err(ParseError::UnexpectedToken(
                         self.eat()?,
-                        "Either a macro name(a name terminated by '!' such as 'js!'), 'Component' or 'Func'".to_string(),
-                    ).into());
+                        "a function, component, object or alias declaration".to_owned(),
+                    )
+                    .into());
                 }
             }
         }

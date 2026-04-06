@@ -8,6 +8,7 @@ impl Parser {
         let name = self.parse_type()?;
         self.expect(&TokenKind::Eq)?;
         let target = self.parse_type()?;
+        self.expect(&TokenKind::SemiColon)?;
         Ok(ASTDeclaration {
             span: Span {
                 start: init.start,

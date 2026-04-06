@@ -322,6 +322,7 @@ impl TypeChecker {
             HirDeclarationKind::ComponentDeclaration { ref mut props } => {
                 self.resolve_component_members(props, decl.ty)?;
             }
+            HirDeclarationKind::Alias => {}
         }
         Ok(())
     }

@@ -86,6 +86,7 @@ impl SlynxIR {
                     temp.define_type(declaration.ty, fnc.ty);
                     temp.map_component(declaration.id, out);
                 }
+                HirDeclarationKind::Alias => {}
             }
         }
         for declaration in hir {
@@ -111,6 +112,7 @@ impl SlynxIR {
                     let comp = temp.get_component(declaration.id);
                     self.initialize_component(comp, &props, &mut temp)?;
                 }
+                HirDeclarationKind::Alias => {}
             }
         }
         Ok(())

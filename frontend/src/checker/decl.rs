@@ -3,9 +3,9 @@ use color_eyre::eyre::Result;
 use super::TypeChecker;
 
 use crate::hir::{
-    TypeId,
     definitions::{ComponentMemberDeclaration, HirDeclaration, HirDeclarationKind},
     types::HirType,
+    TypeId,
 };
 impl TypeChecker {
     pub(super) fn check_decl(&mut self, decl: &mut HirDeclaration) -> Result<()> {
@@ -40,6 +40,7 @@ impl TypeChecker {
                 }
                 *self.types_module.get_type_mut(&decl.ty) = HirType::Component { props: typrops };
             }
+            HirDeclarationKind::Alias => {}
         }
         Ok(())
     }

@@ -172,6 +172,17 @@ impl SlynxHir {
     /// Hoist the provided `ast` declaration, so no errors of undefined values because declared later may occur
     fn hoist(&mut self, ast: &ASTDeclaration) -> Result<()> {
         match &ast.kind {
+            ASTDeclarationKind::Alias { name, target } => {
+                let target_id = self.get_typeid_of_name(&target.identifier, &target.span)?;
+                let symbol = self.symbols_module.intern(&name.identifier);
+                self.types_module.insert_type(
+                    symbol,
+                    HirType::Reference {
+                        rf: target_id,
+                        generics: Vec::new(),
+                    },
+                );
+            }
             ASTDeclarationKind::ObjectDeclaration { name, fields } => {
                 self.hoist_object(name, fields)?
             }
@@ -311,6 +322,28 @@ impl SlynxHir {
                     span: ast.span,
                 });
                 self.scope_module.exit_scope();
+            }
+            ASTDeclarationKind::Alias { name, target } => {
+                self.symbols_module.intern(&name.identifier);
+                let symbol = self.symbols_module.intern(&target.identifier);
+                let ty = if let Some(data) = self
+                    .declarations_module
+                    .retrieve_declaration_data_by_name(&symbol)
+                {
+                    data.1
+                } else {
+                    return Err(HIRError {
+                        kind: HIRErrorKind::NameNotRecognized(name.identifier),
+                        span: name.span,
+                    }
+                    .into());
+                };
+                self.declarations.push(HirDeclaration {
+                    id: DeclarationId::new(),
+                    kind: HirDeclarationKind::Alias,
+                    ty,
+                    span: ast.span,
+                });
             }
         }
         Ok(())
