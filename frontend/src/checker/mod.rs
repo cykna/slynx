@@ -85,7 +85,8 @@ impl TypeChecker {
         match referedty {
             HirType::Field(FieldMethod::Type(rf, index)) => {
                 let ty = self.resolve(&rf, span)?;
-                if let HirType::Struct { fields } = self.types_module.get_type(&ty) {
+                let struct_id = self.get_struct_from_ref(&ty, span)?;
+                if let HirType::Struct { fields } = self.types_module.get_type(&struct_id) {
                     Ok(fields[index])
                 } else {
                     Err(TypeError {
@@ -262,10 +263,6 @@ impl TypeChecker {
         if let HirType::Reference { rf: refe, .. } = self.types_module.get_type(&ty)
             && rf == *refe
         {
-            let ty = self.types_module.insert_unnamed_type(HirType::Reference {
-                rf: *refe,
-                generics: Vec::new(),
-            });
             return Ok(ty);
         }
         let ty = self.types_module.get_type(&ty);
