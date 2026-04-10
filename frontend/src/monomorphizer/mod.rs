@@ -22,7 +22,6 @@ impl Monomorphizer {
             let HirType::Reference { rf, .. } = types_module.get_type_mut(&key) else {
                 continue;
             };
-            println!("{value:?}");
             *rf = value;
         }
     }

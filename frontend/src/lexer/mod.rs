@@ -291,7 +291,7 @@ impl Lexer {
                         },
                         "alias" => Token {
                             kind: TokenKind::Alias,
-                            span
+                            span,
                         },
                         _ => Token::identifier(&buffer, start, idx),
                     }
