@@ -1,0 +1,3 @@
+func main (): ((int, int), int){
+    ((1,1), 1)
+}
