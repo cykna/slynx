@@ -104,8 +104,6 @@ impl TypesModule {
         }
     }
 
-
-
     pub fn add_tuple_type(&mut self, fields: Vec<TypeId>) -> TypeId {
         self.insert_unnamed_type(HirType::Tuple { fields })
     }

@@ -85,7 +85,6 @@ impl SlynxHir {
         }
     }
 
-
     pub fn get_typeid_of_generic(&mut self, gener: &GenericIdentifier) -> Result<TypeId> {
         match gener.identifier.as_str() {
             "tuple" => {
@@ -119,7 +118,6 @@ impl SlynxHir {
                         generics: gen_ids,
                     }))
                 } else {
-
                     self.get_typeid_of_name(&gener.identifier, &gener.span)
                 }
             }
