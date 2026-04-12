@@ -33,7 +33,7 @@ impl TypeChecker {
     pub(super) fn check_decl(&mut self, decl: &mut HirDeclaration) -> Result<()> {
         match &mut decl.kind {
             HirDeclarationKind::Function { statements, .. } => {
-                self.resolve_statments(statements, &decl.ty)?;
+                self.resolve_statements(statements, &decl.ty)?;
             }
 
             // Objects and aliases have no bodies to type-check at this pass.
@@ -67,7 +67,7 @@ impl TypeChecker {
 
                         ComponentMemberDeclaration::Child { .. } => {}
 
-                        ComponentMemberDeclaration::Specialized(spec) => {}
+                        ComponentMemberDeclaration::Specialized(_) => {}
                     }
                 }
 

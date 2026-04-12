@@ -181,10 +181,12 @@ impl TypeChecker {
             expected.len(),
             "arity must be checked before arg defaulting"
         );
+
         for (arg, expected_ty) in args.iter_mut().zip(expected.iter().copied()) {
             self.default_expr(arg)?;
             arg.ty = self.unify(&arg.ty, &expected_ty, &arg.span)?;
         }
+
         Ok(())
     }
 
@@ -207,9 +209,11 @@ impl TypeChecker {
                                 value.ty = self.get_type_of_expr(value)?;
                             }
                         }
+
                         ComponentMemberDeclaration::Specialized(spec) => {
                             self.resolve_specialized(spec)?;
                         }
+
                         ComponentMemberDeclaration::Child { name, values, .. } => {
                             self.resolve_component_members(values, *name)?;
                         }
@@ -217,70 +221,92 @@ impl TypeChecker {
                 }
             }
         }
+
         Ok(())
     }
+    fn resolve_statement_while(
+        &mut self,
+        condition: &mut HirExpression,
+        body: &mut [HirStatement],
+        ty: &TypeId,
+    ) -> Result<()> {
+        condition.ty = self.get_type_of_expr(condition)?;
+        let bool_id = self.types_module.bool_id();
 
-    /// Resolves the types of the provided `statments`.
+        condition.ty = self.unify(&condition.ty, &bool_id, &condition.span)?;
+
+        self.resolve_statements(body, ty)?;
+        Ok(())
+    }
+    fn resolve_statement_assign(
+        &mut self,
+        lhs: &mut HirExpression,
+        value: &mut HirExpression,
+        span: &Span,
+    ) -> Result<()> {
+        let refty = match self.types_module.get_type(&lhs.ty) {
+            HirType::Field(FieldMethod::Type(_, _)) => lhs.ty,
+            HirType::Field(FieldMethod::Variable(..)) => {
+                let HirExpressionKind::FieldAccess {
+                    ref mut field_index,
+                    ..
+                } = lhs.kind
+                else {
+                    unreachable!();
+                };
+                let _ = self.resolve_field_access_type(&mut lhs.ty, field_index, &lhs.span)?;
+                lhs.ty
+            }
+            HirType::VarReference(_) => lhs.ty,
+            _ => unreachable!(),
+        };
+
+        let ty = self.resolve(&lhs.ty, span)?;
+        lhs.ty = refty;
+        value.ty = self.get_type_of_expr(value)?;
+        value.ty = self.unify(&ty, &value.ty, &value.span)?;
+        Ok(())
+    }
+    /// Resolves the types of the provided `statements`.
     ///
-    /// This function resolves the types of the provided `statments` by updating
+    /// This function resolves the types of the provided `statements` by updating
     /// the type of each statement and its children. If a type mismatch occurs,
     /// a `TypeError` is returned.
-    pub(super) fn resolve_statments(
+    pub(super) fn resolve_statements(
         &mut self,
-        statments: &mut Vec<HirStatement>,
+        statements: &mut [HirStatement],
         ty: &TypeId,
     ) -> Result<()> {
         let HirType::Function { return_type, .. } = self.types_module.get_type(ty).clone() else {
             unreachable!();
         };
-        for statment in statments {
-            match &mut statment.kind {
+        for statement in statements {
+            let span = &statement.span;
+
+            match &mut statement.kind {
                 HirStatementKind::While { condition, body } => {
-                    condition.ty = self.get_type_of_expr(condition)?;
-                    let bool_id = self.types_module.bool_id();
-                    condition.ty = self.unify(&condition.ty, &bool_id, &condition.span)?;
-                    self.resolve_statments(body, ty)?;
+                    self.resolve_statement_while(condition, body, ty)?
                 }
 
                 HirStatementKind::Variable { value, .. } => {
                     value.ty = self.get_type_of_expr(value)?;
                 }
+
                 HirStatementKind::Return { expr } => {
                     expr.ty = self.get_type_of_expr(expr)?;
-                    expr.ty = self.unify(&expr.ty, &return_type, &statment.span)?;
+                    expr.ty = self.unify(&expr.ty, &return_type, span)?;
                 }
+
                 HirStatementKind::Expression { expr } => {
                     expr.ty = self.get_type_of_expr(expr)?;
                 }
-                HirStatementKind::Assign { lhs, value } => {
-                    let refty = match self.types_module.get_type(&lhs.ty) {
-                        HirType::Field(FieldMethod::Type(_, _)) => lhs.ty,
-                        HirType::Field(FieldMethod::Variable(..)) => {
-                            let HirExpressionKind::FieldAccess {
-                                ref mut field_index,
-                                ..
-                            } = lhs.kind
-                            else {
-                                unreachable!();
-                            };
-                            let _ = self.resolve_field_access_type(
-                                &mut lhs.ty,
-                                field_index,
-                                &lhs.span,
-                            )?;
-                            lhs.ty
-                        }
-                        HirType::VarReference(_) => lhs.ty,
-                        _ => unreachable!(),
-                    };
 
-                    let ty = self.resolve(&lhs.ty, &statment.span)?;
-                    lhs.ty = refty;
-                    value.ty = self.get_type_of_expr(value)?;
-                    value.ty = self.unify(&ty, &value.ty, &value.span)?;
+                HirStatementKind::Assign { lhs, value } => {
+                    self.resolve_statement_assign(lhs, value, span)?
                 }
             }
         }
+
         Ok(())
     }
 
@@ -294,9 +320,11 @@ impl TypeChecker {
         let HirType::Struct { fields: fields_tys } = ty else {
             unreachable!("When resolving object types, a type 'struct' should be provided");
         };
+
         for (idx, f) in fields.iter_mut().enumerate() {
             f.ty = self.unify(&fields_tys[idx], &f.ty, &f.span)?;
         }
+
         Ok(())
     }
 
@@ -306,6 +334,28 @@ impl TypeChecker {
             self.types_module.get_type(rf)
         } else {
             unreachable!("The provided ref_ty should be of type Reference");
+        }
+    }
+    /// Helper to resolve a branch (then/else) that may be present or absent.
+    /// Accepts `Option<&mut Vec<HirStatement>>` because the else branch is optional
+    /// in the HIR representation. `expected` is the expected TypeId for statements.
+    fn resolve_branch(
+        &mut self,
+        branch: Option<&mut Vec<HirStatement>>,
+        expected: &TypeId,
+    ) -> Result<TypeId> {
+        let Some(stmts) = branch else {
+            return Ok(self.types_module.void_id());
+        };
+        let Some((last, rest)) = stmts.split_last_mut() else {
+            return Ok(self.types_module.void_id());
+        };
+        for stmt in rest {
+            self.default_statement(stmt, expected)?;
+        }
+        match &mut last.kind {
+            HirStatementKind::Expression { expr } => self.get_type_of_expr(expr),
+            _ => Ok(self.types_module.void_id()),
         }
     }
 
@@ -326,38 +376,14 @@ impl TypeChecker {
                 ref mut else_branch,
                 ref mut then_branch,
             } => {
-                let if_ty = if !then_branch.is_empty() {
-                    let lasted_index = then_branch.len() - 1;
-                    for stmt in &mut then_branch[..lasted_index] {
-                        self.default_statement(stmt, &expected)?;
-                    }
-                    match &mut then_branch[lasted_index].kind {
-                        HirStatementKind::Expression { expr } => self.get_type_of_expr(expr)?,
-                        _ => self.types_module.void_id(),
-                    }
-                } else {
-                    self.types_module.void_id()
-                };
-                let else_ty = if let Some(else_branch) = else_branch {
-                    if !else_branch.is_empty() {
-                        let lasted_index = else_branch.len() - 1;
-                        for stmt in &mut else_branch[..lasted_index] {
-                            self.default_statement(stmt, &expected)?;
-                        }
-                        match &mut else_branch[lasted_index].kind {
-                            HirStatementKind::Expression { expr } => self.get_type_of_expr(expr)?,
-                            _ => self.types_module.void_id(),
-                        }
-                    } else {
-                        self.types_module.void_id()
-                    }
-                } else {
-                    self.types_module.void_id()
-                };
+                let if_ty = self.resolve_branch(Some(then_branch), &expected)?;
+                let else_ty = self.resolve_branch(else_branch.as_mut(), &expected)?;
 
                 let result_ty = self.unify(&if_ty, &else_ty, &expr.span)?;
+                let cond_ty = self.get_type_of_expr(condition)?;
                 condition.ty =
-                    self.unify(&condition.ty, &self.types_module.bool_id(), &condition.span)?;
+                    self.unify(&cond_ty, &self.types_module.bool_id(), &condition.span)?;
+
                 result_ty
             }
             HirExpressionKind::FunctionCall {
@@ -365,6 +391,7 @@ impl TypeChecker {
                 args: ref mut f_args,
             } => {
                 let (args, return_type) = self.get_function_signature(name, &expr.span)?;
+
                 self.check_function_call_len(f_args, &args, &expr.span)?;
                 self.check_function_call_args(f_args, &args)?;
 
@@ -380,7 +407,9 @@ impl TypeChecker {
             } => {
                 let lhs_ty = self.get_type_of_expr(lhs)?;
                 let rhs_ty = self.get_type_of_expr(rhs)?;
+
                 let out = self.unify(&lhs_ty, &rhs_ty, &expr.span)?;
+
                 if op.is_logical() {
                     self.types_module.bool_id()
                 } else {
@@ -433,7 +462,9 @@ impl TypeChecker {
                         Ok(f.ty)
                     })
                     .collect::<Result<Vec<_>>>()?;
+
                 let tuple_ty = self.types_module.add_tuple_type(types);
+
                 expr.ty = self.unify(&tuple_ty, &expr.ty, &expr.span)?;
             }
             HirExpressionKind::If {
@@ -442,38 +473,10 @@ impl TypeChecker {
                 ref mut else_branch,
             } => {
                 self.default_expr(condition)?;
-                let unify =
+                condition.ty =
                     self.unify(&condition.ty, &self.types_module.bool_id(), &condition.span)?;
-                condition.ty = unify;
-                let if_ty = if !then_branch.is_empty() {
-                    let lasted_index = then_branch.len() - 1;
-                    for stmt in &mut then_branch[..lasted_index] {
-                        self.default_statement(stmt, &expr.ty)?;
-                    }
-                    match &mut then_branch[lasted_index].kind {
-                        HirStatementKind::Expression { expr } => self.get_type_of_expr(expr)?,
-                        _ => self.types_module.void_id(),
-                    }
-                } else {
-                    self.types_module.void_id()
-                };
-                let else_ty = if let Some(else_branch) = else_branch {
-                    if !else_branch.is_empty() {
-                        let lasted_index = else_branch.len() - 1;
-                        for stmt in &mut else_branch[..lasted_index] {
-                            self.default_statement(stmt, &expr.ty)?;
-                        }
-                        match &mut else_branch[lasted_index].kind {
-                            HirStatementKind::Expression { expr } => self.get_type_of_expr(expr)?,
-                            _ => self.types_module.void_id(),
-                        }
-                    } else {
-                        self.types_module.void_id()
-                    }
-                } else {
-                    self.types_module.void_id()
-                };
-
+                let if_ty = self.resolve_branch(Some(then_branch), &expr.ty)?;
+                let else_ty = self.resolve_branch(else_branch.as_mut(), &expr.ty)?;
                 self.unify(&if_ty, &else_ty, &expr.span)?;
             }
             HirExpressionKind::FunctionCall {
@@ -535,37 +538,34 @@ impl TypeChecker {
                 ref name,
                 ref mut values,
             } => {
-                let ty = self.types_module.insert_unnamed_type(HirType::Reference {
+                expr.ty = self.types_module.insert_unnamed_type(HirType::Reference {
                     rf: *name,
                     generics: Vec::new(),
                 });
-                expr.ty = ty;
+
                 for val in values {
                     match val {
                         ComponentMemberDeclaration::Property {
                             index, value, span, ..
                         } => {
                             if let Some(value) = value {
-                                let ty = self.get_type_of_expr(value)?;
+                                let expr_ty = self.get_type_of_expr(value)?;
                                 let resolved = self.resolve(&expr.ty, &expr.span)?;
-                                let HirType::Component { props } =
-                                    self.types_module.get_type(&resolved)
-                                else {
-                                    unreachable!(
-                                        "Component expression should be of type component"
-                                    );
-                                };
-                                let propty = props[*index].2;
-                                let ty = self.unify(&propty, &ty, span)?;
 
-                                let HirType::Component { props } =
-                                    self.types_module.get_type_mut(&resolved)
+                                let HirType::Component {
+                                    props: mut declared,
+                                } = self.types_module.get_type(&resolved).clone()
                                 else {
                                     unreachable!(
                                         "Component expression should be of type component"
                                     );
                                 };
-                                props[*index].2 = ty;
+
+                                declared[*index].2 =
+                                    self.unify(&declared[*index].2, &expr_ty, span)?;
+
+                                *self.types_module.get_type_mut(&resolved) =
+                                    HirType::Component { props: declared };
                             }
                         }
                         ComponentMemberDeclaration::Specialized(_) => {}
