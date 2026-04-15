@@ -58,6 +58,20 @@ impl SlynxIR {
         }
     }
 
+    pub fn contexts(&self) -> &[Context] {
+        &self.contexts
+    }
+
+    pub fn get_context_labels(&self, ctx: &Context) -> &[Label] {
+        let ptr = ctx.labels_ptr();
+        &self.labels[ptr.range()]
+    }
+
+    pub fn get_label_instructions(&self, label: &Label) -> &[Instruction] {
+        let ptr = label.instruction();
+        &self.instructions[ptr.range()]
+    }
+
     ///Returns a reference to the string pool
     pub fn string_pool(&self) -> &SymbolsModule {
         &self.strings
