@@ -11,14 +11,14 @@ use crate::{
 
 impl SlynxIR {
     ///Gets a Specialized component on this ir by its provided `ptr`
-    pub fn get_specialized(
+    pub(crate) fn get_specialized(
         &self,
         ptr: IRPointer<IRSpecializedComponent, 1>,
     ) -> &IRSpecializedComponent {
         &self.specialized[ptr.ptr()]
     }
     ///Inserts the given `specialized` component and returns its pointer(or, id)
-    pub fn insert_specialized(
+    pub(crate) fn insert_specialized(
         &mut self,
         specialized: IRSpecializedComponent,
     ) -> IRPointer<IRSpecializedComponent, 1> {
@@ -28,7 +28,7 @@ impl SlynxIR {
     }
 
     ///Gets a value to represent a component whose name(in this case, its type) is the given `name` and the values of it are `values`.
-    pub fn get_component_expression(
+    pub(crate) fn get_component_expression(
         &mut self,
         name: TypeId,
         values: &[ComponentMemberDeclaration],
@@ -63,7 +63,7 @@ impl SlynxIR {
     }
 
     ///Initializes a component, with both its type, and expressions for children
-    pub fn initialize_component(
+    pub(crate) fn initialize_component(
         &mut self,
         decl: &HirDeclaration,
         tys: &TypesModule,
@@ -118,7 +118,7 @@ impl SlynxIR {
     }
 
     ///Gets a value for specialized components
-    pub fn get_specialized_component_value(
+    pub(crate) fn get_specialized_component_value(
         &mut self,
         spec: &SpecializedComponent,
         temp: &mut TempIRData,
@@ -140,7 +140,7 @@ impl SlynxIR {
     }
 
     ///Gets the children values on the given `children` declarations. Note that this will ignore any property, if its got some
-    pub fn get_component_children(
+    pub(crate) fn get_component_children(
         &mut self,
         children: &[ComponentMemberDeclaration],
         temp: &mut TempIRData,

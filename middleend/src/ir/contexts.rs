@@ -52,7 +52,7 @@ impl SlynxIR {
 
     ///Gets the new operands that are required to be inserted by the provided `value`. The final operand is the one with the actual value. Note that this function
     ///might add instructions to the current context since an Expression can be a complex task
-    pub fn get_operand(
+    pub(crate) fn get_operand(
         &mut self,
         value: &HirExpression,
         _temp: &mut TempIRData,
@@ -75,15 +75,8 @@ impl SlynxIR {
         Some(out)
     }
 
-    pub fn insert_dynamic_operands(&mut self, operands: &[Operand]) -> IRPointer<Operand, 0> {
-        let ptr = self.operands.len();
-        let out = IRPointer::new(ptr, operands.len());
-        self.operands.extend_from_slice(operands);
-        out
-    }
-
     ///Inserts a slice of operands into the IR and returns a pointer to the first operand.
-    pub fn insert_operands<const N: usize>(
+    pub(crate) fn insert_operands<const N: usize>(
         &mut self,
         operands: &[Operand; N],
     ) -> IRPointer<Operand, N> {
@@ -94,12 +87,12 @@ impl SlynxIR {
     }
 
     ///Gets a value based on its `ptr`
-    pub fn get_value(&self, ptr: IRPointer<Value, 1>) -> Value {
+    pub(crate) fn get_value(&self, ptr: IRPointer<Value, 1>) -> Value {
         self.values[ptr.ptr()].clone()
     }
 
     ///Returns an instruction pointer for the given expression.
-    pub fn get_value_for(
+    pub(crate) fn get_value_for(
         &mut self,
         expr: &HirExpression,
         temp: &mut TempIRData,
@@ -253,7 +246,7 @@ impl SlynxIR {
         Ok(self.insert_value(value))
     }
 
-    pub fn initialize_function(
+    pub(crate) fn initialize_function(
         &mut self,
         ir: IRPointer<Context, 1>,
         statements: &[HirStatement],
