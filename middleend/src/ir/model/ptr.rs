@@ -1,4 +1,4 @@
-use std::marker::PhantomData;
+use std::{marker::PhantomData, ops::Range};
 
 ///A Pointer to something on the IR. This is a logical pointer composed by 48 bits(higher bits) that determine where the thing we are pointing to is located on the IR, and a length of 16bits to know how much of it we have as well.
 ///Think of this as a slice, but instead of containing data on the actual memory, it takes on the contents of the IR
@@ -116,5 +116,10 @@ impl<T, const N: usize> IRPointer<T, N> {
     ///Sets the length part of the IRPointer to the provided value.
     pub fn set_length(&mut self, len: usize) {
         self.inner = (self.ptr() << 16 | (len & 0xffff)) as u64;
+    }
+
+    #[inline]
+    pub fn range(&self) -> Range<usize> {
+        self.ptr()..self.ptr() + self.len()
     }
 }
