@@ -10,7 +10,7 @@ use crate::{
 
 impl SlynxIR {
     ///Gets the slot of the provided `expr`
-    pub fn get_slot_for_place(
+    pub(crate) fn get_slot_for_place(
         &self,
         expr: &HirExpression,
         temp: &TempIRData,
@@ -38,7 +38,7 @@ impl SlynxIR {
     }
 
     ///Gets one(or more) instructions to operate with the given `statement`
-    pub fn get_instruction(
+    pub(crate) fn get_instruction(
         &mut self,
         statement: &HirStatement,
         temp: &mut TempIRData,
@@ -159,7 +159,7 @@ impl SlynxIR {
             }
         }
     }
-    pub fn insert_instruction(
+    pub(crate) fn insert_instruction(
         &mut self,
         label: IRPointer<Label, 1>,
         instr: Instruction,
@@ -170,7 +170,7 @@ impl SlynxIR {
         label.instruction().ptr_to_last()
     }
     ///Adds the provided `lhs` and `rhs` as a binary on the provided `label`. Its idealized to be the current one
-    pub fn get_add_instruction(
+    pub(crate) fn get_add_instruction(
         &mut self,
         lhs: IRPointer<Value, 1>,
         rhs: IRPointer<Value, 1>,
@@ -182,7 +182,7 @@ impl SlynxIR {
         self.insert_instruction(label, Instruction::add(ty, values.with_length()))
     }
     ///Subtracts the provided `lhs` and `rhs` as a binary on the provided `label`. Its idealized to be the current one
-    pub fn get_sub_instruction(
+    pub(crate) fn get_sub_instruction(
         &mut self,
         lhs: IRPointer<Value, 1>,
         rhs: IRPointer<Value, 1>,
@@ -194,7 +194,7 @@ impl SlynxIR {
         self.insert_instruction(label, Instruction::sub(ty, values.with_length()))
     }
     ///Multiplies the provided `lhs` and `rhs` as a binary on the provided `label`. Its idealized to be the current one
-    pub fn get_mul_instruction(
+    pub(crate) fn get_mul_instruction(
         &mut self,
         lhs: IRPointer<Value, 1>,
         rhs: IRPointer<Value, 1>,
@@ -206,7 +206,7 @@ impl SlynxIR {
         self.insert_instruction(label, Instruction::mul(ty, values.with_length()))
     }
     ///Divides the provided `lhs` and `rhs` as a binary on the provided `label`. Its idealized to be the current one
-    pub fn get_div_instruction(
+    pub(crate) fn get_div_instruction(
         &mut self,
         lhs: IRPointer<Value, 1>,
         rhs: IRPointer<Value, 1>,
@@ -218,7 +218,7 @@ impl SlynxIR {
         self.insert_instruction(label, Instruction::div(ty, values.with_length()))
     }
     ///Compares the provided `lhs` and `rhs` as a binary on the provided `label`. Its idealized to be the current one
-    pub fn get_cmp_instruction(
+    pub(crate) fn get_cmp_instruction(
         &mut self,
         lhs: IRPointer<Value, 1>,
         rhs: IRPointer<Value, 1>,
@@ -230,7 +230,7 @@ impl SlynxIR {
         self.insert_instruction(label, Instruction::cmp(ty, values.with_length()))
     }
     ///Greater than the provided `lhs` and `rhs` as a binary on the provided `label`. Its idealized to be the current one
-    pub fn get_gt_instruction(
+    pub(crate) fn get_gt_instruction(
         &mut self,
         lhs: IRPointer<Value, 1>,
         rhs: IRPointer<Value, 1>,
@@ -242,7 +242,7 @@ impl SlynxIR {
         self.insert_instruction(label, Instruction::gt(ty, values.with_length()))
     }
     ///Greater than the the provided `lhs` and `rhs` as a binary on the provided `label`. Its idealized to be the current one
-    pub fn get_gte_instruction(
+    pub(crate) fn get_gte_instruction(
         &mut self,
         lhs: IRPointer<Value, 1>,
         rhs: IRPointer<Value, 1>,
@@ -254,7 +254,7 @@ impl SlynxIR {
         self.insert_instruction(label, Instruction::gte(ty, values.with_length()))
     }
     ///Less than the provided `lhs` and `rhs` as a binary on the provided `label`. Its idealized to be the current one
-    pub fn get_lt_instruction(
+    pub(crate) fn get_lt_instruction(
         &mut self,
         lhs: IRPointer<Value, 1>,
         rhs: IRPointer<Value, 1>,
@@ -266,7 +266,7 @@ impl SlynxIR {
         self.insert_instruction(label, Instruction::lt(ty, values.with_length()))
     }
     ///Less than or equal the provided `lhs` and `rhs` as a binary on the provided `label`. Its idealized to be the current one
-    pub fn get_lte_instruction(
+    pub(crate) fn get_lte_instruction(
         &mut self,
         lhs: IRPointer<Value, 1>,
         rhs: IRPointer<Value, 1>,
@@ -278,7 +278,7 @@ impl SlynxIR {
         self.insert_instruction(label, Instruction::lte(ty, values.with_length()))
     }
     ///Greater than the provided `lhs` and `rhs` as a binary on the provided `label`. Its idealized to be the current one
-    pub fn get_and_instruction(
+    pub(crate) fn get_and_instruction(
         &mut self,
         lhs: IRPointer<Value, 1>,
         rhs: IRPointer<Value, 1>,
@@ -290,7 +290,7 @@ impl SlynxIR {
         self.insert_instruction(label, Instruction::and(ty, values.with_length()))
     }
     ///Greater than the provided `lhs` and `rhs` as a binary on the provided `label`. Its idealized to be the current one
-    pub fn get_or_instruction(
+    pub(crate) fn get_or_instruction(
         &mut self,
         lhs: IRPointer<Value, 1>,
         rhs: IRPointer<Value, 1>,
@@ -302,7 +302,7 @@ impl SlynxIR {
         self.insert_instruction(label, Instruction::or(ty, values.with_length()))
     }
     ///Greater than the the provided `lhs` and `rhs` as a binary on the provided `label`. Its idealized to be the current one
-    pub fn get_shr_instruction(
+    pub(crate) fn get_shr_instruction(
         &mut self,
         lhs: IRPointer<Value, 1>,
         rhs: IRPointer<Value, 1>,
@@ -318,7 +318,7 @@ impl SlynxIR {
         }
     }
     ///Less than the provided `lhs` and `rhs` as a binary on the provided `label`. Its idealized to be the current one
-    pub fn get_shl_instruction(
+    pub(crate) fn get_shl_instruction(
         &mut self,
         lhs: IRPointer<Value, 1>,
         rhs: IRPointer<Value, 1>,
@@ -330,7 +330,7 @@ impl SlynxIR {
         self.insert_instruction(label, Instruction::shl(ty, values.with_length()))
     }
     ///Less than or equal the provided `lhs` and `rhs` as a binary on the provided `label`. Its idealized to be the current one
-    pub fn get_xor_instruction(
+    pub(crate) fn get_xor_instruction(
         &mut self,
         lhs: IRPointer<Value, 1>,
         rhs: IRPointer<Value, 1>,
@@ -341,7 +341,7 @@ impl SlynxIR {
         self.insert_value(self.get_value(rhs));
         self.insert_instruction(label, Instruction::xor(ty, values.with_length()))
     }
-    pub fn handle_binary_expression(
+    pub(crate) fn handle_binary_expression(
         &mut self,
         lhs: &HirExpression,
         rhs: &HirExpression,
@@ -486,7 +486,7 @@ impl SlynxIR {
         Ok(Value::Instruction(bin_instruction))
     }
 
-    pub fn allocate(
+    pub(crate) fn allocate(
         &mut self,
         ty: IRTypeId,
         temp: &TempIRData,
@@ -498,7 +498,7 @@ impl SlynxIR {
         (self.insert_value(Value::Slot(out.clone())), out)
     }
 
-    pub fn write(
+    pub(crate) fn write(
         &mut self,
         slot: IRPointer<Slot, 1>,
         value: IRPointer<Value, 1>,
