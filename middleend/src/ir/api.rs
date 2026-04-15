@@ -25,7 +25,7 @@ impl SlynxIR {
         &self.operands[ptr.range()]
     }
     ///Retrieves a `value` array that is pointed by the given ptr
-    pub fn get_values_by_pointer(&self, ptr: IRPointer<Instruction>) -> &[Value] {
+    pub fn get_values_by_pointer(&self, ptr: IRPointer<Value>) -> &[Value] {
         &self.values[ptr.range()]
     }
 
