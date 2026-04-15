@@ -32,6 +32,7 @@ pub struct SlynxIR {
     labels: Vec<Label>,
     ///The instructions of this IR
     instructions: Vec<Instruction>,
+    instruction_pointers: Vec<IRPointer<Instruction>>,
     ///The operands of this IR
     operands: Vec<Operand>,
     ///The values of this IR
@@ -51,6 +52,7 @@ impl SlynxIR {
             contexts: Vec::new(),
             labels: Vec::new(),
             instructions: Vec::new(),
+            instruction_pointers: Vec::new(),
             operands: Vec::new(),
             values: Vec::new(),
             slots: Vec::new(),
