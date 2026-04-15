@@ -1,3 +1,4 @@
+use common::SymbolPointer;
 use frontend::hir::{
     TypeId,
     types::{HirType, TypesModule},
@@ -98,8 +99,8 @@ impl SlynxIR {
     }
 
     ///Creates a new blank function with no arguments and returning void. Returns its context handle
-    pub fn create_blank_function(&mut self) -> IRPointer<Context, 1> {
-        let context = Context::new(self.types.create_empty_function());
+    pub fn create_blank_function(&mut self, name: SymbolPointer) -> IRPointer<Context, 1> {
+        let context = Context::new(name, self.types.create_empty_function());
         let ptr = self.contexts.len();
         self.contexts.push(context);
         IRPointer::new(ptr, 0)
