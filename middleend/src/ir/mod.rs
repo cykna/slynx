@@ -89,8 +89,8 @@ impl SlynxIR {
                         declaration.id.as_raw() as usize
                     );
                 }
-                frontend::hir::definitions::HirDeclarationKind::Function { .. } => {
-                    let out = self.create_blank_function().with_length();
+                frontend::hir::definitions::HirDeclarationKind::Function { name, .. } => {
+                    let out = self.create_blank_function(*name).with_length();
                     let ctx = self.get_context(out.clone());
                     temp.define_type(declaration.ty, ctx.ty());
                     temp.map_function(declaration.id, out.with_length());
