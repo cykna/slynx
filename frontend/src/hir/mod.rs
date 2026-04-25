@@ -10,8 +10,6 @@ pub mod types;
 
 use std::collections::HashMap;
 
-use color_eyre::eyre::Result;
-
 use crate::hir::{
     declarations::DeclarationsModule,
     definitions::{
@@ -31,6 +29,8 @@ use common::ast::{
 // Re-export new ID types for convenience
 pub use id::{DeclarationId, ExpressionId, PropertyId, TypeId, VariableId};
 pub use symbols::SymbolPointer;
+
+pub type Result<T> = std::result::Result<T, HIRError>;
 
 #[derive(Debug, Default)]
 pub struct SlynxHir {
@@ -78,28 +78,18 @@ impl SlynxHir {
 
     /// Retrieves the id of the variable with the provided `name` going from the global scope, to the most internal one
     pub fn retrieve_variable_id(&mut self, name: &str, span: &Span) -> Result<VariableId> {
-        let Some(symbol) = self.symbols_module.retrieve(name) else {
-            return Err(HIRError {
-                kind: HIRErrorKind::NameNotRecognized(name.to_string()),
-                span: span.clone(),
-            }
-            .into());
-        };
+        let symbol = self.symbols_module.intern(name);
         let mut idx = self.scope_module.len() - 1;
         while idx != 0 {
             let scope = &self.scope_module[idx];
 
-            let Some(id) = scope.retrieve_name(symbol) else {
+            let Some(id) = scope.retrieve_name(&symbol) else {
                 idx -= 1;
                 continue;
             };
             return Ok(*id);
         }
-        Err(HIRError {
-            kind: HIRErrorKind::NameNotRecognized(name.to_string()),
-            span: span.clone(),
-        }
-        .into())
+        Err(HIRError::name_unrecognized(symbol, *span).into())
     }
 
     /// Resolves the provided values on a component. The `ty` is the type of the component we are resolving it
@@ -120,24 +110,17 @@ impl SlynxHir {
                     let HirType::Component { props } = t else {
                         unreachable!("The type should be a component instead");
                     };
-                    let index =
-                        props
-                            .iter()
-                            .position(|prop| prop.1 == prop_name)
-                            .ok_or(HIRError {
-                                kind: HIRErrorKind::NameNotRecognized(prop_name.clone()),
-                                span: span.clone(),
-                            })?;
+                    let interned_name = self.symbols_module.intern(&prop_name);
+                    let index = props
+                        .iter()
+                        .position(|prop| prop.1 == prop_name)
+                        .ok_or(HIRError::name_unrecognized(interned_name, span))?;
 
                     if matches!(
                         props[index].0,
                         VisibilityModifier::Private | VisibilityModifier::ChildrenPublic
                     ) {
-                        return Err(HIRError {
-                            kind: HIRErrorKind::PropertyNotVisible { prop_name },
-                            span,
-                        }
-                        .into());
+                        return Err(HIRError::not_visible_property(interned_name, span).into());
                     }
                     ComponentMemberDeclaration::Property {
                         id: PropertyId::new(), // Changed to PropertyId
@@ -229,20 +212,15 @@ impl SlynxHir {
             ASTDeclarationKind::FuncDeclaration {
                 name, args, body, ..
             } => {
-                let (decl, tyid, symb) = if let Some(symb) =
-                    self.symbols_module.retrieve(&name.identifier)
-                    && let Some(data) = self
-                        .declarations_module
-                        .retrieve_declaration_data_by_name(symb)
+                let symbol = self.symbols_module.intern(&name.identifier);
+                let (decl, tyid) = if let Some(data) = self
+                    .declarations_module
+                    .retrieve_declaration_data_by_name(&symbol)
                 {
                     let (decl, ty) = data;
-                    (decl, ty, *symb)
+                    (decl, ty)
                 } else {
-                    return Err(HIRError {
-                        kind: HIRErrorKind::NameNotRecognized(name.identifier),
-                        span: name.span,
-                    }
-                    .into());
+                    return Err(HIRError::name_unrecognized(symbol, name.span).into());
                 };
 
                 self.scope_module.enter_scope();
@@ -257,7 +235,7 @@ impl SlynxHir {
                             Err(e) => Err(e),
                         }
                     })
-                    .collect::<Result<Vec<_>, _>>()?;
+                    .collect::<Result<Vec<_>>>()?;
 
                 let mut statements = Vec::with_capacity(body.len());
                 let body_len = body.len();
@@ -283,7 +261,7 @@ impl SlynxHir {
                     kind: HirDeclarationKind::Function {
                         statements,
                         args,
-                        name: symb,
+                        name: symbol,
                     },
                     id: decl,
                     ty: tyid,
@@ -300,11 +278,7 @@ impl SlynxHir {
                 {
                     data
                 } else {
-                    return Err(HIRError {
-                        kind: HIRErrorKind::NameNotRecognized(name.identifier),
-                        span: ast.span,
-                    }
-                    .into());
+                    return Err(HIRError::name_unrecognized(symbol, ast.span).into());
                 };
 
                 let defs = self.resolve_component_defs(members)?;
@@ -324,11 +298,7 @@ impl SlynxHir {
 
                 let alias_name = self.symbols_module.intern(&name.identifier);
                 let Some(alias_ty) = self.types_module.get_type_from_name_mut(&alias_name) else {
-                    return Err(HIRError {
-                        kind: HIRErrorKind::NameNotRecognized(name.identifier),
-                        span: name.span,
-                    }
-                    .into());
+                    return Err(HIRError::name_unrecognized(alias_name, name.span).into());
                 };
                 *alias_ty = HirType::Reference {
                     rf: target_ty,
@@ -340,11 +310,7 @@ impl SlynxHir {
                 {
                     data
                 } else {
-                    return Err(HIRError {
-                        kind: HIRErrorKind::NameNotRecognized(name.identifier),
-                        span: name.span,
-                    }
-                    .into());
+                    return Err(HIRError::name_unrecognized(alias_name, name.span).into());
                 };
                 self.declarations.push(HirDeclaration {
                     id: decl,
