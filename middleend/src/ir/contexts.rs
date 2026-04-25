@@ -223,14 +223,30 @@ impl SlynxIR {
                     temp.current_label(),
                     Instruction::cbr(
                         value.clone(),
-                        then_label.clone(),
-                        else_label.clone(),
+                        then_label_ptr.clone(),
+                        else_label_ptr.clone(),
                         IRPointer::null(),
                         IRPointer::null(),
+<<<<<<< HEAD
                         condition_ty,
+=======
+                        self.get_type_of_value(value.clone(), temp),
+>>>>>>> 69284ba (refactor: refactored how types module is passed during ir construction)
                     ),
                     true,
                 );
+
+                let then_label = self.insert_label(temp.current_function(), "then_label");
+                debug_assert_eq!(then_label, then_label_ptr);
+                let else_label = self.insert_label(temp.current_function(), "else_label");
+                debug_assert_eq!(else_label, else_label_ptr);
+                let end_label = {
+                    let label = self.insert_label(temp.current_function(), "end_label");
+                    debug_assert_eq!(label, end_label_ptr);
+                    let v = self.get_type_of_value(value.clone(), temp);
+                    self.get_label_mut(label.clone()).add_argument(v);
+                    label
+                };
                 temp.set_current_label(then_label);
                 self.lower_if_branch(then_branch, end_label.clone(), temp)?;
 
