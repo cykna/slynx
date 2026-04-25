@@ -7,11 +7,8 @@ use crate::{
 
 impl SlynxIR {
     pub fn generate_context_cfg(&self, context: &Context) -> ControlFlowGraph {
-        let labels = self.get_context_labels(context);
-        let mut initial = ControlFlowGraph::new();
-        for label in labels {}
-
-        initial
+        let labels = context.labels_ptr().with_length();
+        ControlFlowGraph::new(labels, self)
     }
 
     pub fn contexts(&self) -> &[Context] {

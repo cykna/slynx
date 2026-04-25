@@ -1,9 +1,8 @@
 use std::collections::{HashMap, VecDeque};
 
-use petgraph::prelude::StableDiGraph;
-use smallvec::SmallVec;
+use petgraph::{algo::Cycle, graph::NodeIndex, prelude::StableDiGraph};
 
-use crate::{Context, IRPointer, Instruction, InstructionType, Label, SlynxIR};
+use crate::{IRPointer, InstructionType, Label, SlynxIR};
 
 type CfgGraph = StableDiGraph<BasicBlock, EdgeKind>;
 
@@ -24,9 +23,21 @@ impl BasicBlock {
     pub fn new(label: IRPointer<Label, 1>, successors: Vec<IRPointer<Label, 1>>) -> Self {
         Self { label, successors }
     }
+
+    pub fn label(&self) -> IRPointer<Label, 1> {
+        self.label
+    }
+
+    pub fn successors(&self) -> &[IRPointer<Label, 1>] {
+        &self.successors
+    }
 }
 
-pub struct ControlFlowGraph(CfgGraph);
+pub struct ControlFlowGraph {
+    graph: CfgGraph,
+    entry: IRPointer<Label, 1>,
+    label_to_node: HashMap<IRPointer<Label, 1>, NodeIndex<u32>>,
+}
 
 impl ControlFlowGraph {
     pub fn new(label_ptr: IRPointer<Label, 1>, ir: &SlynxIR) -> Self {
@@ -58,7 +69,15 @@ impl ControlFlowGraph {
         while let Some((index, target, kind)) = final_stack.pop() {
             graph.add_edge(index, target, kind);
         }
-        Self(graph)
+        let mut out = HashMap::with_capacity(label_to_node.len());
+        for (label, (index, _)) in label_to_node {
+            out.insert(label, index);
+        }
+        Self {
+            graph,
+            label_to_node: out,
+            entry: label_ptr,
+        }
     }
 
     pub fn get_sucessors_of(
@@ -84,5 +103,20 @@ impl ControlFlowGraph {
             _ => vec![EdgeKind::Backedge],
         };
         Some((sucessors, kind))
+    }
+
+    pub fn graph(&self) -> &CfgGraph {
+        &self.graph
+    }
+    pub fn entry(&self) -> IRPointer<Label, 1> {
+        self.entry
+    }
+    ///Returns a hashmap that maps a label(which is in fact used) to its index on the graph
+    pub fn label_mappings(&self) -> &HashMap<IRPointer<Label, 1>, NodeIndex> {
+        &self.label_to_node
+    }
+
+    pub fn topological_order(&self) -> Result<Vec<NodeIndex>, Cycle<NodeIndex>> {
+        petgraph::algo::toposort(&self.graph, None)
     }
 }
