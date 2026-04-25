@@ -4,8 +4,8 @@ use frontend::hir::{
 };
 
 use crate::{
-    ir::temp::TempIRData, IRError, IRPointer, IRSpecializedComponent, IRType, Instruction, SlynxIR,
-    Value,
+    IRError, IRPointer, IRSpecializedComponent, IRType, Instruction, SlynxIR, Value,
+    ir::temp::TempIRData,
 };
 
 impl SlynxIR {
