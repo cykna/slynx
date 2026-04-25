@@ -1,8 +1,6 @@
-use color_eyre::eyre::Result;
-
 use crate::hir::{
-    SlynxHir, TypeId, VariableId,
-    error::{HIRError, HIRErrorKind, InvalidTypeReason},
+    Result, SlynxHir, TypeId, VariableId,
+    error::{HIRError, InvalidTypeReason},
     symbols::SymbolPointer,
     types::HirType,
 };
@@ -14,73 +12,39 @@ impl SlynxHir {
         self.symbols_module.intern(name)
     }
     ///Retrieves the pointer(simply a symbol) of the provided `name`.
-    pub fn get_symbol_of(&self, name: &str, span: &Span) -> Result<SymbolPointer> {
-        self.symbols_module.retrieve(name).cloned().ok_or(
-            HIRError {
-                kind: HIRErrorKind::NameNotRecognized(name.to_string()),
-                span: span.clone(),
-            }
-            .into(),
-        )
-    }
-
-    ///Retrieves the type of something by knowing the provided `ref_ty` is a reference to it
-    pub fn get_type_from_ref(&self, ref_ty: TypeId) -> &HirType {
-        if let HirType::Reference { rf, .. } = self.types_module.get_type(&ref_ty) {
-            self.types_module.get_type(rf)
-        } else {
-            unreachable!("The provided ref_ty should be of type Reference");
-        }
+    pub fn get_symbol_of(&self, name: &str) -> Option<SymbolPointer> {
+        self.symbols_module.retrieve(name).cloned()
     }
 
     ///Since when a object is defined, its generated as an unnamed type, and has got a reference to it, this retrieves the inner layout of the object
-    pub fn get_object_type_from_name(&self, name: &str, span: &Span) -> Result<&HirType> {
-        if let Some(symbol) = self.symbols_module.retrieve(name) {
-            if let Some(ref_id) = self.types_module.get_id(symbol)
-                && let HirType::Reference { rf, .. } = self.types_module.get_type(ref_id)
-            {
-                Ok(self.types_module.get_type(rf))
-            } else {
-                Err(HIRError {
-                    kind: HIRErrorKind::InvalidType {
-                        ty: name.to_string(),
-                        reason: InvalidTypeReason::IncorrectUsage,
-                    },
-                    span: span.clone(),
-                }
-                .into())
-            }
+    pub fn get_object_type_from_name(&mut self, name: &str, span: &Span) -> Result<&HirType> {
+        let name_symbol = self.symbols_module.intern(name);
+
+        if let Some(ref_id) = self.types_module.get_id(&name_symbol)
+            && let HirType::Reference { rf, .. } = self.types_module.get_type(ref_id)
+        {
+            Ok(self.types_module.get_type(rf))
         } else {
-            Err(HIRError {
-                kind: HIRErrorKind::NameNotRecognized(name.to_string()),
-                span: span.clone(),
-            }
-            .into())
+            Err(
+                HIRError::invalid_type(name_symbol, InvalidTypeReason::IncorrectUsage, *span)
+                    .into(),
+            )
         }
     }
 
-    pub fn get_typeid_of_name(&self, name: &str, span: &Span) -> Result<TypeId> {
+    pub fn get_typeid_of_name(&mut self, name: &str, span: &Span) -> Result<TypeId> {
         match name {
             "Component" => Ok(self.types_module.generic_component_id()),
-            "()" => Ok(self.types_module.void_id()),
-            "void" => Ok(self.types_module.void_id()),
+            "()" | "void" => Ok(self.types_module.void_id()),
             "bool" => Ok(self.types_module.bool_id()),
             "int" => Ok(self.types_module.int_id()),
             "float" => Ok(self.types_module.float_id()),
             "str" => Ok(self.types_module.str_id()),
 
             _ => {
-                let temp = self
-                    .symbols_module
-                    .retrieve(name)
-                    .and_then(|id| self.types_module.get_id(id).cloned());
-                temp.ok_or(
-                    HIRError {
-                        kind: HIRErrorKind::NameNotRecognized(name.to_string()),
-                        span: span.clone(),
-                    }
-                    .into(),
-                )
+                let name = self.symbols_module.intern(name);
+                let temp = self.types_module.get_id(&name).cloned();
+                temp.ok_or(HIRError::name_unrecognized(name, *span).into())
             }
         }
     }
@@ -95,11 +59,8 @@ impl SlynxHir {
                     }
                     Ok(self.types_module.add_tuple_type(fields))
                 } else {
-                    Err(HIRError {
-                        kind: HIRErrorKind::NameNotRecognized(gener.identifier.clone()),
-                        span: gener.span.clone(),
-                    }
-                    .into())
+                    let interned = self.symbols_module.intern(&gener.identifier);
+                    Err(HIRError::name_unrecognized(interned, gener.span).into())
                 }
             }
             "()" => Ok(self.types_module.void_id()),
@@ -139,16 +100,12 @@ impl SlynxHir {
     }
     ///Tries to retrieve a variable with the provided `name` on the current active scope
     pub fn get_variable(&mut self, name: &str, span: &Span) -> Result<&VariableId> {
-        if let Some(symbol) = self.symbols_module.retrieve(name)
-            && let Some(variable) = self.scope_module.retrieve_name(symbol)
-        {
+        let symbol = self.symbols_module.intern(name);
+
+        if let Some(variable) = self.scope_module.retrieve_name(&symbol) {
             Ok(variable)
         } else {
-            Err(HIRError {
-                kind: HIRErrorKind::NameNotRecognized(name.to_string()),
-                span: span.clone(),
-            }
-            .into())
+            Err(HIRError::name_unrecognized(symbol, *span).into())
         }
     }
     pub fn define_type(&mut self, name: SymbolPointer, ty: HirType) -> TypeId {

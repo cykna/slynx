@@ -1,9 +1,7 @@
 use std::mem::discriminant;
 
-use color_eyre::eyre::Result;
-
 use crate::hir::{
-    ExpressionId, SlynxHir, TypeId,
+    ExpressionId, Result, SlynxHir, TypeId,
     definitions::{HirExpression, HirExpressionKind, HirStatementKind},
     error::{HIRError, HIRErrorKind},
     types::{FieldMethod, HirType},
@@ -34,34 +32,21 @@ impl SlynxHir {
                         {
                             None
                         } else {
-                            Some(self.symbols_module[*field].to_string())
+                            Some(*field)
                         }
                     })
                     .collect::<Vec<_>>();
-                return Err(HIRError {
-                    kind: HIRErrorKind::MissingProperty {
-                        prop_names: missing_fields,
-                    },
-                    span: span.clone(),
-                }
-                .into());
+
+                return Err(HIRError::missing_properties(missing_fields, *span).into());
             } else {
                 let non_existent_fields = fields
-                    .into_iter()
-                    .filter(|provided_field| {
-                        !defined_layout
-                            .iter()
-                            .any(|f| *f == self.symbols_module.intern(&provided_field.name))
+                    .iter()
+                    .filter_map(|provided_field| {
+                        let field_symbol = self.symbols_module.intern(&provided_field.name);
+                        (!defined_layout.iter().any(|f| *f == field_symbol)).then_some(field_symbol)
                     })
-                    .map(|f| f.name)
-                    .collect::<Vec<String>>();
-                return Err(HIRError {
-                    kind: HIRErrorKind::PropertyNotRecognized {
-                        prop_names: non_existent_fields,
-                    },
-                    span: span.clone(),
-                }
-                .into());
+                    .collect();
+                return Err(HIRError::property_unrecognized(non_existent_fields, *span).into());
             }
         }
         let mut out = Vec::with_capacity(fields.len());
@@ -84,7 +69,8 @@ impl SlynxHir {
                     self.resolve_expr(field.expr, Some(ty))?,
                 );
             } else {
-                non_recognized_fields.push(field.name);
+                let field_symbol = self.symbols_module.intern(&field.name);
+                non_recognized_fields.push(field_symbol);
             }
         }
         if non_recognized_fields.is_empty() {
@@ -93,13 +79,7 @@ impl SlynxHir {
                 fields: out,
             })
         } else {
-            Err(HIRError {
-                kind: HIRErrorKind::PropertyNotRecognized {
-                    prop_names: non_recognized_fields,
-                },
-                span: span.clone(),
-            }
-            .into())
+            Err(HIRError::property_unrecognized(non_recognized_fields, *span).into())
         }
     }
 
@@ -162,7 +142,7 @@ impl SlynxHir {
                 let Some(index) = layout.iter().position(|field| field == field_name) else {
                     return Err(HIRError {
                         kind: HIRErrorKind::PropertyNotRecognized {
-                            prop_names: vec![self.symbols_module[*field_name].to_string()],
+                            prop_names: vec![*field_name],
                         },
                         span: span.clone(),
                     }
@@ -314,16 +294,12 @@ impl SlynxHir {
             }
 
             ASTExpressionKind::FunctionCall { name, args } => {
-                let func_symbol = self.get_symbol_of(&name.identifier, &expr.span)?;
+                let func_symbol = self.symbols_module.intern(&name.identifier);
                 let Some((decl, tyid)) = self
                     .declarations_module
                     .retrieve_declaration_data_by_name(&func_symbol)
                 else {
-                    return Err(HIRError {
-                        kind: HIRErrorKind::NameNotRecognized(name.identifier),
-                        span: expr.span,
-                    }
-                    .into());
+                    return Err(HIRError::name_unrecognized(func_symbol, expr.span).into());
                 };
                 let ty = self.types_module.get_type(&tyid);
                 let HirType::Function {
@@ -331,21 +307,15 @@ impl SlynxHir {
                     args: expect_args,
                 } = ty
                 else {
-                    return Err(HIRError {
-                        kind: HIRErrorKind::NotAFunction(name.identifier, ty.clone()),
-                        span: expr.span,
-                    }
-                    .into());
+                    return Err(HIRError::not_a_func(func_symbol, ty.clone(), expr.span).into());
                 };
                 if expect_args.len() != args.len() {
-                    return Err(HIRError {
-                        kind: HIRErrorKind::InvalidFuncallArgLength {
-                            func_name: name.identifier,
-                            expected_length: expect_args.len(),
-                            received_length: args.len(),
-                        },
-                        span: expr.span,
-                    }
+                    return Err(HIRError::invalid_funcall_arg_length(
+                        func_symbol,
+                        expect_args.len(),
+                        args.len(),
+                        expr.span,
+                    )
                     .into());
                 }
                 let return_type = *return_type;
@@ -417,11 +387,7 @@ impl SlynxHir {
                     .declarations_module
                     .retrieve_declaration_data_by_name(&symbol)
                 else {
-                    return Err(HIRError {
-                        kind: HIRErrorKind::NameNotRecognized(name.identifier),
-                        span: name.span,
-                    }
-                    .into());
+                    return Err(HIRError::name_unrecognized(symbol, name.span).into());
                 };
 
                 let kind = self.organized_object_fields(ty, fields, &expr.span)?;
@@ -436,12 +402,12 @@ impl SlynxHir {
                 let parent = self.resolve_expr(*parent, None)?;
                 let HirExpression { ref ty, .. } = parent;
                 match self.types_module.get_type(ty) {
-                    HirType::Reference { rf, .. } => {
-                        if let Some(decl) = self.declarations_module.retrieve_object_body(*rf)
-                            && let Some(index) = decl.iter().position(|struct_field| {
-                                &self.symbols_module.intern(&field) == struct_field
-                            })
-                        {
+                    HirType::Reference { rf, .. }
+                        if let Some(decl) = self.declarations_module.retrieve_object_body(*rf) =>
+                    {
+                        if let Some(index) = decl.iter().position(|struct_field| {
+                            &self.symbols_module.intern(&field) == struct_field
+                        }) {
                             let ty = self
                                 .types_module
                                 .insert_unnamed_type(HirType::Field(FieldMethod::Type(*ty, index)));
@@ -473,13 +439,11 @@ impl SlynxHir {
                                 span: expr.span,
                             })
                         } else {
-                            Err(HIRError {
-                                kind: HIRErrorKind::PropertyNotRecognized {
-                                    prop_names: vec![field],
-                                },
-                                span: expr.span,
-                            }
-                            .into())
+                            let field_symbol = self.symbols_module.intern(&field);
+                            Err(
+                                HIRError::property_unrecognized(vec![field_symbol], expr.span)
+                                    .into(),
+                            )
                         }
                     }
                     HirType::VarReference(rf) => {
@@ -519,13 +483,8 @@ impl SlynxHir {
                                 span: expr.span,
                             })
                         } else {
-                            Err(HIRError {
-                                kind: HIRErrorKind::PropertyNotRecognized {
-                                    prop_names: vec![field],
-                                },
-                                span: expr.span,
-                            }
-                            .into())
+                            let field = self.symbols_module.intern(&field);
+                            Err(HIRError::property_unrecognized(vec![field], expr.span).into())
                         }
                     }
                     u => Err(HIRError {

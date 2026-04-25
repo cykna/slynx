@@ -1,6 +1,9 @@
 use crate::hir::{definitions::HirExpression, types::HirType};
 
-use common::ast::{ComponentExpression, Span};
+use common::{
+    SymbolPointer,
+    ast::{ComponentExpression, Span},
+};
 
 #[derive(Debug)]
 #[warn(unused)]
@@ -11,9 +14,9 @@ pub struct HIRError {
 
 #[derive(Debug)]
 pub enum HIRErrorKind {
-    TypeNotRecognized(String),
-    NameNotRecognized(String),
-    NameAlreadyDefined(String),
+    TypeNotRecognized(SymbolPointer),
+    NameNotRecognized(SymbolPointer),
+    NameAlreadyDefined(SymbolPointer),
     InvalidFieldAccessTarget {
         ty: HirType,
     },
@@ -29,106 +32,100 @@ pub enum HIRErrorKind {
         rhs: Box<HirExpression>,
     },
     MissingProperty {
-        prop_names: Vec<String>,
+        prop_names: Vec<SymbolPointer>,
     },
     PropertyNotRecognized {
-        prop_names: Vec<String>,
+        prop_names: Vec<SymbolPointer>,
     },
     PropertyNotVisible {
-        prop_name: String,
+        prop_name: SymbolPointer,
     },
     InvalidChild {
         child: Box<ComponentExpression>,
     },
     InvalidType {
-        ty: String,
+        ty: SymbolPointer,
         reason: InvalidTypeReason,
     },
     RecursiveType {
-        ty: String,
+        ty: SymbolPointer,
     },
-    NotAFunction(String, HirType),
+    NotAFunction(SymbolPointer, HirType),
     InvalidFuncallArgLength {
-        func_name: String,
+        func_name: SymbolPointer,
         expected_length: usize,
         received_length: usize,
     },
 }
 
-impl std::fmt::Display for HIRError {
-    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
-        let out = match &self.kind {
-            HIRErrorKind::InvalidFuncallArgLength {
-                func_name,
-                expected_length,
-                received_length,
-            } => {
-                format!(
-                    "Function '{func_name}' expected to receive {expected_length} arguments, instead got {received_length} arguments"
-                )
-            }
-            HIRErrorKind::NotAFunction(name, ty) => {
-                format!(
-                    "The value with name '{name}' is being used as a function, but its type is {ty:?}"
-                )
-            }
-            HIRErrorKind::NameNotRecognized(name) => {
-                format!(
-                    "The name '{name}' is not recognized. Check if it exists or you wrote some typo"
-                )
-            }
-            HIRErrorKind::TypeNotRecognized(name) => {
-                format!("Type with name '{name}' is was not defined previously")
-            }
-            HIRErrorKind::InvalidFieldAccessTarget { ty } => {
-                format!("Type '{ty:?}' does not support field-style access")
-            }
-            HIRErrorKind::InvalidTupleAccessTarget { ty } => {
-                format!("Type '{ty:?}' does not support tuple-style access")
-            }
-            HIRErrorKind::InvalidTupleIndex { index, length } => {
-                format!(
-                    "Tuple index {index} is out of bounds. The tuple only exposes {length} fields"
-                )
-            }
-            HIRErrorKind::InvalidBinaryExpression { .. } => "Invalid binary expression".to_string(),
-            HIRErrorKind::PropertyNotVisible { prop_name } => {
-                format!("Property with name '{prop_name}' is not visible")
-            }
-            HIRErrorKind::InvalidChild { .. } => {
-                "Invalid child. Component is not expecting children".to_string()
-            }
-            HIRErrorKind::InvalidType { ty, reason } => {
-                format!("Invalid type '{ty}' because it's {reason}")
-            }
-            HIRErrorKind::NameAlreadyDefined(name) => {
-                format!("The name '{name}' was already defined before. Use a different name")
-            }
-            HIRErrorKind::MissingProperty { prop_names } => {
-                let names = prop_names
-                    .iter()
-                    .map(|v| format!("'{v}'"))
-                    .collect::<Vec<String>>()
-                    .join(", ");
-                format!("Property(ies) named as {names} is required but wasn't provided")
-            }
-            HIRErrorKind::PropertyNotRecognized { prop_names } => {
-                let names = prop_names
-                    .iter()
-                    .map(|v| format!("'{v}'"))
-                    .collect::<Vec<String>>()
-                    .join(", ");
-                format!("Property(ies) named as {names} are not recognized for this object")
-            }
-            HIRErrorKind::RecursiveType { ty } => {
-                format!("The type named as '{ty}' is recursive at this point")
-            }
-        };
-        write!(f, "{out}")
+impl HIRError {
+    pub fn recursive(ty: SymbolPointer, span: Span) -> Self {
+        Self {
+            kind: HIRErrorKind::RecursiveType { ty },
+            span,
+        }
+    }
+    pub fn type_unrecognized(name: SymbolPointer, span: Span) -> Self {
+        Self {
+            kind: HIRErrorKind::TypeNotRecognized(name),
+            span,
+        }
+    }
+    pub fn name_unrecognized(name: SymbolPointer, span: Span) -> Self {
+        Self {
+            kind: HIRErrorKind::NameNotRecognized(name),
+            span,
+        }
+    }
+    pub fn not_visible_property(name: SymbolPointer, span: Span) -> Self {
+        Self {
+            kind: HIRErrorKind::PropertyNotVisible { prop_name: name },
+            span,
+        }
+    }
+    pub fn invalid_type(name: SymbolPointer, reason: InvalidTypeReason, span: Span) -> Self {
+        Self {
+            kind: HIRErrorKind::InvalidType {
+                ty: name,
+                reason: reason,
+            },
+            span,
+        }
+    }
+    pub fn missing_properties(names: Vec<SymbolPointer>, span: Span) -> Self {
+        Self {
+            kind: HIRErrorKind::MissingProperty { prop_names: names },
+            span,
+        }
+    }
+    pub fn property_unrecognized(names: Vec<SymbolPointer>, span: Span) -> Self {
+        Self {
+            kind: HIRErrorKind::PropertyNotRecognized { prop_names: names },
+            span,
+        }
+    }
+    pub fn invalid_funcall_arg_length(
+        func: SymbolPointer,
+        expected: usize,
+        received: usize,
+        span: Span,
+    ) -> Self {
+        Self {
+            kind: HIRErrorKind::InvalidFuncallArgLength {
+                func_name: func,
+                expected_length: expected,
+                received_length: received,
+            },
+            span,
+        }
+    }
+    pub fn not_a_func(func: SymbolPointer, ty: HirType, span: Span) -> Self {
+        Self {
+            kind: HIRErrorKind::NotAFunction(func, ty),
+            span,
+        }
     }
 }
-
-impl std::error::Error for HIRError {}
 
 #[derive(Debug)]
 pub enum InvalidTypeReason {

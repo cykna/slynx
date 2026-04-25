@@ -90,19 +90,16 @@ pub enum HirType {
 //On modificating some of the type ids, please check before on TypesModule, to see how the
 
 impl HirType {
-    ///Tries to retrieve a value from its `gener`(ic) type
-    pub fn new(gener: &GenericIdentifier) -> Result<Self, HIRError> {
-        match gener.identifier.as_str() {
-            "Component" => Ok(Self::GenericComponent),
-            "void" => Ok(Self::Void),
-            "bool" => Ok(Self::Bool),
-            "int" => Ok(Self::Int),
-            "float" => Ok(Self::Float),
-            "str" => Ok(Self::Str),
-            _ => Err(HIRError {
-                kind: HIRErrorKind::TypeNotRecognized(gener.to_string()),
-                span: gener.span.clone(),
-            }),
+    ///Tries to retrieve a value from its `gener`(ic) type name
+    pub fn new(generic: &str) -> Option<Self> {
+        match generic {
+            "Component" => Some(Self::GenericComponent),
+            "void" => Some(Self::Void),
+            "bool" => Some(Self::Bool),
+            "int" => Some(Self::Int),
+            "float" => Some(Self::Float),
+            "str" => Some(Self::Str),
+            _ => None,
         }
     }
 }

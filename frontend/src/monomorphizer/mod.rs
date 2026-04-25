@@ -1,10 +1,8 @@
 use std::collections::{HashMap, HashSet};
 
-use color_eyre::eyre::Result;
-
 use crate::hir::{
-    SlynxHir, TypeId,
-    error::{HIRError, HIRErrorKind},
+    Result, SlynxHir, TypeId,
+    error::HIRError,
     types::{HirType, TypesModule},
 };
 
@@ -44,16 +42,11 @@ impl Monomorphizer {
             && let HirType::Reference { .. } = types_module.get_type(rf)
         {
             if !visited.insert(*rf) {
-                let ty = types_module
-                    .get_type_name(&id)
-                    .map(|symbol| hir.symbols_module.get_name(*symbol).to_string())
-                    .unwrap_or_else(|| format!("type id {}", id.as_raw()));
-
-                return Err(HIRError {
-                    kind: HIRErrorKind::RecursiveType { ty },
-                    span,
+                if let Some(ty) = types_module.get_type_name(&id) {
+                    return Err(HIRError::recursive(*ty, span));
+                } else {
+                    unreachable!("Types module should have mappings to the name of a type");
                 }
-                .into());
             }
             current = *rf;
         }
@@ -101,11 +94,8 @@ mod tests {
 
         let err = Monomorphizer::resolve(&hir, &mut types_module)
             .expect_err("cyclic aliases should fail during monomorphization");
-        let hir_error = err
-            .downcast_ref::<HIRError>()
-            .expect("error should come from the HIR layer");
 
-        match &hir_error.kind {
+        match &err.kind {
             HIRErrorKind::RecursiveType { ty } => assert_eq!(ty, "A"),
             other => panic!("expected RecursiveType, got {other:?}"),
         }

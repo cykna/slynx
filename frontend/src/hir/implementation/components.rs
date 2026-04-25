@@ -1,9 +1,8 @@
 ///Module that implements anything related Specialized Component on the HIR
-use color_eyre::eyre::Result;
 use common::{ComponentExpression, ComponentMemberValue, Span};
 
 use crate::hir::{
-    SlynxHir,
+    Result, SlynxHir,
     definitions::{ComponentMemberDeclaration, SpecializedComponent},
     error::{HIRError, HIRErrorKind},
 };
@@ -24,11 +23,8 @@ impl SlynxHir {
                 } => match prop_name.as_str() {
                     "text" => text = Some(self.resolve_expr(rhs, None)?),
                     _ => {
-                        return Err(HIRError {
-                            kind: HIRErrorKind::TypeNotRecognized(prop_name),
-                            span: span.clone(),
-                        }
-                        .into());
+                        let intern = self.symbols_module.intern(&prop_name);
+                        return Err(HIRError::type_unrecognized(intern, span).into());
                     }
                 },
                 ComponentMemberValue::Child(e) => {
@@ -45,13 +41,8 @@ impl SlynxHir {
                 text: Box::new(text),
             })
         } else {
-            Err(HIRError {
-                kind: HIRErrorKind::MissingProperty {
-                    prop_names: vec![String::from("text")],
-                },
-                span: span.clone(),
-            }
-            .into())
+            let properties = vec![self.symbols_module.intern("text")];
+            Err(HIRError::missing_properties(properties, *span).into())
         }
     }
     ///Resolves the provided `children` knowning it is a specialized div component
@@ -67,13 +58,8 @@ impl SlynxHir {
                 ComponentMemberValue::Assign {
                     prop_name, span, ..
                 } => {
-                    return Err(HIRError {
-                        kind: HIRErrorKind::PropertyNotRecognized {
-                            prop_names: vec![prop_name],
-                        },
-                        span,
-                    }
-                    .into());
+                    let prop = self.symbols_module.intern(&prop_name);
+                    return Err(HIRError::property_unrecognized(vec![prop], span).into());
                 }
                 ComponentMemberValue::Child(c) => {
                     let component = self.resolve_component(c)?;

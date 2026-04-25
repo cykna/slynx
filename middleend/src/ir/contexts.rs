@@ -246,6 +246,12 @@ impl SlynxIR {
                     }
                 }
                 temp.set_current_label(end_label.clone());
+                // Reset the end_label's instruction pointer to start AFTER the branches' instructions,
+                // so it doesn't overlap with then/else instructions.
+                let next = self.get_next_mapeable_instruction_ptr();
+                let mut reset_ptr = next.with_length::<0>();
+                reset_ptr.set_length(0);
+                self.get_label_mut(end_label.clone()).set_instructions_pointer(reset_ptr);
                 let end_label = self.get_label(end_label);
                 end_label.get_argument_value(0)
             }

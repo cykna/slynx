@@ -1,7 +1,5 @@
-use color_eyre::eyre::Result;
-
 use crate::hir::{
-    PropertyId, SlynxHir,
+    PropertyId, Result, SlynxHir,
     definitions::{ComponentMemberDeclaration, HirDeclaration, HirDeclarationKind},
     error::{HIRError, HIRErrorKind},
     types::HirType,
@@ -11,6 +9,15 @@ use common::ast::{
 };
 
 impl SlynxHir {
+    ///Retrieves the type of something by knowing the provided `ref_ty` is a reference to it
+    pub fn get_type_from_ref(&self, ref_ty: crate::hir::TypeId) -> &HirType {
+        if let HirType::Reference { rf, .. } = self.types_module.get_type(&ref_ty) {
+            self.types_module.get_type(rf)
+        } else {
+            unreachable!("The provided ref_ty should be of type Reference");
+        }
+    }
+
     pub fn resolve_object(
         &mut self,
         name: GenericIdentifier,
@@ -20,16 +27,9 @@ impl SlynxHir {
         let mut fields = {
             let mut out = Vec::with_capacity(fields.len());
             for field in &fields {
-                if self.symbols_module.intern(&field.name.name)
-                    == self.symbols_module.intern(&name.identifier)
-                {
-                    return Err(HIRError {
-                        kind: HIRErrorKind::RecursiveType {
-                            ty: name.to_string(),
-                        },
-                        span: field.name.span.clone(),
-                    }
-                    .into());
+                let symbol_name = self.symbols_module.intern(&name.identifier);
+                if self.symbols_module.intern(&field.name.name) == symbol_name {
+                    return Err(HIRError::recursive(symbol_name, field.name.span).into());
                 }
                 out.push(
                     self.retrieve_information_of_type(
@@ -41,18 +41,14 @@ impl SlynxHir {
             }
             out
         };
-        let symbol = self.get_symbol_of(&name.identifier, &name.span)?;
+        let identifier_symbol = self.symbols_module.intern(&name.identifier);
         let (decl, declty) = if let Some(data) = self
             .declarations_module
-            .retrieve_declaration_data_by_name(&symbol)
+            .retrieve_declaration_data_by_name(&identifier_symbol)
         {
             data
         } else {
-            return Err(HIRError {
-                kind: HIRErrorKind::NameNotRecognized(name.identifier),
-                span: name.span,
-            }
-            .into());
+            return Err(HIRError::name_unrecognized(identifier_symbol, name.span).into());
         };
         let HirType::Reference { rf, .. } = self.types_module.get_type(&declty) else {
             unreachable!("WTF, type of custom object should be a reference to its real type");
