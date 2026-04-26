@@ -26,7 +26,7 @@ impl Context {
     #[inline]
     ///Returns the pointer to the labels of this context.
     pub fn labels_ptr(&self) -> IRPointer<Label> {
-        self.labels.clone()
+        self.labels
     }
 
     ///Retrieves the inner type of this context

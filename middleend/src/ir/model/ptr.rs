@@ -26,10 +26,7 @@ impl<T, const N: usize> Eq for IRPointer<T, N> {}
 
 impl<T, const N: usize> Clone for IRPointer<T, N> {
     fn clone(&self) -> Self {
-        Self {
-            inner: self.inner,
-            data: PhantomData,
-        }
+        *self
     }
 }
 
@@ -61,7 +58,7 @@ impl<T, const N: usize> IRPointer<T, N> {
 
     ///Returns a pointer that moves `n` values forward
     pub fn ptr_to(&self, n: usize) -> IRPointer<T, 1> {
-        let mut out = self.clone();
+        let mut out = *self;
         out.set_ptr(self.ptr() + n);
         out.with_length()
     }

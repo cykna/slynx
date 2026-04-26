@@ -68,11 +68,7 @@ impl SlynxIR {
 
     ///Generates all the code on the IR, with types, functions, lowerings, etc, based on the provided `hir`. The `tys` is expected to be the types module used by the `hir` during all frontend process, as well as
     ///the `symbols`, to be the symbols module used by the same `hir` during all the frontend process
-    pub fn generate<'a>(
-        &mut self,
-        hir: Vec<HirDeclaration>,
-        tys: &'a TypesModule,
-    ) -> Result<(), IRError> {
+    pub fn generate(&mut self, hir: Vec<HirDeclaration>, tys: &TypesModule) -> Result<(), IRError> {
         let mut temp = TempIRData::new(tys);
         //hoist of the objects
         for declaration in &hir {
@@ -91,13 +87,13 @@ impl SlynxIR {
                 }
                 frontend::hir::definitions::HirDeclarationKind::Function { name, .. } => {
                     let out = self.create_blank_function(*name).with_length();
-                    let ctx = self.get_context(out.clone());
+                    let ctx = self.get_context(out);
                     temp.define_type(declaration.ty, ctx.ty());
                     temp.map_function(declaration.id, out.with_length());
                 }
                 HirDeclarationKind::ComponentDeclaration { name, .. } => {
                     let out = self.create_blank_component(*name);
-                    let fnc = self.get_component(out.clone());
+                    let fnc = self.get_component(out);
                     temp.define_type(declaration.ty, fnc.ty);
                     temp.map_component(declaration.id, out);
                 }

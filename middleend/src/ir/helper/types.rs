@@ -2,8 +2,7 @@ use common::SymbolPointer;
 use frontend::hir::{TypeId, types::HirType};
 
 use crate::{
-    Component, IRComponent, IRError, IRSpecializedComponent, IRType, IRTypeId, Label, Slot,
-    SlynxIR,
+    Component, IRComponent, IRError, IRSpecializedComponent, IRType, IRTypeId, Slot, SlynxIR,
     ir::{
         model::{Context, IRPointer, Instruction, Operand, Value},
         temp::TempIRData,
@@ -39,7 +38,7 @@ impl SlynxIR {
                         let rf = *rf;
                         return self.get_ir_type(&rf, temp);
                     }
-                    other => {
+                    _ => {
                         return Err(IRError::IRTypeNotRecognized(ty));
                     }
                 }
@@ -71,12 +70,12 @@ impl SlynxIR {
         match &self.values[value.ptr()] {
             Value::Void => self.types.void_type(),
             Value::FuncArg(idx) => self.arg_types_of_context(temp.current_function())[*idx],
-            Value::Raw(operand) => self.get_operand_type(operand.clone(), temp),
-            Value::Instruction(instr) => self.get_type_of_instruction(instr.clone(), temp),
-            Value::LabelArg(idx) => self.get_label(temp.current_label()).arguments()[*idx],
-            Value::Slot(v) => self.get_slot_type(v.clone()),
+            Value::Raw(operand) => self.get_operand_type(*operand, temp),
+            Value::Instruction(instr) => self.get_type_of_instruction(*instr, temp),
+            Value::LabelArg(index) => self.get_label(temp.current_label()).arguments()[*index],
+            Value::Slot(v) => self.get_slot_type(*v),
             Value::StructLiteral(t, _) => *t,
-            Value::Specliazed(v) => self.specialized_type(v.clone()),
+            Value::Specliazed(v) => self.specialized_type(*v),
         }
     }
 

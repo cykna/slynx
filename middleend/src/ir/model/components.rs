@@ -10,7 +10,7 @@ impl Component {
     pub fn new(initial_type: IRTypeId, values: IRPointer<Value>) -> Self {
         Self {
             ty: initial_type,
-            values: values,
+            values,
         }
     }
 

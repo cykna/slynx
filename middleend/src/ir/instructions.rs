@@ -28,19 +28,19 @@ impl SlynxIR {
 
                 self.insert_instruction(
                     temp.current_label(),
-                    Instruction::br(cond_label.clone(), IRPointer::null(), bool_type),
+                    Instruction::br(cond_label, IRPointer::null(), bool_type),
                     true,
                 );
 
-                temp.set_current_label(cond_label.clone());
+                temp.set_current_label(cond_label);
                 let cond_value = self.get_value_for(condition, temp)?;
 
                 self.insert_instruction(
                     temp.current_label(),
                     Instruction::cbr(
                         cond_value,
-                        body_label.clone(),
-                        end_label.clone(),
+                        body_label,
+                        end_label,
                         IRPointer::null(),
                         IRPointer::null(),
                         bool_type,
@@ -48,14 +48,14 @@ impl SlynxIR {
                     true,
                 );
 
-                temp.set_current_label(body_label.clone());
+                temp.set_current_label(body_label);
                 for stmt in body {
                     self.get_instruction(stmt, temp)?;
                 }
 
                 self.insert_instruction(
                     temp.current_label(),
-                    Instruction::br(cond_label.clone(), IRPointer::null(), bool_type),
+                    Instruction::br(cond_label, IRPointer::null(), bool_type),
                     true,
                 );
 
@@ -69,7 +69,7 @@ impl SlynxIR {
                 let (slotvalue, slotptr) = self.allocate(vty, temp);
                 let value = self.get_value_for(value, temp)?;
 
-                self.write(slotptr.clone(), value.clone(), temp);
+                self.write(slotptr, value, temp);
 
                 temp.add_variable(*name, slotvalue);
                 Ok(None)
@@ -93,7 +93,7 @@ impl SlynxIR {
                         field_index,
                     } => {
                         let parent_value = self.get_value_for(parent, temp)?;
-                        let parent_ty = self.get_type_of_value(parent_value.clone(), temp);
+                        let parent_ty = self.get_type_of_value(parent_value, temp);
 
                         // SetField: create a new struct with the field modified
 
@@ -123,7 +123,7 @@ impl SlynxIR {
             }
             HirStatementKind::Return { expr } => {
                 let val = self.get_value_for(expr, temp)?;
-                let ty = self.get_type_of_value(val.clone(), temp);
+                let ty = self.get_type_of_value(val, temp);
                 let instruction =
                     self.insert_instruction(temp.current_label(), Instruction::ret(val, ty), true);
                 let instruction = self.dereference_instruction_ptr(instruction).with_length();
@@ -345,8 +345,7 @@ impl SlynxIR {
     ) -> Result<Value, IRError> {
         let lhs_value = self.get_value_for(lhs, temp)?;
         let rhs_value = self.get_value_for(rhs, temp)?;
-        let lty = self.get_type_of_value(lhs_value.clone(), temp);
-        let _rty = self.get_type_of_value(rhs_value.clone(), temp);
+        let lty = self.get_type_of_value(lhs_value, temp);
 
         let bin_instruction = match op {
             common::Operator::And => {
@@ -398,8 +397,7 @@ impl SlynxIR {
                 let elselabel = self.insert_label(temp.current_function(), "and_else");
                 let endlabel = {
                     let label = self.insert_label(temp.current_function(), "and_end");
-                    self.get_label_mut(label.clone())
-                        .insert_arguments(&[bool_type]);
+                    self.get_label_mut(label).insert_arguments(&[bool_type]);
                     label //$end_label(bool):
                 };
 
@@ -407,8 +405,8 @@ impl SlynxIR {
                     temp.current_label(),
                     Instruction::cbr(
                         lhs_value,
-                        thenlabel.clone(),
-                        elselabel.clone(),
+                        thenlabel,
+                        elselabel,
                         IRPointer::null(),
                         IRPointer::null(),
                         bool_type,
@@ -418,7 +416,7 @@ impl SlynxIR {
                 temp.set_current_label(thenlabel);
                 self.insert_instruction(
                     temp.current_label(),
-                    Instruction::br(endlabel.clone(), rhs_value.with_length(), bool_type), //br and_end(rhs)
+                    Instruction::br(endlabel, rhs_value.with_length(), bool_type), //br and_end(rhs)
                     true,
                 );
 
@@ -429,11 +427,11 @@ impl SlynxIR {
 
                 self.insert_instruction(
                     temp.current_label(),
-                    Instruction::br(endlabel.clone(), false_value.with_length(), bool_type),
+                    Instruction::br(endlabel, false_value.with_length(), bool_type),
                     true,
                 ); //br and_end(false)
 
-                temp.set_current_label(endlabel.clone());
+                temp.set_current_label(endlabel);
                 let value = self.get_label(endlabel).get_argument_value(0);
                 let value = self.insert_value(value);
                 self.insert_instruction(
@@ -447,8 +445,7 @@ impl SlynxIR {
                 let elselabel = self.insert_label(temp.current_function(), "or_else");
                 let endlabel = {
                     let label = self.insert_label(temp.current_function(), "or_end");
-                    self.get_label_mut(label.clone())
-                        .insert_arguments(&[bool_type]);
+                    self.get_label_mut(label).insert_arguments(&[bool_type]);
                     label //$end_label(bool):
                 };
 
@@ -456,8 +453,8 @@ impl SlynxIR {
                     temp.current_label(),
                     Instruction::cbr(
                         lhs_value,
-                        endlabel.clone(),
-                        elselabel.clone(),
+                        endlabel,
+                        elselabel,
                         IRPointer::null(),
                         IRPointer::null(),
                         bool_type,
@@ -468,7 +465,7 @@ impl SlynxIR {
 
                 self.insert_instruction(
                     temp.current_label(),
-                    Instruction::br(endlabel.clone(), rhs_value.with_length(), bool_type), //br and_end(rhs)
+                    Instruction::br(endlabel, rhs_value.with_length(), bool_type), //br and_end(rhs)
                     true,
                 );
 
@@ -477,11 +474,11 @@ impl SlynxIR {
 
                 self.insert_instruction(
                     temp.current_label(),
-                    Instruction::br(endlabel.clone(), false_value.with_length(), bool_type),
+                    Instruction::br(endlabel, false_value.with_length(), bool_type),
                     true,
                 ); //br and_end(false)
 
-                temp.set_current_label(endlabel.clone());
+                temp.set_current_label(endlabel);
                 let value = self.get_label(endlabel).get_argument_value(0);
                 let value = self.insert_value(value);
                 self.insert_instruction(
@@ -506,7 +503,7 @@ impl SlynxIR {
         let out = IRPointer::new(ptr, 1);
         let _ = self.insert_instruction(temp.current_label(), Instruction::allocate(out, ty), true);
 
-        (self.insert_value(Value::Slot(out.clone())), out)
+        (self.insert_value(Value::Slot(out)), out)
     }
 
     pub(crate) fn write(

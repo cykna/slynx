@@ -84,7 +84,7 @@ impl SlynxIR {
     #[inline]
     pub fn dereference_instruction_ptr(&self, ptr: InstructionPtr) -> IRPointer<Instruction> {
         match ptr {
-            Left(ptr) => self.instruction_pointers[ptr.ptr()].clone(),
+            Left(ptr) => self.instruction_pointers[ptr.ptr()],
             Right(e) => e,
         }
     }

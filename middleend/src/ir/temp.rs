@@ -51,7 +51,7 @@ impl<'a> TempIRData<'a> {
 
     #[inline]
     pub fn types_module(&self) -> &TypesModule {
-        &self.types_module
+        self.types_module
     }
 
     ///Maps the provided `hty`(hir type) to the provided `ity`(ir type)
@@ -119,7 +119,7 @@ impl<'a> TempIRData<'a> {
     #[inline]
     ///Retrieves the current label on the current function
     pub fn current_label(&self) -> IRPointer<Label, 1> {
-        self.current_label.clone()
+        self.current_label
     }
     #[inline]
     ///Retrieves the current label on the current function
@@ -137,7 +137,7 @@ impl<'a> TempIRData<'a> {
     #[inline]
     ///Sets the current function being generated and resets the variables
     pub fn current_function(&self) -> IRPointer<Context, 1> {
-        self.current_function.clone()
+        self.current_function
     }
     #[inline]
     ///Sets the current function being generated and resets the variables
@@ -157,6 +157,6 @@ impl<'a> TempIRData<'a> {
     pub fn get_variable(&self, id: VariableId) -> Option<IRPointer<Value, 1>> {
         self.variables
             .iter()
-            .find_map(|v| if v.0 == id { Some(v.1.clone()) } else { None })
+            .find_map(|v| if v.0 == id { Some(v.1) } else { None })
     }
 }

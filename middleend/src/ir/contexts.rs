@@ -105,12 +105,12 @@ impl SlynxIR {
                     .collect::<Result<Vec<_>, _>>()?;
                 let mut element_types = Vec::with_capacity(values_ptrs.len());
                 for ptr in &values_ptrs {
-                    let ty = self.get_type_of_value(ptr.clone(), temp);
+                    let ty = self.get_type_of_value(*ptr, temp);
                     element_types.push(ty);
                 }
                 let values = values_ptrs
                     .iter()
-                    .map(|v| self.get_value(v.clone()))
+                    .map(|v| self.get_value(*v))
                     .collect::<Vec<_>>();
                 let values_ptr = self.insert_values(&values);
 
@@ -148,7 +148,7 @@ impl SlynxIR {
                     debug_assert!(func.len() == 1);
                     func.with_length::<1>()
                 };
-                let ret_ty = self.return_type_of_context(func.clone());
+                let ret_ty = self.return_type_of_context(func);
                 let mut operands = Vec::with_capacity(args.len());
 
                 for arg in args {
@@ -184,7 +184,7 @@ impl SlynxIR {
                     self.insert_values(
                         &fields
                             .iter()
-                            .map(|v| self.get_value(v.clone()))
+                            .map(|v| self.get_value(*v))
                             .collect::<Vec<_>>(),
                     )
                 };
@@ -197,7 +197,7 @@ impl SlynxIR {
             }
             HirExpressionKind::FieldAccess { expr, field_index } => {
                 let value = self.get_value_for(expr, temp)?;
-                let ty = self.get_type_of_value(value.clone(), temp);
+                let ty = self.get_type_of_value(value, temp);
                 let i = self.insert_instruction(
                     temp.current_label(),
                     Instruction::getfield(*field_index, value, ty),
@@ -222,16 +222,20 @@ impl SlynxIR {
                 self.insert_instruction(
                     temp.current_label(),
                     Instruction::cbr(
-                        value.clone(),
-                        then_label_ptr.clone(),
-                        else_label_ptr.clone(),
+                        value,
+                        then_label_ptr,
+                        else_label_ptr,
                         IRPointer::null(),
                         IRPointer::null(),
+<<<<<<< HEAD
 <<<<<<< HEAD
                         condition_ty,
 =======
                         self.get_type_of_value(value.clone(), temp),
 >>>>>>> 69284ba (refactor: refactored how types module is passed during ir construction)
+=======
+                        self.get_type_of_value(value, temp),
+>>>>>>> 879b142 (chore: resolved clippy errors)
                     ),
                     true,
                 );
@@ -243,20 +247,24 @@ impl SlynxIR {
                 let end_label = {
                     let label = self.insert_label(temp.current_function(), "end_label");
                     debug_assert_eq!(label, end_label_ptr);
-                    let v = self.get_type_of_value(value.clone(), temp);
-                    self.get_label_mut(label.clone()).add_argument(v);
+                    let v = self.get_type_of_value(value, temp);
+                    self.get_label_mut(label).add_argument(v);
                     label
                 };
                 temp.set_current_label(then_label);
                 self.lower_if_branch(then_branch, end_label.clone(), temp)?;
 
+<<<<<<< HEAD
                 temp.set_current_label(else_label);
                 let else_branch = else_branch.as_deref().unwrap_or(&[]);
                 self.lower_if_branch(else_branch, end_label.clone(), temp)?;
+=======
+                    let ty = self.get_type_of_value(value, temp);
+>>>>>>> 879b142 (chore: resolved clippy errors)
 
                     self.insert_instruction(
                         temp.current_label(),
-                        Instruction::br(end_label.clone(), value.with_length(), ty),
+                        Instruction::br(end_label, value.with_length(), ty),
                         true,
                     );
                 }
@@ -272,16 +280,16 @@ impl SlynxIR {
                             continue;
                         };
 
-                        let ty = self.get_type_of_value(value.clone(), temp);
+                        let ty = self.get_type_of_value(value, temp);
 
                         self.insert_instruction(
                             temp.current_label(),
-                            Instruction::br(end_label.clone(), value.with_length(), ty),
+                            Instruction::br(end_label, value.with_length(), ty),
                             true,
                         );
                     }
                 }
-                temp.set_current_label(end_label.clone());
+                temp.set_current_label(end_label);
                 let end_label = self.get_label(end_label);
                 if end_label.arguments().is_empty() {
                     Value::Void
@@ -303,10 +311,10 @@ impl SlynxIR {
         args: &[VariableId],
         temp: &mut TempIRData,
     ) -> Result<(), IRError> {
-        temp.set_current_function(ir.clone());
+        temp.set_current_function(ir);
 
         {
-            let label = self.insert_label(ir.clone(), "entry");
+            let label = self.insert_label(ir, "entry");
             self.get_context_mut(ir).set_label_ptr(label.with_length()); //must do so because this gets the next avaible position to labels
             let next_instruction = self.get_next_mapeable_instruction_ptr();
             let mut ptr = next_instruction.with_length();
@@ -314,12 +322,13 @@ impl SlynxIR {
             self.get_label_mut(label).set_instructions_pointer(ptr);
             temp.set_current_label(label);
         }
+
         let ptr = IRPointer::new(self.values.len(), args.len());
         for (idx, _) in args.iter().enumerate() {
             self.insert_value(Value::FuncArg(idx));
         }
-        temp.set_function_args(args, ptr);
 
+        temp.set_function_args(args, ptr);
         for statement in statements {
             self.get_instruction(statement, temp)?;
         }
