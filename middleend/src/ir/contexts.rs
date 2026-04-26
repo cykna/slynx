@@ -23,12 +23,12 @@ impl SlynxIR {
                 && let HirStatementKind::Expression { ref expr } = statement.kind
             {
                 let value = self.get_value_for(expr, temp)?;
-                let ty = self.get_type_of_value(value.clone(), temp);
+                let ty = self.get_type_of_value(value, temp);
 
                 // The merge label carries the value produced by each branch.
                 // Its argument type is the branch result type, not the condition type.
-                if self.get_label(end_label.clone()).arguments().is_empty() {
-                    self.get_label_mut(end_label.clone()).add_argument(ty);
+                if self.get_label(end_label).arguments().is_empty() {
+                    self.get_label_mut(end_label).add_argument(ty);
                 }
 
                 self.insert_instruction(
@@ -219,14 +219,14 @@ impl SlynxIR {
                 let then_label = self.insert_label(temp.current_function(), "then_label");
                 let else_label = self.insert_label(temp.current_function(), "else_label");
                 let end_label = self.insert_label(temp.current_function(), "end_label");
-                let condition_ty = self.get_type_of_value(value.clone(), temp);
+                let condition_ty = self.get_type_of_value(value, temp);
 
                 self.insert_instruction(
                     temp.current_label(),
                     Instruction::cbr(
-                        value.clone(),
-                        then_label.clone(),
-                        else_label.clone(),
+                        value,
+                        then_label,
+                        else_label,
                         IRPointer::null(),
                         IRPointer::null(),
                         condition_ty,
@@ -234,13 +234,13 @@ impl SlynxIR {
                     true,
                 );
                 temp.set_current_label(then_label);
-                self.lower_if_branch(then_branch, end_label.clone(), temp)?;
+                self.lower_if_branch(then_branch, end_label, temp)?;
 
                 temp.set_current_label(else_label);
                 let else_branch = else_branch.as_deref().unwrap_or(&[]);
-                self.lower_if_branch(else_branch, end_label.clone(), temp)?;
+                self.lower_if_branch(else_branch, end_label, temp)?;
 
-                temp.set_current_label(end_label.clone());
+                temp.set_current_label(end_label);
                 let end_label = self.get_label(end_label);
                 if end_label.arguments().is_empty() {
                     Value::Void
