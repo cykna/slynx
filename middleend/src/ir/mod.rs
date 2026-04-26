@@ -4,7 +4,10 @@ mod helper;
 mod instructions;
 mod model;
 mod temp;
+mod visualize;
+
 pub use model::*;
+pub use visualize::*;
 
 use frontend::hir::{
     definitions::{HirDeclaration, HirDeclarationKind},
@@ -123,5 +126,21 @@ impl SlynxIR {
             }
         }
         Ok(())
+    }
+
+    /// Produces a Slynx IR textual dump (SIR) following the README syntax.
+    ///
+    /// This uses the helpers defined in the `visualize` module to format labels and
+    /// instructions in the human-readable SIR form described in `middleend/README.md`.
+    pub fn format_sir(&self) -> String {
+        let fmt = visualize::Formatter::new(
+            &self.labels,
+            &self.values,
+            &self.operands,
+            &self.types,
+            &self.strings,
+        );
+
+        fmt.format_labels(&self.instructions)
     }
 }

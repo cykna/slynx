@@ -240,7 +240,7 @@ impl Lexer {
                             _ => (),
                         }
                     }
-                    
+
                     if !hex_value && !binary_value && !octal_value {
                     while let Some(c) = chars.get(idx) {
                         if c.is_ascii_digit() {
