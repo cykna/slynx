@@ -34,6 +34,7 @@ impl SlynxIR {
                 self.insert_instruction(
                     temp.current_label(),
                     Instruction::br(end_label, value.with_length(), ty),
+                    true,
                 );
                 return Ok(Some(ty));
             }
@@ -46,6 +47,7 @@ impl SlynxIR {
         self.insert_instruction(
             temp.current_label(),
             Instruction::br(end_label, IRPointer::null(), self.types.void_type()),
+            true,
         );
         Ok(None)
     }
@@ -222,74 +224,23 @@ impl SlynxIR {
                 self.insert_instruction(
                     temp.current_label(),
                     Instruction::cbr(
-                        value,
-                        then_label_ptr,
-                        else_label_ptr,
+                        value.clone(),
+                        then_label.clone(),
+                        else_label.clone(),
                         IRPointer::null(),
                         IRPointer::null(),
-<<<<<<< HEAD
-<<<<<<< HEAD
                         condition_ty,
-=======
-                        self.get_type_of_value(value.clone(), temp),
->>>>>>> 69284ba (refactor: refactored how types module is passed during ir construction)
-=======
-                        self.get_type_of_value(value, temp),
->>>>>>> 879b142 (chore: resolved clippy errors)
                     ),
                     true,
                 );
-
-                let then_label = self.insert_label(temp.current_function(), "then_label");
-                debug_assert_eq!(then_label, then_label_ptr);
-                let else_label = self.insert_label(temp.current_function(), "else_label");
-                debug_assert_eq!(else_label, else_label_ptr);
-                let end_label = {
-                    let label = self.insert_label(temp.current_function(), "end_label");
-                    debug_assert_eq!(label, end_label_ptr);
-                    let v = self.get_type_of_value(value, temp);
-                    self.get_label_mut(label).add_argument(v);
-                    label
-                };
                 temp.set_current_label(then_label);
                 self.lower_if_branch(then_branch, end_label.clone(), temp)?;
 
-<<<<<<< HEAD
                 temp.set_current_label(else_label);
                 let else_branch = else_branch.as_deref().unwrap_or(&[]);
                 self.lower_if_branch(else_branch, end_label.clone(), temp)?;
-=======
-                    let ty = self.get_type_of_value(value, temp);
->>>>>>> 879b142 (chore: resolved clippy errors)
 
-                    self.insert_instruction(
-                        temp.current_label(),
-                        Instruction::br(end_label, value.with_length(), ty),
-                        true,
-                    );
-                }
-                if let Some(else_branch) = else_branch {
-                    temp.set_current_label(else_label);
-                    for (idx, instruction) in else_branch.iter().enumerate() {
-                        let value = if idx == else_branch.len() - 1
-                            && let HirStatementKind::Expression { ref expr } = instruction.kind
-                        {
-                            self.get_value_for(expr, temp)?
-                        } else {
-                            self.get_instruction(instruction, temp)?;
-                            continue;
-                        };
-
-                        let ty = self.get_type_of_value(value, temp);
-
-                        self.insert_instruction(
-                            temp.current_label(),
-                            Instruction::br(end_label, value.with_length(), ty),
-                            true,
-                        );
-                    }
-                }
-                temp.set_current_label(end_label);
+                temp.set_current_label(end_label.clone());
                 let end_label = self.get_label(end_label);
                 if end_label.arguments().is_empty() {
                     Value::Void

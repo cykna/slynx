@@ -1,7 +1,8 @@
 use common::SymbolsModule;
 
 use crate::{
-    Context, IRPointer, IRType, IRTypes, Instruction, InstructionType, Label, Operand, Slot, Value,
+    Context, IRPointer, IRSpecializedComponentType, IRType, IRTypes, Instruction, InstructionType,
+    Label, Operand, Slot, Value,
 };
 
 /// Formatter holds the slices and helpers necessary to render the IR in textual form (SIR).
@@ -50,7 +51,7 @@ impl<'a> Formatter<'a> {
         }
 
         // Instructions inside the label
-        let iptr = label.instruction();
+        let iptr = label.instructions();
         for i in 0..iptr.len() {
             let instr_ptr = iptr.ptr_to(i);
             let instr_idx = instr_ptr.ptr();
@@ -155,7 +156,7 @@ impl<'a> Formatter<'a> {
             InstructionType::SetField(u) => self.fmt_set_field(instr, *u),
             InstructionType::FunctionCall(temp) => self.fmt_function_call(instr, temp),
 
-            InstructionType::Allocate => self.fmt_allocate(instr),
+            InstructionType::Allocate(_) => self.fmt_allocate(instr),
             InstructionType::Write(slot) => self.fmt_write(instr, slot),
             InstructionType::Read => self.fmt_read(instr),
             InstructionType::Reinterpret => self.fmt_reinterpret(instr),
@@ -163,6 +164,9 @@ impl<'a> Formatter<'a> {
             InstructionType::RawValue => {
                 let ptr = instr.operands.ptr_to(0);
                 self.fmt_value(&ptr)
+            }
+            InstructionType::Struct | InstructionType::Component => {
+                "Struct/Component not implemented".to_string()
             }
         }
     }
@@ -236,8 +240,9 @@ impl<'a> Formatter<'a> {
                     Operand::String(sym) => format!("\"{}\"", self.symbols.get_name(*sym)),
                 }
             }
-            Value::StructLiteral(..) => format!("%lit{}", ptr.ptr()),
+            Value::StructLiteral(_, _) => format!("%lit{}", ptr.ptr()),
             Value::Void => "void".to_string(),
+            Value::Specliazed(_) => "Specialized not implemented".to_string(),
         }
     }
 
@@ -280,5 +285,7 @@ fn fmt_type(ty: &IRType) -> String {
         IRType::GenericComponent => "generic".to_string(),
         IRType::ISIZE => "isize".to_string(),
         IRType::USIZE => "usize".to_string(),
+        IRType::Specialized(IRSpecializedComponentType::Div) => "div".to_string(),
+        IRType::Specialized(IRSpecializedComponentType::Text) => "text".to_string(),
     }
 }
