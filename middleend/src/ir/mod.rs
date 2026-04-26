@@ -6,7 +6,6 @@ mod model;
 mod temp;
 mod visualize;
 
-
 pub use model::*;
 pub use visualize::*;
 
@@ -134,6 +133,14 @@ impl SlynxIR {
     /// This uses the helpers defined in the `visualize` module to format labels and
     /// instructions in the human-readable SIR form described in `middleend/README.md`.
     pub fn format_sir(&self) -> String {
-        format_labels(&self.labels, &self.instructions, &self.values)
+        let fmt = visualize::Formatter::new(
+            &self.labels,
+            &self.values,
+            &self.operands,
+            &self.types,
+            &self.strings,
+        );
+
+        fmt.format_labels(&self.instructions)
     }
 }
