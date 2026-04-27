@@ -10,18 +10,12 @@ use std::collections::HashMap;
 
 use crate::hir::{
     error::HIRError,
-    model::{
-        ComponentMemberDeclaration, HirDeclaration, HirDeclarationKind, HirStatement,
-        HirStatementKind, HirType,
-    },
+    model::{HirDeclaration, HirDeclarationKind, HirType},
     modules::HirModules,
 };
 use common::{
     SymbolPointer,
-    ast::{
-        ASTDeclaration, ASTDeclarationKind, ASTStatementKind, ComponentMemberValue,
-        VisibilityModifier,
-    },
+    ast::{ASTDeclaration, ASTDeclarationKind},
 };
 
 pub use id::{DeclarationId, ExpressionId, PropertyId, TypeId, VariableId};
@@ -30,7 +24,7 @@ pub type Result<T> = std::result::Result<T, HIRError>;
 
 #[derive(Debug, Default)]
 pub struct SlynxHir {
-    modules: HirModules,
+    pub(crate) modules: HirModules,
     /// Maps the types of top level things on the current scope to their types.
     /// An example is functions, which contain an HirType.
     types: HashMap<TypeId, HirType>,
@@ -57,65 +51,6 @@ impl SlynxHir {
             self.resolve(ast)?;
         }
         Ok(())
-    }
-
-    /// Resolves the provided values on a component. The `ty` is the type of the component we are resolving it
-    fn resolve_component_members(
-        &mut self,
-        members: Vec<ComponentMemberValue>,
-        ty: TypeId,
-    ) -> Result<Vec<ComponentMemberDeclaration>> {
-        let mut out = Vec::with_capacity(members.len());
-        for member in members {
-            out.push(match member {
-                ComponentMemberValue::Assign {
-                    prop_name,
-                    rhs,
-                    span,
-                } => {
-                    let HirType::Component { props } = self.get_type(&ty) else {
-                        unreachable!("The type should be a component instead");
-                    };
-                    let interned_name = self.modules.intern_name(&prop_name);
-                    let index = props
-                        .iter()
-                        .position(|prop| prop.name() == prop_name)
-                        .ok_or(HIRError::name_unrecognized(interned_name, span))?;
-
-                    if matches!(
-                        props[index].visibility(),
-                        VisibilityModifier::Private | VisibilityModifier::ChildrenPublic
-                    ) {
-                        return Err(HIRError::not_visible_property(interned_name, span).into());
-                    }
-                    ComponentMemberDeclaration::Property {
-                        id: PropertyId::new(), // Changed to PropertyId
-                        index,
-                        value: Some(self.resolve_expr(rhs, Some(*props[index].prop_type()))?),
-                        span,
-                    }
-                }
-                ComponentMemberValue::Child(child) => {
-                    //By now this won't track whether it can or cannot have children, since a method better than 'children' might be implemented in the future.
-                    {
-                        let (id, _) = {
-                            self.retrieve_information_of_type(
-                                &child.name.identifier,
-                                &child.name.span,
-                            )?
-                        };
-                        let values = self.resolve_component_members(child.values, id)?;
-
-                        ComponentMemberDeclaration::Child {
-                            name: id,
-                            values,
-                            span: child.span,
-                        }
-                    }
-                }
-            });
-        }
-        Ok(out)
     }
 
     /// Hoist the provided `ast` declaration, so no errors of undefined values because declared later may occur

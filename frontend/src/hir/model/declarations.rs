@@ -57,6 +57,20 @@ pub enum ComponentMemberDeclaration {
     Specialized(SpecializedComponent),
 }
 
+impl ComponentMemberDeclaration {
+    pub fn new_property(index: usize, value: Option<HirExpression>, span: Span) -> Self {
+        Self::Property {
+            id: PropertyId::new(),
+            index,
+            value,
+            span,
+        }
+    }
+    pub fn new_child(name: TypeId, values: Vec<ComponentMemberDeclaration>, span: Span) -> Self {
+        Self::Child { name, values, span }
+    }
+}
+
 impl HirDeclaration {
     pub fn new_function(
         statements: Vec<HirStatement>,

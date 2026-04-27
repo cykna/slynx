@@ -1,7 +1,7 @@
-use common::Span;
+use common::{Operator, Span};
 
 use crate::hir::{
-    ExpressionId, SlynxHir, TypeId,
+    ExpressionId, SlynxHir, TypeId, VariableId,
     model::{HirExpression, HirExpressionKind},
 };
 
@@ -16,6 +16,91 @@ impl SlynxHir {
             id: ExpressionId::new(),
             ty: tuple_ty,
             kind: HirExpressionKind::Tuple(values),
+            span,
+        }
+    }
+    pub fn create_field_access_expression(
+        &self,
+        parent: HirExpression,
+        field: usize,
+        ty: TypeId,
+        span: Span,
+    ) -> HirExpression {
+        HirExpression {
+            id: ExpressionId::new(),
+            ty,
+            kind: HirExpressionKind::FieldAccess {
+                expr: Box::new(parent),
+                field_index: field,
+            },
+            span,
+        }
+    }
+    pub fn create_boolean_expression(&self, b: bool, span: Span) -> HirExpression {
+        HirExpression {
+            id: ExpressionId::new(),
+            ty: self.bool_type(),
+            kind: HirExpressionKind::Bool(b),
+            span,
+        }
+    }
+    pub fn create_strliteral_expression(&self, s: String, span: Span) -> HirExpression {
+        HirExpression {
+            id: ExpressionId::new(),
+            ty: self.str_type(),
+            kind: HirExpressionKind::StringLiteral(s),
+            span,
+        }
+    }
+    pub fn create_identifier_expression(
+        &self,
+        var: VariableId,
+        ty: TypeId,
+        span: Span,
+    ) -> HirExpression {
+        HirExpression {
+            id: ExpressionId::new(),
+            ty,
+            kind: HirExpressionKind::Identifier(var),
+            span,
+        }
+    }
+    /// Creates an int expression that must be inferred.
+    pub fn create_int_expression(&self, i: i32, span: Span) -> HirExpression {
+        HirExpression {
+            kind: HirExpressionKind::Int(i),
+            id: ExpressionId::new(),
+            ty: self.infer_type(),
+            span,
+        }
+    }
+
+    /// Creates a float expression.
+    pub fn create_float_expression(&self, float: f32, span: Span) -> HirExpression {
+        HirExpression {
+            kind: HirExpressionKind::Float(float),
+            id: ExpressionId::new(),
+            ty: self.infer_type(),
+            span,
+        }
+    }
+    /// Creates a float expression.
+    pub fn create_binary_expression(
+        &self,
+        left: HirExpression,
+        right: HirExpression,
+        operator: Operator,
+        ty: TypeId,
+        span: Span,
+    ) -> HirExpression {
+        HirExpression {
+            kind: HirExpressionKind::Binary {
+                lhs: Box::new(left),
+                op: operator,
+                rhs: Box::new(right),
+            },
+            id: ExpressionId::new(),
+            ty,
             span,
         }
     }

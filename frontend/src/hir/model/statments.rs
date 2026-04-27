@@ -35,10 +35,10 @@ pub enum HirStatementKind {
 
 impl HirStatement {
     ///Creates a new return statment
-    pub fn new_return(expr: HirExpression, span: Span) -> Self {
+    pub fn new_return(expr: HirExpression) -> Self {
         Self {
+            span: expr.span,
             kind: HirStatementKind::Return { expr },
-            span,
         }
     }
     pub fn new_variable(name: VariableId, value: HirExpression, span: Span) -> Self {

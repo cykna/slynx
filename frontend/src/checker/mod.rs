@@ -23,14 +23,15 @@ mod statement;
 use std::collections::HashMap;
 
 use color_eyre::eyre::Result;
+use common::SymbolPointer;
 
 use crate::checker::error::{IncompatibleComponentReason, TypeError, TypeErrorKind};
 
+use crate::hir::model::{ComponentProperty, HirStatement, HirStatementKind};
+use crate::hir::modules::types::TypesModule;
 use crate::hir::{
     SlynxHir, TypeId,
-    definitions::{HirDeclaration, HirDeclarationKind},
-    symbols::SymbolPointer,
-    types::{FieldMethod, HirType, TypesModule},
+    model::{FieldMethod, HirDeclaration, HirDeclarationKind, HirType},
 };
 use common::ast::Span;
 #[derive(Debug)]
@@ -122,8 +123,8 @@ impl TypeChecker {
     pub fn check(hir: &mut SlynxHir) -> Result<TypesModule> {
         let mut inner = Self {
             types: HashMap::new(),
-            structs: std::mem::take(&mut hir.declarations_module.objects),
-            types_module: std::mem::take(&mut hir.types_module),
+            structs: std::mem::take(&mut hir.modules.declarations_module.objects),
+            types_module: std::mem::take(&mut hir.modules.types_module),
             declarations: Vec::new(),
         };
         // DeclarationId is currently assigned linearly in hoisting order,
@@ -212,7 +213,9 @@ impl TypeChecker {
                 let mut resolved_props = {
                     let mut tys = Vec::with_capacity(props.len());
                     for prop in props {
-                        tys.push((prop.0.clone(), prop.1.clone(), self.resolve(&prop.2, span)?));
+                        let mut prop = prop.clone();
+                        *prop.prop_type_mut() = self.resolve(prop.prop_type(), span)?;
+                        tys.push(prop)
                     }
                     tys
                 };
@@ -267,8 +270,13 @@ impl TypeChecker {
                         }
                         let mut unified_props = Vec::with_capacity(aprops.len());
                         for (prop_a, prop_b) in aprops.iter().zip(bprops.iter()) {
-                            let unified_prop = self.unify(&prop_a.2, &prop_b.2, span)?;
-                            unified_props.push((prop_a.0.clone(), prop_a.1.clone(), unified_prop));
+                            let unified_prop =
+                                self.unify(&*prop_a.prop_type(), &*prop_b.prop_type(), span)?;
+                            unified_props.push(ComponentProperty::new(
+                                *prop_a.visibility(),
+                                prop_a.name().to_string(),
+                                unified_prop,
+                            ));
                         }
                         let HirType::Component { props } = self.types_module.get_type_mut(a) else {
                             unreachable!()
@@ -387,9 +395,9 @@ impl TypeChecker {
                     false
                 }
             }
-            HirType::Component { props } => props
-                .iter()
-                .any(|prop| self.recursive_ty(ty_ref, self.types_module.get_type(&prop.2))),
+            HirType::Component { props } => props.iter().any(|prop| {
+                self.recursive_ty(ty_ref, self.types_module.get_type(prop.prop_type()))
+            }),
             _ => false,
         }
     }
@@ -421,7 +429,7 @@ impl TypeChecker {
 
     fn ensure_function_returns(
         &mut self,
-        statements: &[crate::hir::definitions::HirStatement],
+        statements: &[HirStatement],
         return_type: TypeId,
         span: &Span,
     ) -> Result<()> {
@@ -434,7 +442,7 @@ impl TypeChecker {
         // so a non-void function must end with a lowered `Return`.
         if matches!(
             statements.last().map(|statement| &statement.kind),
-            Some(crate::hir::definitions::HirStatementKind::Return { .. })
+            Some(HirStatementKind::Return { .. })
         ) {
             return Ok(());
         }
@@ -458,7 +466,7 @@ mod tests {
         checker::error::{TypeError, TypeErrorKind},
         hir::{
             ExpressionId, SlynxHir,
-            definitions::{HirDeclarationKind, HirExpression, HirExpressionKind, HirStatementKind},
+            model::{HirDeclarationKind, HirExpression, HirExpressionKind, HirStatementKind},
         },
         lexer::Lexer,
         parser::Parser,
@@ -489,7 +497,9 @@ mod tests {
                 continue;
             };
 
-            if hir.symbols_module.get_name(*name) != "main" {
+            if let Some(main_symbol) = hir.modules.retrieve_symbol("main")
+                && main_symbol == *name
+            {
                 continue;
             }
 
@@ -573,7 +583,7 @@ mod tests {
     #[test]
     fn rejects_function_call_with_wrong_argument_type() {
         let mut hir = load_hir("slynx/functioncall.slynx");
-        let bool_ty = hir.types_module.bool_id();
+        let bool_ty = hir.bool_type();
         let args = main_call_args(&mut hir).expect("expected to find a function call in main");
         let first_arg = args.first_mut().expect("call should have at least one arg");
         first_arg.kind = HirExpressionKind::Bool(true);

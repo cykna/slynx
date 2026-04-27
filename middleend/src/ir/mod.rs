@@ -11,9 +11,8 @@ pub use model::*;
 pub use visualize::*;
 
 use frontend::hir::{
-    definitions::{HirDeclaration, HirDeclarationKind},
-    symbols::SymbolsModule,
-    types::{HirType, TypesModule},
+    model::{HirDeclaration, HirDeclarationKind, HirType},
+    modules::types::TypesModule,
 };
 
 use crate::{BUILTIN_TYPES, IRError, IRTypes};
@@ -73,7 +72,7 @@ impl SlynxIR {
         //hoist of the objects
         for declaration in &hir {
             match &declaration.kind {
-                frontend::hir::definitions::HirDeclarationKind::Object => {
+                HirDeclarationKind::Object => {
                     let out = self.types.create_empty_struct();
                     temp.define_type(declaration.ty, out);
                     // Also map the inner unnamed Struct TypeId (the `rf` of the Reference)
@@ -85,7 +84,7 @@ impl SlynxIR {
                         declaration.id.as_raw() as usize
                     );
                 }
-                frontend::hir::definitions::HirDeclarationKind::Function { name, .. } => {
+                HirDeclarationKind::Function { name, .. } => {
                     let out = self.create_blank_function(*name).with_length();
                     let ctx = self.get_context(out);
                     temp.define_type(declaration.ty, ctx.ty());

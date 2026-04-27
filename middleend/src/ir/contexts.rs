@@ -1,6 +1,6 @@
 use frontend::hir::{
     VariableId,
-    definitions::{HirExpression, HirExpressionKind, HirStatement, HirStatementKind},
+    model::{HirExpression, HirExpressionKind, HirStatement, HirStatementKind},
 };
 
 use crate::{

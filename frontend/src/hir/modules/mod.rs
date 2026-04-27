@@ -1,7 +1,7 @@
 use common::{ObjectField, Span, SymbolPointer, SymbolsModule};
 
 use crate::hir::{
-    DeclarationId, Result, SlynxHir, TypeId, VariableId,
+    DeclarationId, Result, TypeId, VariableId,
     error::HIRError,
     model::HirType,
     modules::{

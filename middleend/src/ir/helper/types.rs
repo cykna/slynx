@@ -1,9 +1,8 @@
 use common::SymbolPointer;
-use frontend::hir::{TypeId, types::HirType};
+use frontend::hir::{TypeId, model::HirType};
 
 use crate::{
-    Component, IRComponent, IRError, IRSpecializedComponent, IRType, IRTypeId, Label, Slot,
-    SlynxIR,
+    Component, IRComponent, IRError, IRSpecializedComponent, IRType, IRTypeId, Slot, SlynxIR,
     ir::{
         model::{Context, IRPointer, Instruction, Operand, Value},
         temp::TempIRData,

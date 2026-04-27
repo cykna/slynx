@@ -50,6 +50,10 @@ impl ComponentProperty {
     pub fn prop_type(&self) -> &TypeId {
         &self.2
     }
+
+    pub fn prop_type_mut(&mut self) -> &mut TypeId {
+        &mut self.2
+    }
 }
 
 #[derive(Debug, Clone)]
@@ -151,5 +155,12 @@ impl HirType {
     ///Creates a new function type with the given `args` and `return_type`
     pub fn new_component(props: Vec<ComponentProperty>) -> Self {
         Self::Component { props }
+    }
+
+    pub fn variable_field(var: VariableId, field: SymbolPointer) -> Self {
+        Self::Field(FieldMethod::Variable(var, field))
+    }
+    pub fn type_field(ty: TypeId, field: usize) -> Self {
+        Self::Field(FieldMethod::Type(ty, field))
     }
 }

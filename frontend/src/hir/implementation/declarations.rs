@@ -35,7 +35,7 @@ impl SlynxHir {
                     Err(HIRError::recursive(symbol_name, field.name.span).into())
                 } else {
                     self.retrieve_information_of_type(&field.name.kind.identifier, &field.name.span)
-                        .0
+                        .map(|v| v.0)
                 }
             })
             .collect::<Result<Vec<_>>>()?;
@@ -46,7 +46,8 @@ impl SlynxHir {
         let HirType::Reference { rf, .. } = self.get_type(&declty) else {
             unreachable!("WTF, type of custom object should be a reference to its real type");
         };
-        let HirType::Struct { fields: ty_field } = self.get_type_mut(&*rf) else {
+        let rf = *rf;
+        let HirType::Struct { fields: ty_field } = self.get_type_mut(&rf) else {
             unreachable!("WTF. Type of object should be a Struct ty");
         };
 
@@ -91,33 +92,29 @@ impl SlynxHir {
         let args = args
             .into_iter()
             .map(|arg| {
+                let symbol = self.modules.intern_name(&arg.name);
                 match self.retrieve_information_of_type(&arg.kind.identifier, &arg.kind.span) {
-                    Ok((ty, _)) => Ok(self.create_variable(&arg.name, ty, false)),
+                    Ok((ty, _)) => self.create_variable(symbol, ty, &arg.span),
                     Err(e) => Err(e),
                 }
             })
             .collect::<Result<Vec<_>>>()?;
-
         let body_len = body.len();
-
         let statements = body
             .into_iter()
             .enumerate()
             .map(|(index, statement)| {
-                let is_last = index + 1 == body.len();
+                let is_last = index + 1 == body_len;
                 match statement {
                     // The last expression in a function body becomes the implicit return.
                     common::ast::ASTStatement {
                         kind: ASTStatementKind::Expression(expr),
                         ..
-                    } if is_last => {
-                        let expr = self.resolve_expr(expr, None)?;
-                        HirStatement::new_return(expr, expr.span)
-                    }
-                    statement => self.resolve_statement(statement)?,
+                    } if is_last => self.resolve_expr(expr, None).map(HirStatement::new_return),
+                    statement => self.resolve_statement(statement),
                 }
             })
-            .collect();
+            .collect::<Result<Vec<_>>>()?;
 
         self.declarations.push(HirDeclaration::new_function(
             statements, args, symbol, *span, decl, tyid,
@@ -125,6 +122,7 @@ impl SlynxHir {
         self.modules.exit_scope();
         Ok(())
     }
+
     pub fn hoist_component(
         &mut self,
         name: &GenericIdentifier,
@@ -166,19 +164,17 @@ impl SlynxHir {
                     } else {
                         self.infer_type()
                     };
+                    let rhs = if let Some(rhs) = rhs {
+                        Some(self.resolve_expr(rhs, Some(ty))?)
+                    } else {
+                        None
+                    };
+                    out.push(ComponentMemberDeclaration::new_property(
+                        prop_idx, rhs, def.span,
+                    ));
+                    let name = self.modules.intern_name(&name);
 
-                    out.push(ComponentMemberDeclaration::Property {
-                        id: PropertyId::new(),
-                        index: prop_idx,
-                        value: if let Some(rhs) = rhs {
-                            Some(self.resolve_expr(rhs, Some(ty))?)
-                        } else {
-                            None
-                        },
-                        span: def.span,
-                    });
-
-                    self.create_variable(&name, ty, true);
+                    self.create_variable(name, ty, &def.span);
                     prop_idx += 1;
                 }
                 ComponentMemberKind::Child(child) => {

@@ -1,13 +1,74 @@
 ///Module that implements anything related Specialized Component on the HIR
-use common::{ComponentExpression, ComponentMemberValue, Span};
+use common::{
+    ComponentExpression, ComponentMember, ComponentMemberValue, Span, VisibilityModifier,
+};
 
 use crate::hir::{
-    Result, SlynxHir,
+    PropertyId, Result, SlynxHir, TypeId,
     error::{HIRError, HIRErrorKind},
-    model::{ComponentMemberDeclaration, SpecializedComponent},
+    model::{ComponentMemberDeclaration, HirType, SpecializedComponent},
 };
 
 impl SlynxHir {
+    fn resolve_component_member(
+        &mut self,
+        member: ComponentMemberValue,
+        ty: TypeId,
+    ) -> Result<ComponentMemberDeclaration> {
+        match member {
+            ComponentMemberValue::Assign {
+                prop_name,
+                rhs,
+                span,
+            } => {
+                let interned_name = self.modules.intern_name(&prop_name);
+                let HirType::Component { props } = self.get_type(&ty) else {
+                    unreachable!("The type should be a component instead");
+                };
+                match props.iter().position(|prop| prop.name() == prop_name) {
+                    None => Err(HIRError::name_unrecognized(interned_name, span)),
+                    Some(index)
+                        if matches!(
+                            props[index].visibility(),
+                            VisibilityModifier::Private | VisibilityModifier::ChildrenPublic
+                        ) =>
+                    {
+                        Err(HIRError::not_visible_property(interned_name, span).into())
+                    }
+                    Some(index) => {
+                        let expr = self.resolve_expr(rhs, Some(*props[index].prop_type()))?;
+                        Ok(ComponentMemberDeclaration::new_property(
+                            index,
+                            Some(expr),
+                            span,
+                        ))
+                    }
+                }
+            }
+            ComponentMemberValue::Child(child) => {
+                //By now this won't track whether it can or cannot have children, since a method better than 'children' might be implemented in the future.
+                let (id, _) = {
+                    self.retrieve_information_of_type(&child.name.identifier, &child.name.span)?
+                };
+                let values = self.resolve_component_members(child.values, id)?;
+                Ok(ComponentMemberDeclaration::new_child(
+                    id, values, child.span,
+                ))
+            }
+        }
+    }
+    /// Resolves the provided values on a component. The `ty` is the type of the component we are resolving it
+    pub fn resolve_component_members(
+        &mut self,
+        members: Vec<ComponentMemberValue>,
+        ty: TypeId,
+    ) -> Result<Vec<ComponentMemberDeclaration>> {
+        let out = members
+            .into_iter()
+            .map(|member| self.resolve_component_member(member, ty))
+            .collect::<Result<Vec<_>>>()?;
+        Ok(out)
+    }
     pub fn resolve_specialize_text(
         &mut self,
         values: Vec<ComponentMemberValue>,

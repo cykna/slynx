@@ -6,7 +6,7 @@ pub use component::*;
 pub use expression::*;
 pub use types::*;
 
-#[derive(Default, Debug, Clone)]
+#[derive(Default, Debug, Clone, Copy)]
 pub enum VisibilityModifier {
     ///Property visible to everyone
     Public,
