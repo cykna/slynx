@@ -234,15 +234,6 @@ impl SlynxIR {
                     true,
                 );
 
-                let then_label = self.insert_label(temp.current_function(), "then_label");
-
-                let else_label = self.insert_label(temp.current_function(), "else_label");
-                let end_label = {
-                    let label = self.insert_label(temp.current_function(), "end_label");
-                    let v = self.get_type_of_value(value, temp);
-                    self.get_label_mut(label).add_argument(v);
-                    label
-                };
                 temp.set_current_label(then_label);
                 self.lower_if_branch(then_branch, end_label, temp)?;
 
