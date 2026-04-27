@@ -1,4 +1,4 @@
-use std::marker::PhantomData;
+use std::{hash::Hash, marker::PhantomData, ops::Range};
 
 ///A Pointer to something on the IR. This is a logical pointer composed by 48 bits(higher bits) that determine where the thing we are pointing to is located on the IR, and a length of 16bits to know how much of it we have as well.
 ///Think of this as a slice, but instead of containing data on the actual memory, it takes on the contents of the IR
@@ -8,12 +8,25 @@ pub struct IRPointer<T, const N: usize = 0> {
     data: PhantomData<T>,
 }
 
+impl<T, const N: usize> Copy for IRPointer<T, N> {}
+
+impl<T, const N: usize> Hash for IRPointer<T, N> {
+    fn hash<H: std::hash::Hasher>(&self, state: &mut H) {
+        self.inner.hash(state);
+    }
+}
+
+impl<T, const N: usize> PartialEq for IRPointer<T, N> {
+    fn eq(&self, other: &Self) -> bool {
+        self.inner == other.inner
+    }
+}
+
+impl<T, const N: usize> Eq for IRPointer<T, N> {}
+
 impl<T, const N: usize> Clone for IRPointer<T, N> {
     fn clone(&self) -> Self {
-        Self {
-            inner: self.inner,
-            data: PhantomData,
-        }
+        *self
     }
 }
 
@@ -33,7 +46,10 @@ impl<T, const N: usize> IRPointer<T, N> {
     }
 
     ///Creates a new IRPointer with the same pointer but a different length.
-    pub fn with_length<const M: usize>(self) -> IRPointer<T, M> {
+    pub fn with_length<const M: usize>(mut self) -> IRPointer<T, M> {
+        if M != 0 {
+            self.set_length(M)
+        };
         IRPointer {
             inner: self.inner,
             data: PhantomData,
@@ -42,7 +58,7 @@ impl<T, const N: usize> IRPointer<T, N> {
 
     ///Returns a pointer that moves `n` values forward
     pub fn ptr_to(&self, n: usize) -> IRPointer<T, 1> {
-        let mut out = self.clone();
+        let mut out = *self;
         out.set_ptr(self.ptr() + n);
         out.with_length()
     }
@@ -116,5 +132,11 @@ impl<T, const N: usize> IRPointer<T, N> {
     ///Sets the length part of the IRPointer to the provided value.
     pub fn set_length(&mut self, len: usize) {
         self.inner = (self.ptr() << 16 | (len & 0xffff)) as u64;
+    }
+
+    #[inline]
+    ///Retrieves the ranges this pointer goes to. The range is the same as `ptr..ptr+len`
+    pub fn range(&self) -> Range<usize> {
+        self.ptr()..self.ptr() + self.len()
     }
 }
