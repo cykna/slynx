@@ -85,10 +85,7 @@ impl HIRError {
     }
     pub fn invalid_type(name: SymbolPointer, reason: InvalidTypeReason, span: Span) -> Self {
         Self {
-            kind: HIRErrorKind::InvalidType {
-                ty: name,
-                reason,
-            },
+            kind: HIRErrorKind::InvalidType { ty: name, reason },
             span,
         }
     }

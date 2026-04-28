@@ -59,11 +59,8 @@ impl TypeChecker {
                             if let Some(expr) = maybe_expr {
                                 let expr_ty = self.get_type_of_expr(expr)?;
 
-                                *declared_props[*index].prop_type_mut() = self.unify(
-                                    declared_props[*index].prop_type(),
-                                    &expr_ty,
-                                    span,
-                                )?;
+                                *declared_props[*index].prop_type_mut() =
+                                    self.unify(declared_props[*index].prop_type(), &expr_ty, span)?;
                             }
                         }
 

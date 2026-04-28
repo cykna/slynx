@@ -10,7 +10,6 @@ use crate::{
 
 impl SlynxContext {
     fn hir_error_to_string(&self, hir: &SlynxHir, err: &HIRError) -> String {
-        
         match &err.kind {
             HIRErrorKind::InvalidFuncallArgLength {
                 func_name,

@@ -1,7 +1,5 @@
 ///Module that implements anything related Specialized Component on the HIR
-use common::{
-    ComponentExpression, ComponentMemberValue, Span, VisibilityModifier,
-};
+use common::{ComponentExpression, ComponentMemberValue, Span, VisibilityModifier};
 
 use crate::hir::{
     Result, SlynxHir, TypeId,

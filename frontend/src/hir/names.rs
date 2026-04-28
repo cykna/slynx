@@ -24,9 +24,11 @@ impl SlynxHir {
         {
             Ok(self.modules.types_module.get_type(rf))
         } else {
-            Err(
-                HIRError::invalid_type(name_symbol, InvalidTypeReason::IncorrectUsage, *span),
-            )
+            Err(HIRError::invalid_type(
+                name_symbol,
+                InvalidTypeReason::IncorrectUsage,
+                *span,
+            ))
         }
     }
 

@@ -318,14 +318,13 @@ impl SlynxContext {
         let mut ir = SlynxIR::new(hir.modules.symbols_resolver.get_symbols_module());
 
         if let Err(e) = ir.generate(hir.declarations, &types_module) {
-            return Err(self
-                .build_ir_generation_error(
-                    &e,
-                    &ir,
-                    &variable_names,
-                    &types_module,
-                    &hir.modules.declarations_module,
-                ));
+            return Err(self.build_ir_generation_error(
+                &e,
+                &ir,
+                &variable_names,
+                &types_module,
+                &hir.modules.declarations_module,
+            ));
         };
         Ok(CompilationStages::new(
             self.entry_point.as_ref(),
