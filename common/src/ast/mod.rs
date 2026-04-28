@@ -112,6 +112,10 @@ pub enum ASTDeclarationKind {
         return_type: GenericIdentifier,
         body: Vec<ASTStatement>,
     },
+    EnumDeclaration{
+        name: GenericIdentifier,
+        variants: Vec<String>,
+    },
 }
 
 impl ASTExpression {

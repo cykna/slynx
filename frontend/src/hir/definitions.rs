@@ -2,6 +2,11 @@ use crate::hir::{DeclarationId, ExpressionId, PropertyId, SymbolPointer, TypeId,
 
 use common::ast::{Operator, Span};
 
+#[derive(Debug, Clone, Copy)]
+#[repr(C)]
+pub struct EnumVariant{
+    pub name: SymbolPointer,
+}
 #[derive(Debug)]
 pub enum SpecializedComponent {
     Text {
@@ -131,4 +136,7 @@ pub enum HirExpressionKind {
         then_branch: Vec<HirStatement>,
         else_branch: Option<Vec<HirStatement>>,
     },
+    Enum {
+      variants: Vec<EnumVariant>  
+    }
 }

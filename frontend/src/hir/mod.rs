@@ -16,7 +16,7 @@ use crate::hir::{
     declarations::DeclarationsModule,
     definitions::{
         ComponentMemberDeclaration, HirDeclaration, HirDeclarationKind, HirStatement,
-        HirStatementKind,
+        HirStatementKind
     },
     error::{HIRError, HIRErrorKind},
     scopes::ScopeModule,
@@ -172,11 +172,17 @@ impl SlynxHir {
     /// Hoist the provided `ast` declaration, so no errors of undefined values because declared later may occur
     fn hoist(&mut self, ast: &ASTDeclaration) -> Result<()> {
         match &ast.kind {
+            
             ASTDeclarationKind::Alias { name, target } => {
                 self.symbols_module.intern(&target.identifier);
                 let symbol = self.symbols_module.intern(&name.identifier);
                 let ty = self.types_module.insert_type(symbol, HirType::Int);
                 self.declarations_module.create_declaration(symbol, ty);
+            }
+            ASTDeclarationKind::EnumDeclaration { name, variants } => {
+                let symbols = self.symbols_module.intern(&name.identifier);
+                let ty = self.types_module.insert_type(symbols, HirType::Enum{variants: variants.clone()});
+                self.declarations_module.create_declaration(symbols, ty);
             }
             ASTDeclarationKind::ObjectDeclaration { name, fields } => {
                 self.hoist_object(name, fields)?
@@ -223,6 +229,9 @@ impl SlynxHir {
 
     fn resolve(&mut self, ast: ASTDeclaration) -> Result<()> {
         match ast.kind {
+            ASTDeclarationKind::EnumDeclaration { name, variants } => {
+                
+            }
             ASTDeclarationKind::ObjectDeclaration { name, fields } => {
                 self.resolve_object(name, fields, ast.span)?
             }
