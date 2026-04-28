@@ -34,14 +34,16 @@ impl HirModules {
         }
     }
 
-    ///Interns the given `s` and returns its logical pointer
+    ///Interns the given `s` string and returns its logical pointer
     pub fn intern_name(&mut self, s: &str) -> SymbolPointer {
         self.symbols_resolver.intern(s)
     }
+
     ///Retrieves the symbol pointer for the given `s` if it exists, thus, was internalized
     pub fn retrieve_symbol(&self, s: &str) -> Option<SymbolPointer> {
         self.symbols_resolver.retrieve(s).cloned()
     }
+
     ///Finds some variable based on the given `name`. Checks all the scopes that are there currently
     pub fn find_variable(&self, name: SymbolPointer) -> Option<VariableId> {
         let mut idx = self.scope_module.len() - 1;
