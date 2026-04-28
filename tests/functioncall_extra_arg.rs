@@ -21,7 +21,7 @@ fn typechecker_rejects_function_call_with_extra_arg() {
         id: ExpressionId::new(),
         ty: template.ty,
         kind: HirExpressionKind::Int(0),
-        span: template.span.clone(),
+        span: template.span,
     });
 
     let err = TypeChecker::check(&mut hir)
