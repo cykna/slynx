@@ -6,6 +6,7 @@ use crate::hir::{
 };
 
 #[derive(Debug)]
+#[repr(C)]
 pub enum SpecializedComponent {
     Text {
         text: Box<HirExpression>,
@@ -14,6 +15,20 @@ pub enum SpecializedComponent {
         children: Vec<ComponentMemberDeclaration>,
     },
 }
+
+impl SpecializedComponent {
+    ///Creates a new specialized Text component with the given `text`
+    pub fn new_text(text: HirExpression) -> Self {
+        Self::Text {
+            text: Box::new(text),
+        }
+    }
+    ///Creates a new specialized Div component with the given `children`
+    pub fn new_div(children: Vec<ComponentMemberDeclaration>) -> Self {
+        Self::Div { children }
+    }
+}
+
 #[derive(Debug)]
 #[repr(C)]
 pub struct HirDeclaration {
