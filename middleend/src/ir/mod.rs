@@ -74,7 +74,9 @@ impl SlynxIR {
         for declaration in &hir {
             match &declaration.kind {
                 HirDeclarationKind::Object => {
-                    let out = self.types.create_empty_struct();
+                    let out = self
+                        .types
+                        .create_empty_struct(tys.get_type_name(&declaration.ty).unwrap().clone());
                     temp.define_type(declaration.ty, out);
                     // Also map the inner unnamed Struct TypeId (the `rf` of the Reference)
                     if let HirType::Reference { rf, .. } = tys.get_type(&declaration.ty) {

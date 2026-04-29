@@ -1,8 +1,8 @@
 use common::SymbolsModule;
 
 use crate::{
-    Context, IRPointer, IRSpecializedComponentType, IRType, IRTypes, Instruction, InstructionType,
-    Label, Operand, Slot, Value,
+    Context, IRPointer, IRSpecializedComponentType, IRType, IRTypeId, IRTypes, Instruction,
+    InstructionType, Label, Operand, Slot, Value,
 };
 
 /// Formatter holds the slices and helpers necessary to render the IR in textual form (SIR).
@@ -33,6 +33,56 @@ impl<'a> Formatter<'a> {
             symbols,
         }
     }
+    /// Convert IRType into a human friendly string. Kept as a free fn for reuse inside the module.
+    fn fmt_type(&self, ty: &IRType) -> String {
+        match ty {
+            IRType::I8 => "i8".to_string(),
+            IRType::U8 => "u8".to_string(),
+            IRType::I16 => "i16".to_string(),
+            IRType::U16 => "u16".to_string(),
+            IRType::I32 => "i32".to_string(),
+            IRType::U32 => "u32".to_string(),
+            IRType::I64 => "i64".to_string(),
+            IRType::U64 => "u64".to_string(),
+            IRType::F32 => "f32".to_string(),
+            IRType::F64 => "f64".to_string(),
+            IRType::BOOL => "bool".to_string(),
+            IRType::VOID => "void".to_string(),
+            IRType::STR => "str".to_string(),
+            IRType::Struct(t) => {
+                let strukt = self.types.get_object_type(*t);
+                if let Some(name) = strukt.name() {
+                    format!("%{}", self.symbols.get_name(name))
+                } else {
+                    let fields = self
+                        .types
+                        .get_object_type(*t)
+                        .get_fields()
+                        .iter()
+                        .map(|v| {
+                            let t = self.types.get_type(*v);
+                            self.fmt_type(&t)
+                        })
+                        .collect::<Vec<_>>()
+                        .join(",");
+                    format!("{{{fields}}}")
+                }
+            }
+            IRType::Component(_) => "component".to_string(),
+            IRType::Function(_) => "fn".to_string(),
+            IRType::GenericComponent => "component".to_string(),
+            IRType::ISIZE => "isize".to_string(),
+            IRType::USIZE => "usize".to_string(),
+            IRType::Specialized(IRSpecializedComponentType::Div) => "specialized(div)".to_string(),
+            IRType::Specialized(IRSpecializedComponentType::Text) => {
+                "specialized(text)".to_string()
+            }
+        }
+    }
+    pub fn format_type(&self, ty: IRTypeId) -> String {
+        self.fmt_type(&self.types.get_type(ty))
+    }
+
     pub fn format_label(&self, label: &Label, idx: usize, instructions: &[Instruction]) -> String {
         let mut out = String::new();
 
@@ -110,7 +160,11 @@ impl<'a> Formatter<'a> {
                         .map(|i| self.fmt_value(&instr.operands.ptr_to(i)))
                         .collect::<Vec<_>>()
                         .join(", ");
-                    format!("br $label_{}({});", idx, args)
+                    if args.len() > 0 {
+                        format!("br $label_{}({});", idx, args)
+                    } else {
+                        format!("br $label_{};", idx)
+                    }
                 }
             }
 
@@ -179,14 +233,14 @@ impl<'a> Formatter<'a> {
 
     fn fmt_get_field(&self, instr: &Instruction, index: usize) -> String {
         let target = self.fmt_value(&instr.operands.ptr_to(0));
-        let ty_str = fmt_type(&self.types.get_type(instr.value_type));
+        let ty_str = self.fmt_type(&self.types.get_type(instr.value_type));
         format!("getfield {}, {}, {};", ty_str, target, index)
     }
 
     fn fmt_set_field(&self, instr: &Instruction, slot: usize) -> String {
         let target = self.fmt_value(&instr.operands.ptr_to(0));
         // slot here is an index into struct fields (not an IRPointer)
-        let ty_str = fmt_type(&self.types.get_type(instr.value_type));
+        let ty_str = self.fmt_type(&self.types.get_type(instr.value_type));
         format!("set {}, {}, {};", ty_str, target, slot)
     }
 
@@ -202,26 +256,29 @@ impl<'a> Formatter<'a> {
     }
 
     fn fmt_allocate(&self, instr: &Instruction) -> String {
-        format!("allocate {};", instr.value_type.0)
+        format!(
+            "allocate {};",
+            self.fmt_type(&self.types.get_type(instr.value_type))
+        )
     }
 
     fn fmt_write(&self, instr: &Instruction, slot: &IRPointer<Slot, 1>) -> String {
         let value = self.fmt_value(&instr.operands.ptr_to(0));
-        let slot_str = format!("%slot{}", slot.ptr());
-        let ty_str = fmt_type(&self.types.get_type(instr.value_type));
+        let slot_str = format!("${}", slot.ptr());
+        let ty_str = self.fmt_type(&self.types.get_type(instr.value_type));
         format!("write {}, {}, {};", ty_str, slot_str, value)
     }
 
     fn fmt_read(&self, instr: &Instruction) -> String {
         let slot = instr.operands.ptr_to(0);
         let slot_str = self.fmt_value(&slot);
-        let ty_str = fmt_type(&self.types.get_type(instr.value_type));
+        let ty_str = self.fmt_type(&self.types.get_type(instr.value_type));
         format!("read {}, {};", ty_str, slot_str)
     }
 
     fn fmt_reinterpret(&self, instr: &Instruction) -> String {
         let slot_str = self.fmt_value(&instr.operands.ptr_to(0));
-        let ty_str = fmt_type(&self.types.get_type(instr.value_type));
+        let ty_str = self.fmt_type(&self.types.get_type(instr.value_type));
         format!("reinterpret {}, {};", ty_str, slot_str)
     }
 
@@ -230,7 +287,7 @@ impl<'a> Formatter<'a> {
             Value::FuncArg(n) => format!("p{}", n),
             Value::LabelArg(n) => format!("lp{}", n),
             Value::Instruction(p) => format!("%t{}", p.ptr()),
-            Value::Slot(p) => format!("%slot{}", p.ptr()),
+            Value::Slot(p) => format!("${}", p.ptr()),
             Value::Raw(op_ptr) => {
                 let op = &self.operands[op_ptr.ptr()];
                 match op {
@@ -257,35 +314,7 @@ impl<'a> Formatter<'a> {
         let a = self.fmt_value(&instr.operands.ptr_to(0));
         let b = self.fmt_value(&instr.operands.ptr_to(1));
         let sla = self.types.get_type(instr.value_type);
-        let ty_str = fmt_type(&sla);
+        let ty_str = self.fmt_type(&sla);
         format!("{} {}, {}, {};", op, ty_str, a, b)
-    }
-}
-
-/// Convert IRType into a human friendly string. Kept as a free fn for reuse inside the module.
-fn fmt_type(ty: &IRType) -> String {
-    match ty {
-        IRType::I8 => "i8".to_string(),
-        IRType::U8 => "u8".to_string(),
-        IRType::I16 => "i16".to_string(),
-        IRType::U16 => "u16".to_string(),
-        IRType::I32 => "i32".to_string(),
-        IRType::U32 => "u32".to_string(),
-        IRType::I64 => "i64".to_string(),
-        IRType::U64 => "u64".to_string(),
-        IRType::F32 => "f32".to_string(),
-        IRType::F64 => "f64".to_string(),
-        IRType::BOOL => "bool".to_string(),
-        IRType::VOID => "void".to_string(),
-        IRType::STR => "str".to_string(),
-        IRType::Tuple(_) => "tuple".to_string(),
-        IRType::Struct(_) => "struct".to_string(),
-        IRType::Component(_) => "component".to_string(),
-        IRType::Function(_) => "fn".to_string(),
-        IRType::GenericComponent => "generic".to_string(),
-        IRType::ISIZE => "isize".to_string(),
-        IRType::USIZE => "usize".to_string(),
-        IRType::Specialized(IRSpecializedComponentType::Div) => "div".to_string(),
-        IRType::Specialized(IRSpecializedComponentType::Text) => "text".to_string(),
     }
 }
