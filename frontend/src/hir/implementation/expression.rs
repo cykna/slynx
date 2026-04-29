@@ -3,11 +3,12 @@ use std::mem::discriminant;
 use crate::hir::{
     ExpressionId, Result, SlynxHir, TypeId,
     error::{HIRError, HIRErrorKind},
-    model::HirType,
-    model::{FieldMethod, HirExpression, HirExpressionKind, HirStatementKind},
+    model::{
+        FieldMethod, HirExpression, HirExpressionKind, HirStatement, HirStatementKind, HirType,
+    },
 };
 use common::{
-    SymbolPointer,
+    ASTStatement, SymbolPointer,
     ast::{ASTExpression, ASTExpressionKind, NamedExpr, Operator, Span},
 };
 
@@ -131,16 +132,19 @@ impl SlynxHir {
                     .get_variable_type(*variable_id)
                     .expect("variable type should exist before field access lowering");
                 let object_ref = self.resolve_object_reference_type(variable_ty, span)?;
-                let Some(layout) = self.retrieve_object_fields(object_ref) else {
-                    unreachable!("object reference should carry a layout");
+                let (layout, fields) = match (
+                    self.retrieve_object_fields(object_ref),
+                    self.get_type_from_ref(object_ref),
+                ) {
+                    (Some(layout), HirType::Struct { fields }) => (layout, fields),
+                    (None, _) => unreachable!("object reference should carry a layout"),
+                    (_, _) => unreachable!("object layouts should always resolve to structs"),
                 };
-                let HirType::Struct { fields } = self.get_type_from_ref(object_ref).clone() else {
-                    unreachable!("object layouts should always resolve to structs");
-                };
-                let Some(index) = layout.iter().position(|field| field == field_name) else {
-                    return Err(HIRError::property_unrecognized(vec![*field_name], *span));
-                };
-                Ok(fields[index])
+
+                match Self::find_name_index(layout, *field_name) {
+                    Some(index) => Ok(fields[index]),
+                    None => Err(HIRError::property_unrecognized(vec![*field_name], *span)),
+                }
             }
             FieldMethod::Tuple(rf, index) => self.resolve_tuple_access_type(*rf, *index, span),
         }
@@ -174,6 +178,43 @@ impl SlynxHir {
                 span: *span,
             }),
         }
+    }
+
+    pub fn resolve_if_expression(
+        &mut self,
+        condition: ASTExpression,
+        if_body: Vec<ASTStatement>,
+        else_body: Option<Vec<ASTStatement>>,
+        span: Span,
+    ) -> Result<HirExpression> {
+        let condition = self.resolve_expr(condition, Some(self.bool_type()))?;
+        let then_block: Vec<_> = if_body
+            .into_iter()
+            .map(|stmt| self.resolve_statement(stmt))
+            .collect::<Result<_>>()?;
+        let then_type = match then_block.last().map(|s| &s.kind) {
+            Some(HirStatementKind::Expression { expr }) => expr.ty,
+            Some(HirStatementKind::Variable { value, .. }) => value.ty,
+            _ => self.void_type(),
+        };
+        let else_block: Option<Vec<_>> = else_body
+            .map(|body| {
+                body.into_iter()
+                    .map(|stmt| self.resolve_statement(stmt))
+                    .collect::<Result<_>>()
+            })
+            .transpose()?;
+        let else_type = match then_block.last().map(|s| &s.kind) {
+            Some(HirStatementKind::Expression { expr }) => expr.ty,
+            Some(HirStatementKind::Variable { value, .. }) => value.ty,
+            _ => self.void_type(),
+        };
+        let final_type = if then_type == self.infer_type() {
+            else_type
+        } else {
+            then_type
+        };
+        Ok(self.create_if_expression(condition, then_block, else_block, final_type, span))
     }
 
     /// Resolves the provided `expr` trying to infer its type, if not able, keeps as infer, and on later phases fallsback to the default value.
@@ -210,49 +251,7 @@ impl SlynxHir {
                 condition,
                 body,
                 else_body,
-            } => {
-                let condition = self.resolve_expr(*condition, Some(self.bool_type()))?;
-                let then_block: Vec<_> = body
-                    .into_iter()
-                    .map(|stmt| self.resolve_statement(stmt))
-                    .collect::<Result<_>>()?;
-                let then_type = match then_block.last().map(|s| &s.kind) {
-                    Some(HirStatementKind::Expression { expr }) => expr.ty,
-                    Some(HirStatementKind::Variable { value, .. }) => value.ty,
-                    _ => self.void_type(),
-                };
-                let else_block: Option<Vec<_>> = if let Some(else_body) = else_body {
-                    Some(
-                        else_body
-                            .into_iter()
-                            .map(|stmt| self.resolve_statement(stmt))
-                            .collect::<Result<_>>()?,
-                    )
-                } else {
-                    None
-                };
-                let else_type = match then_block.last().map(|s| &s.kind) {
-                    Some(HirStatementKind::Expression { expr }) => expr.ty,
-                    Some(HirStatementKind::Variable { value, .. }) => value.ty,
-                    _ => self.void_type(),
-                };
-                let final_type = if then_type == self.infer_type() {
-                    else_type
-                } else {
-                    then_type
-                };
-
-                Ok(HirExpression {
-                    id: ExpressionId::new(),
-                    ty: final_type,
-                    kind: HirExpressionKind::If {
-                        condition: Box::new(condition),
-                        then_branch: then_block,
-                        else_branch: else_block,
-                    },
-                    span: expr.span,
-                })
-            }
+            } => {}
 
             ASTExpressionKind::FunctionCall { name, args } => {
                 let func_symbol = self.modules.intern_name(&name.identifier);

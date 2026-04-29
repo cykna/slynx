@@ -55,6 +55,7 @@ impl SlynxHir {
             }
         }
     }
+
     /// Resolves the provided values on a component. The `ty` is the type of the component we are resolving it
     pub fn resolve_component_members(
         &mut self,

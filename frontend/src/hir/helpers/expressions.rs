@@ -2,7 +2,7 @@ use common::{Operator, Span};
 
 use crate::hir::{
     ExpressionId, SlynxHir, TypeId, VariableId,
-    model::{HirExpression, HirExpressionKind},
+    model::{HirExpression, HirExpressionKind, HirStatement},
 };
 
 impl SlynxHir {
@@ -84,7 +84,7 @@ impl SlynxHir {
             span,
         }
     }
-    /// Creates a float expression.
+    /// Creates a binary expression.
     pub fn create_binary_expression(
         &self,
         left: HirExpression,
@@ -98,6 +98,26 @@ impl SlynxHir {
                 lhs: Box::new(left),
                 op: operator,
                 rhs: Box::new(right),
+            },
+            id: ExpressionId::new(),
+            ty,
+            span,
+        }
+    }
+    /// Creates a if expression.
+    pub fn create_if_expression(
+        &self,
+        condition: HirExpression,
+        then_body: Vec<HirStatement>,
+        else_body: Option<Vec<HirStatement>>,
+        ty: TypeId,
+        span: Span,
+    ) -> HirExpression {
+        HirExpression {
+            kind: HirExpressionKind::If {
+                condition: Box::new(condition),
+                then_branch: then_body,
+                else_branch: else_body,
             },
             id: ExpressionId::new(),
             ty,

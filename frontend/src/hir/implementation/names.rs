@@ -2,11 +2,6 @@ use crate::hir::{Result, SlynxHir, TypeId, error::HIRError, model::HirType};
 
 use common::ast::{GenericIdentifier, Span};
 impl SlynxHir {
-    ///Creates a type with the provided `name` and `ty`. Returns it's ID
-    pub fn assing_type(&mut self, type_id: TypeId, ty: HirType) {
-        self.types.insert(type_id, ty);
-    }
-
     ///Retrieves the type of the provided `name` but in the global scope
     pub fn retrieve_type_of_name(
         &mut self,
