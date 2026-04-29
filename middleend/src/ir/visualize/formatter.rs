@@ -10,6 +10,7 @@ use crate::{
 /// `visualize` module.
 pub struct Formatter<'a> {
     pub labels: &'a [Label],
+    pub contexts: &'a [Context],
     pub values: &'a [Value],
     pub operands: &'a [Operand],
     pub types: &'a IRTypes,
@@ -20,12 +21,14 @@ impl<'a> Formatter<'a> {
     /// Create a new formatter instance.
     pub fn new(
         labels: &'a [Label],
+        contexts: &'a [Context],
         values: &'a [Value],
         operands: &'a [Operand],
         types: &'a IRTypes,
         symbols: &'a SymbolsModule,
     ) -> Self {
         Self {
+            contexts,
             labels,
             values,
             operands,
@@ -80,6 +83,28 @@ impl<'a> Formatter<'a> {
         }
     }
 
+    pub fn format_contexts(&self, instructions: &[Instruction]) -> String {
+        let mut out = Vec::new();
+        for ctx in self.contexts {
+            let ty = ctx.ty();
+            let IRType::Function(fty) = self.types.get_type(ty) else {
+                unreachable!("Type of context should be function");
+            };
+            let ty = self.types.get_function_type(fty);
+            let ty = self.fmt_type(&self.types.get_type(ty.get_return_type()));
+            let mut current = format!("{ty} {}(){{\n", self.symbols.get_name(ctx.name()));
+            let range = ctx.labels_ptr().range();
+            let mut idx = 0;
+            for label in &self.labels[range.start..range.end] {
+                current.push_str(&self.format_label(&label, idx, instructions));
+                idx += 1;
+            }
+            current.push_str("}\n");
+            out.push(current);
+        }
+        out.join("\n")
+    }
+
     pub fn format_types(&self) -> String {
         let mut out = String::new();
         for (name, fields) in self
@@ -125,6 +150,7 @@ impl<'a> Formatter<'a> {
 
             let fmt = Formatter::new(
                 self.labels,
+                self.contexts,
                 self.values,
                 self.operands,
                 self.types,
@@ -257,7 +283,7 @@ impl<'a> Formatter<'a> {
         let target = self.fmt_value(&instr.operands.ptr_to(0));
         // slot here is an index into struct fields (not an IRPointer)
         let ty_str = self.fmt_type(&self.types.get_type(instr.value_type));
-        format!("set {}, {}, {};", ty_str, target, slot)
+        format!("setfield {}, {}, {};", ty_str, target, slot)
     }
 
     fn fmt_function_call(&self, instr: &Instruction, func: &IRPointer<Context, 1>) -> String {
