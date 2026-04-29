@@ -3,9 +3,7 @@ use std::mem::discriminant;
 use crate::hir::{
     ExpressionId, Result, SlynxHir, TypeId,
     error::{HIRError, HIRErrorKind},
-    model::{
-        FieldMethod, HirExpression, HirExpressionKind, HirStatementKind, HirType,
-    },
+    model::{FieldMethod, HirExpression, HirExpressionKind, HirStatementKind, HirType},
 };
 use common::{
     ASTStatement, SymbolPointer,
