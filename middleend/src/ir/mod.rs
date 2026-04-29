@@ -147,13 +147,17 @@ impl SlynxIR {
         let fmt = visualize::Formatter::new(
             &self.labels,
             &self.contexts,
+            &self.components,
             &self.values,
             &self.operands,
             &self.types,
             &self.strings,
+            &self.specialized,
+            &self.instruction_pointers,
+            &self.instructions,
         );
         let mut out = fmt.format_types();
-        out.push_str(&fmt.format_contexts(&self.instructions));
+        out.push_str(&fmt.format_contexts());
         out
     }
 }

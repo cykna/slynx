@@ -1,8 +1,11 @@
+use std::collections::{BTreeSet, HashMap, HashSet};
+
 use common::SymbolsModule;
 
 use crate::{
-    Context, IRComponentId, IRPointer, IRSpecializedComponentType, IRStructId, IRType, IRTypeId,
-    IRTypes, Instruction, InstructionType, Label, Operand, Slot, Value,
+    Component, Context, IRComponentId, IRPointer, IRSpecializedComponent,
+    IRSpecializedComponentType, IRStructId, IRType, IRTypes, Instruction, InstructionType, Label,
+    Operand, Slot, Value,
 };
 
 /// Formatter holds the slices and helpers necessary to render the IR in textual form (SIR).
@@ -11,10 +14,17 @@ use crate::{
 pub struct Formatter<'a> {
     pub labels: &'a [Label],
     pub contexts: &'a [Context],
+    pub components: &'a [Component],
     pub values: &'a [Value],
     pub operands: &'a [Operand],
     pub types: &'a IRTypes,
     pub symbols: &'a SymbolsModule,
+    pub specialized: &'a [IRSpecializedComponent],
+    pub instruction_pointers: &'a [IRPointer<Instruction>],
+    pub instructions: &'a [Instruction],
+    label_offset: usize,
+    /// Indices of unmapped instructions that should be inlined (used exactly once, simple op).
+    inline_set: HashSet<usize>,
 }
 
 impl<'a> Formatter<'a> {
@@ -22,19 +32,84 @@ impl<'a> Formatter<'a> {
     pub fn new(
         labels: &'a [Label],
         contexts: &'a [Context],
+        components: &'a [Component],
         values: &'a [Value],
         operands: &'a [Operand],
         types: &'a IRTypes,
         symbols: &'a SymbolsModule,
+        specialized: &'a [IRSpecializedComponent],
+        instruction_pointers: &'a [IRPointer<Instruction>],
+        instructions: &'a [Instruction],
     ) -> Self {
         Self {
             contexts,
+            components,
             labels,
             values,
             operands,
             types,
             symbols,
+            specialized,
+            instruction_pointers,
+            instructions,
+            label_offset: 0,
+            inline_set: HashSet::new(),
         }
+    }
+
+    fn with_label_offset(&self, offset: usize) -> Formatter<'a> {
+        Formatter { label_offset: offset, inline_set: HashSet::new(), ..*self }
+    }
+
+    /// Returns true if the instruction at `instr_idx` (index into `instructions`) is mapped.
+    fn is_mapped(&self, instr_idx: usize) -> bool {
+        self.instruction_pointers.iter().any(|p| p.ptr() == instr_idx)
+    }
+
+    /// Returns true if an unmapped instruction is simple enough to be inlined.
+    fn is_inlinable(instr: &Instruction) -> bool {
+        matches!(
+            instr.instruction_type,
+            InstructionType::Component | InstructionType::Struct
+        )
+    }
+
+    /// Counts how many times each unmapped instruction index is referenced by the operands
+    /// of `instr_idx` (recursively), excluding RawValue which are always inlined.
+    fn count_refs(&self, instr_idx: usize, counts: &mut HashMap<usize, usize>) {
+        let instr = &self.instructions[instr_idx];
+        for i in 0..instr.operands.len() {
+            if let Value::Instruction(p) = &self.values[instr.operands.ptr_to(i).ptr()] {
+                let dep = p.ptr();
+                let dep_instr = &self.instructions[dep];
+                if matches!(dep_instr.instruction_type, InstructionType::RawValue) {
+                    continue;
+                }
+                if !self.is_mapped(dep) {
+                    *counts.entry(dep).or_insert(0) += 1;
+                    if *counts.get(&dep).unwrap() == 1 {
+                        self.count_refs(dep, counts);
+                    }
+                }
+            }
+        }
+    }
+
+    /// Builds the inline_set for a label: unmapped instructions referenced exactly once
+    /// that are simple enough to inline.
+    fn build_inline_set(&self, label: &Label) -> HashSet<usize> {
+        let iptr = label.instructions();
+        let mut counts: HashMap<usize, usize> = HashMap::new();
+        for i in 0..iptr.len() {
+            let ip_idx = iptr.ptr_to(i).ptr();
+            let real_idx = self.instruction_pointers[ip_idx].ptr();
+            self.count_refs(real_idx, &mut counts);
+        }
+        counts
+            .into_iter()
+            .filter(|(idx, count)| *count == 1 && Self::is_inlinable(&self.instructions[*idx]))
+            .map(|(idx, _)| idx)
+            .collect()
     }
 
     fn fmt_struct(&self, t: &IRStructId) -> String {
@@ -90,7 +165,7 @@ impl<'a> Formatter<'a> {
         }
     }
 
-    pub fn format_contexts(&self, instructions: &[Instruction]) -> String {
+    pub fn format_contexts(&self) -> String {
         let mut out = Vec::new();
         for ctx in self.contexts {
             let ty = ctx.ty();
@@ -100,12 +175,65 @@ impl<'a> Formatter<'a> {
             let ty = self.types.get_function_type(fty);
             let ty = self.fmt_type(&self.types.get_type(ty.get_return_type()));
             let mut current = format!("{ty} {}(){{\n", self.symbols.get_name(ctx.name()));
-            let range = ctx.labels_ptr().range();
+            let labels_ptr = ctx.labels_ptr();
+            let label_offset = labels_ptr.ptr();
+            let range = labels_ptr.range();
+            let fmt = self.with_label_offset(label_offset);
             let mut idx = 0;
             for label in &self.labels[range.start..range.end] {
-                current.push_str(&self.format_label(&label, idx, instructions));
+                current.push_str(&fmt.format_label(label, idx));
                 idx += 1;
             }
+            current.push_str("}\n");
+            out.push(current);
+        }
+
+        for component in self.components {
+            let ty = component.ir_type();
+            let IRType::Component(cid) = self.types.get_type(ty) else {
+                unreachable!("Type of context should be component");
+            };
+            let comp_ty = self.types.get_component_type(cid);
+            let params = comp_ty
+                .fields()
+                .iter()
+                .map(|v| self.fmt_type(&self.types.get_type(*v)))
+                .collect::<Vec<_>>()
+                .join(", ");
+
+            let mut current = format!(
+                "component %{}({}) {{\n",
+                self.symbols.get_name(comp_ty.name()),
+                params
+            );
+
+            // Props: %fieldN: ty = pN
+            for (i, field_ty) in comp_ty.fields().iter().enumerate() {
+                let ty_str = self.fmt_type(&self.types.get_type(*field_ty));
+                current.push_str(&format!("  %field{}: {} = p{};\n", i, ty_str, i));
+            }
+
+            // Children: #tN: specialized <type>
+            let values_range = component.values();
+            for i in 0..values_range.len() {
+                let val = &self.values[values_range.ptr_to(i).ptr()];
+                let child_str = match val {
+                    Value::Instruction(instr_ptr) => {
+                        format!("#t{}: component %t{}", i, instr_ptr.ptr())
+                    }
+                    Value::Specliazed(spec_ptr) => {
+                        let spec = &self.specialized[spec_ptr.ptr()];
+                        let kind = match spec {
+                            IRSpecializedComponent::Text(_) => "specialized(text)",
+                            IRSpecializedComponent::Div(_) => "specialized(div)",
+                        };
+                        format!("#t{}: {}", i, kind)
+                    }
+                    _ => format!("#t{}: unknown", i),
+                };
+                current.push_str(&format!("  {};\n", child_str));
+            }
+
             current.push_str("}\n");
             out.push(current);
         }
@@ -131,7 +259,29 @@ impl<'a> Formatter<'a> {
         out
     }
 
-    pub fn format_label(&self, label: &Label, idx: usize, instructions: &[Instruction]) -> String {
+    /// Recursively collects indices (into `instructions`) of unmapped instructions
+    /// that `instr_idx` depends on, in ascending order, into `out`.
+    fn collect_unmapped_deps(&self, instr_idx: usize, out: &mut BTreeSet<usize>) {
+        let instr = &self.instructions[instr_idx];
+        for i in 0..instr.operands.len() {
+            let val_ptr = instr.operands.ptr_to(i);
+            if let Value::Instruction(p) = &self.values[val_ptr.ptr()] {
+                let dep_idx = p.ptr();
+                let dep_instr = &self.instructions[dep_idx];
+                if matches!(dep_instr.instruction_type, InstructionType::RawValue) {
+                    continue;
+                }
+                if self.inline_set.contains(&dep_idx) {
+                    continue; // will be inlined, no need to emit as own line
+                }
+                if !self.is_mapped(dep_idx) && out.insert(dep_idx) {
+                    self.collect_unmapped_deps(dep_idx, out);
+                }
+            }
+        }
+    }
+
+    pub fn format_label(&self, label: &Label, idx: usize) -> String {
         let mut out = String::new();
 
         if label.arguments().is_empty() {
@@ -144,27 +294,31 @@ impl<'a> Formatter<'a> {
                 .map(|(i, _)| format!("lp{}", i))
                 .collect::<Vec<_>>()
                 .join(", ");
-
             out.push_str(&format!("$label_{}({}):\n", idx, params));
         }
 
-        // Instructions inside the label
+        let inline_set = self.build_inline_set(label);
+        let fmt = Formatter { inline_set, ..*self };
+
         let iptr = label.instructions();
+        let mut emitted: BTreeSet<usize> = BTreeSet::new();
+
         for i in 0..iptr.len() {
-            let instr_ptr = iptr.ptr_to(i);
-            let instr_idx = instr_ptr.ptr();
-            let instr = &instructions[instr_idx];
+            let ip_idx = iptr.ptr_to(i).ptr();
+            let real_idx = fmt.instruction_pointers[ip_idx].ptr();
 
-            let fmt = Formatter::new(
-                self.labels,
-                self.contexts,
-                self.values,
-                self.operands,
-                self.types,
-                self.symbols,
-            );
+            let mut deps = BTreeSet::new();
+            fmt.collect_unmapped_deps(real_idx, &mut deps);
+            for dep_idx in deps {
+                if emitted.insert(dep_idx) {
+                    let dep = &fmt.instructions[dep_idx];
+                    let line = fmt.format_instruction(dep);
+                    out.push_str(&format!("  %t{} = {}\n", dep_idx, line));
+                }
+            }
+
+            let instr = &fmt.instructions[real_idx];
             let line = fmt.format_instruction(instr);
-
             let produces_value = !matches!(
                 instr.instruction_type,
                 InstructionType::Br(_)
@@ -172,25 +326,22 @@ impl<'a> Formatter<'a> {
                     | InstructionType::Write(_)
                     | InstructionType::Ret
             );
-
             out.push_str("  ");
-
             if produces_value {
-                out.push_str(&format!("%t{} = {}", instr_idx, line));
+                out.push_str(&format!("%t{} = {}", real_idx, line));
             } else {
                 out.push_str(&line);
             }
-
             out.push('\n');
         }
 
         out
     }
 
-    pub fn format_labels(&self, instructions: &[Instruction]) -> String {
+    pub fn format_labels(&self) -> String {
         let mut out = String::new();
         for (i, label) in self.labels.iter().enumerate() {
-            out.push_str(&self.format_label(label, i, instructions));
+            out.push_str(&self.format_label(label, i));
             out.push('\n');
         }
         out
@@ -199,20 +350,20 @@ impl<'a> Formatter<'a> {
     pub fn format_instruction(&self, instr: &Instruction) -> String {
         match &instr.instruction_type {
             InstructionType::Br(label_ptr) => {
-                let idx = label_ptr.ptr();
+                let label_str = self.fmt_label_ref(label_ptr);
                 let len = instr.operands.len();
 
                 if len == 0 {
-                    format!("br $label_{};", idx)
+                    format!("br {};", label_str)
                 } else {
                     let args = (0..len)
                         .map(|i| self.fmt_value(&instr.operands.ptr_to(i)))
                         .collect::<Vec<_>>()
                         .join(", ");
-                    if args.len() > 0 {
-                        format!("br $label_{}({});", idx, args)
+                    if !args.is_empty() {
+                        format!("br {}({});", label_str, args)
                     } else {
-                        format!("br $label_{};", idx)
+                        format!("br {};", label_str)
                     }
                 }
             }
@@ -268,15 +419,28 @@ impl<'a> Formatter<'a> {
                 let ptr = instr.operands.ptr_to(0);
                 self.fmt_value(&ptr)
             }
-            InstructionType::Struct | InstructionType::Component => {
-                "Struct/Component not implemented".to_string()
+            InstructionType::Struct => {
+                let ty_str = self.fmt_type(&self.types.get_type(instr.value_type));
+                let args = (0..instr.operands.len())
+                    .map(|i| self.fmt_value(&instr.operands.ptr_to(i)))
+                    .collect::<Vec<_>>()
+                    .join(", ");
+                format!("{}({})", ty_str, args)
+            }
+            InstructionType::Component => {
+                let ty_str = self.fmt_type(&self.types.get_type(instr.value_type));
+                let args = (0..instr.operands.len())
+                    .map(|i| self.fmt_value(&instr.operands.ptr_to(i)))
+                    .collect::<Vec<_>>()
+                    .join(", ");
+                format!("{}({})", ty_str, args)
             }
         }
     }
 
     #[inline]
     fn fmt_label_ref(&self, ptr: &IRPointer<Label, 1>) -> String {
-        let idx = ptr.ptr();
+        let idx = ptr.ptr().saturating_sub(self.label_offset);
         format!("$label_{}", idx)
     }
 
@@ -335,7 +499,16 @@ impl<'a> Formatter<'a> {
         match &self.values[ptr.ptr()] {
             Value::FuncArg(n) => format!("p{}", n),
             Value::LabelArg(n) => format!("lp{}", n),
-            Value::Instruction(p) => format!("%t{}", p.ptr()),
+            Value::Instruction(p) => {
+                let instr = &self.instructions[p.ptr()];
+                if matches!(instr.instruction_type, InstructionType::RawValue) {
+                    self.fmt_value(&instr.operands.ptr_to(0))
+                } else if self.inline_set.contains(&p.ptr()) {
+                    self.format_instruction(instr).trim_end_matches(';').to_string()
+                } else {
+                    format!("%t{}", p.ptr())
+                }
+            }
             Value::Slot(p) => format!("${}", p.ptr()),
             Value::Raw(op_ptr) => {
                 let op = &self.operands[op_ptr.ptr()];
