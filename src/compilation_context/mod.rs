@@ -8,8 +8,8 @@ use std::{
 use color_eyre::eyre::Result;
 use common::{ASTDeclaration, SymbolPointer};
 use slynx_hir::{
-    SlynxHir, VariableId,
     modules::{DeclarationsModule, TypesModule},
+    SlynxHir, VariableId,
 };
 use slynx_ir::{IRError, SlynxIR};
 use slynx_lexer::{Lexer, TokenStream};
@@ -17,7 +17,7 @@ use slynx_monomorphizer::Monomorphizer;
 use slynx_parser::Parser;
 use slynx_typechecker::TypeChecker;
 
-use crate::compilation_context::errors::{SlynxError, helpers::suggestions_from_lexer};
+use crate::compilation_context::errors::{helpers::suggestions_from_lexer, SlynxError};
 
 #[derive(Debug)]
 pub struct CompilationOutput {
@@ -241,12 +241,12 @@ impl SlynxContext {
         let variables = hir.modules.symbols_resolver.variables().clone();
         let mut ir = SlynxIR::new(hir.modules.symbols_resolver.get_symbols_module());
 
-        ir.generate(hir.declarations, &types_module).map_err(|e| {
+        ir.generate(hir.declarations, types_module).map_err(|e| {
             self.build_ir_generation_error(
                 &e,
                 &ir,
                 &variables,
-                &types_module,
+                types_module,
                 &hir.modules.declarations_module,
             )
         })?;
@@ -343,13 +343,13 @@ fn format_ir_generation_error(
 
 #[cfg(test)]
 mod tests {
-    use super::SlynxContext;
     use super::format_ir_generation_error;
+    use super::SlynxContext;
 
     use slynx_hir::{
-        DeclarationId, VariableId,
         model::HirType,
-        modules::{BUILTIN_NAMES, DeclarationsModule, SymbolsModule, TypesModule},
+        modules::{DeclarationsModule, SymbolsModule, TypesModule, BUILTIN_NAMES},
+        DeclarationId, VariableId,
     };
 
     use slynx_ir::{IRError, SlynxIR};
