@@ -115,6 +115,15 @@ impl SlynxContext {
         Ok(out)
     }
 
+    pub fn from_source(src: String) -> Self {
+        let entry = Arc::new(PathBuf::new());
+        Self {
+            files: HashMap::from([(entry.clone(), src)]),
+            lines: HashMap::new(),
+            entry_point: entry,
+        }
+    }
+
     ///Gets the source code of the file that will start all the compilation
     pub fn get_entry_point_source(&self) -> &str {
         self.files

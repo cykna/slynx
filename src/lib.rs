@@ -1,8 +1,8 @@
 use std::{path::PathBuf, sync::Arc};
 
 mod compilation_context;
+pub use common;
 pub use compilation_context::*;
-
 pub use slynx_hir;
 pub use slynx_ir;
 use slynx_ir::SlynxIR;
