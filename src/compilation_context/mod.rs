@@ -6,18 +6,18 @@ use std::{
 };
 
 use color_eyre::eyre::Result;
-use common::{ASTDeclaration, SymbolPointer};
+use common::SymbolPointer;
 use slynx_hir::{
-    modules::{DeclarationsModule, TypesModule},
     SlynxHir, VariableId,
+    modules::{DeclarationsModule, TypesModule},
 };
 use slynx_ir::{IRError, SlynxIR};
 use slynx_lexer::{Lexer, TokenStream};
 use slynx_monomorphizer::Monomorphizer;
-use slynx_parser::Parser;
+use slynx_parser::{ASTDeclaration, Parser};
 use slynx_typechecker::TypeChecker;
 
-use crate::compilation_context::errors::{helpers::suggestions_from_lexer, SlynxError};
+use crate::compilation_context::errors::{SlynxError, helpers::suggestions_from_lexer};
 
 #[derive(Debug)]
 pub struct CompilationOutput {
@@ -343,13 +343,13 @@ fn format_ir_generation_error(
 
 #[cfg(test)]
 mod tests {
-    use super::format_ir_generation_error;
     use super::SlynxContext;
+    use super::format_ir_generation_error;
 
     use slynx_hir::{
-        model::HirType,
-        modules::{DeclarationsModule, SymbolsModule, TypesModule, BUILTIN_NAMES},
         DeclarationId, VariableId,
+        model::HirType,
+        modules::{BUILTIN_NAMES, DeclarationsModule, SymbolsModule, TypesModule},
     };
 
     use slynx_ir::{IRError, SlynxIR};

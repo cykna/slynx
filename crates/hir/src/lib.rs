@@ -87,7 +87,7 @@ use crate::{
     model::{HirDeclaration, HirDeclarationKind, HirType},
     modules::HirModules,
 };
-use common::ast::{ASTDeclaration, ASTDeclarationKind};
+use slynx_parser::{ASTDeclaration, ASTDeclarationKind};
 
 pub use id::{DeclarationId, ExpressionId, PropertyId, TypeId, VariableId};
 

@@ -3,7 +3,8 @@ use color_eyre::eyre::Result;
 use crate::Parser;
 use slynx_lexer::tokens::{Token, TokenKind};
 
-use common::ast::{ASTDeclaration, ASTDeclarationKind, ObjectField, Span, VisibilityModifier};
+use crate::ast::{ASTDeclaration, ASTDeclarationKind, ObjectField, VisibilityModifier};
+use common::Span;
 
 impl Parser {
     pub fn parse_object(&mut self, start: Span) -> Result<ASTDeclaration> {

@@ -1,9 +1,7 @@
 use crate::model::{HirExpression, HirType};
 
-use common::{
-    SymbolPointer,
-    ast::{ComponentExpression, Span},
-};
+use common::{Span, SymbolPointer};
+use slynx_parser::ComponentExpression;
 
 /// An error produced during HIR generation or type checking.
 ///

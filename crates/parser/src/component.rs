@@ -1,8 +1,9 @@
-use color_eyre::eyre::Result;
-use common::ast::{
+use crate::ast::{
     ASTDeclaration, ASTDeclarationKind, ComponentMember, ComponentMemberKind, GenericIdentifier,
-    Span, VisibilityModifier,
+    VisibilityModifier,
 };
+use color_eyre::eyre::Result;
+use common::Span;
 
 use crate::error::ParseError;
 use slynx_lexer::tokens::{Token, TokenKind};

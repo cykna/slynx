@@ -3,9 +3,10 @@ use crate::{
     error::HIRError,
     model::{ComponentMemberDeclaration, ComponentProperty, HirDeclaration, HirStatement, HirType},
 };
-use common::{
-    ASTStatement, ASTStatementKind,
-    ast::{ComponentMember, ComponentMemberKind, GenericIdentifier, ObjectField, Span, TypedName},
+use common::Span;
+use slynx_parser::{
+    ASTStatement, ASTStatementKind, ComponentMember, ComponentMemberKind, GenericIdentifier,
+    ObjectField, TypedName,
 };
 
 impl SlynxHir {
@@ -107,7 +108,7 @@ impl SlynxHir {
                 let is_last = index + 1 == body_len;
                 match statement {
                     // The last expression in a function body becomes the implicit return.
-                    common::ast::ASTStatement {
+                    ASTStatement {
                         kind: ASTStatementKind::Expression(expr),
                         ..
                     } if is_last => self.resolve_expr(expr, None).map(HirStatement::new_return),

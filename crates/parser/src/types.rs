@@ -1,7 +1,8 @@
 use super::Parser;
 use crate::error::ParseError;
+use crate::{ASTDeclaration, ASTDeclarationKind, ast::GenericIdentifier};
 use color_eyre::eyre::Result;
-use common::{ASTDeclaration, ASTDeclarationKind, Span, ast::GenericIdentifier};
+use common::Span;
 use slynx_lexer::tokens::{Token, TokenKind};
 impl Parser {
     ///Parses an alias declaration which follows `alias ty = AnotherType`

@@ -5,10 +5,8 @@ use crate::{
     error::{HIRError, HIRErrorKind},
     model::{FieldMethod, HirExpression, HirExpressionKind, HirStatementKind, HirType},
 };
-use common::{
-    ASTStatement, SymbolPointer,
-    ast::{ASTExpression, ASTExpressionKind, NamedExpr, Operator, Span},
-};
+use common::{Operator, Span, SymbolPointer};
+use slynx_parser::{ASTExpression, ASTExpressionKind, ASTStatement, NamedExpr};
 
 impl SlynxHir {
     /// Resolves and reorders the provided object field expressions to match the declared field layout.

@@ -1,11 +1,11 @@
-///Module that implements anything related Specialized Component on the HIR
-use common::{ComponentExpression, ComponentMemberValue, Span, VisibilityModifier};
-
 use crate::{
     Result, SlynxHir, TypeId,
     error::{HIRError, HIRErrorKind},
     model::{ComponentMemberDeclaration, HirType, SpecializedComponent},
 };
+///Module that implements anything related Specialized Component on the HIR
+use common::Span;
+use slynx_parser::{ComponentExpression, ComponentMemberValue, VisibilityModifier};
 
 impl SlynxHir {
     fn resolve_component_member(

@@ -9,7 +9,7 @@ use color_eyre::eyre::Result;
 use super::TypeChecker;
 
 use crate::error::{TypeError, TypeErrorKind};
-use common::ast::Span;
+use common::Span;
 use slynx_hir::{
     DeclarationId, TypeId,
     model::{

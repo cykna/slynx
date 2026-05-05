@@ -1,3 +1,4 @@
+mod ast;
 mod component;
 pub mod conditionals;
 pub mod error;
@@ -6,6 +7,7 @@ mod functions;
 pub mod objects;
 mod statement;
 mod types;
+pub use ast::*;
 use color_eyre::eyre::{Report, Result};
 
 use crate::error::ParseError;
@@ -14,7 +16,6 @@ use slynx_lexer::{
     tokens::{Token, TokenKind},
 };
 
-use common::ast::ASTDeclaration;
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
 pub enum ParserFlags {
     None,
@@ -54,7 +55,7 @@ impl Parser {
     }
 
     /// Peeks at the next token without consuming it.
-    /// Returns a reference to the next token if it exists, or an error if the end of the input stream is reached.  
+    /// Returns a reference to the next token if it exists, or an error if the end of the input stream is reached.
     pub fn peek(&self) -> Result<&Token> {
         self.peek_at(0)
     }

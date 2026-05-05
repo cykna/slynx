@@ -1,9 +1,8 @@
-use common::{Operator, Span};
-
 use crate::{
     ExpressionId, SlynxHir, TypeId, VariableId,
     model::{HirExpression, HirExpressionKind, HirStatement},
 };
+use common::{Operator, Span};
 
 impl SlynxHir {
     /// Creates a tuple expression with the given type and values.

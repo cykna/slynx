@@ -27,7 +27,7 @@ use common::SymbolPointer;
 
 use crate::error::{IncompatibleComponentReason, TypeError, TypeErrorKind};
 
-use common::ast::Span;
+use common::Span;
 use slynx_hir::model::{ComponentProperty, HirStatement, HirStatementKind};
 use slynx_hir::modules::TypesModule;
 use slynx_hir::{

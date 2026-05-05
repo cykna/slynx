@@ -2,7 +2,7 @@ use crate::{
     Result, SlynxHir,
     model::{HirStatement, HirStatementKind},
 };
-use common::ast::{ASTExpression, ASTExpressionKind, ASTStatement, ASTStatementKind};
+use slynx_parser::{ASTExpression, ASTExpressionKind, ASTStatement, ASTStatementKind};
 
 impl SlynxHir {
     /// Checks that the given expression refers to an already-defined name, returning an error if not.
