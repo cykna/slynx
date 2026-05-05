@@ -33,15 +33,22 @@ impl std::fmt::Display for SlynxErrorType {
 #[derive(Debug)]
 ///An error that will be shown if something fails
 pub struct SlynxError {
-    ty: SlynxErrorType,
-    line: usize,
-    column_start: usize,
-    message: String,
+    ///The phase this error was generated at
+    pub ty: SlynxErrorType,
+    ///The initial line this error occurs
+    pub line: usize,
+    ///The starting column of this error. Thus, where it initializes inside a buffer
+    pub column_start: usize,
+    ///The message of this error
+    pub message: String,
     ///The file path the error occuried
-    file: String,
-    source_code: String,
-    suggestion: Vec<SlynxSuggestion>,
+    pub file: String,
+    ///The code that generated the error
+    pub source_code: String,
+    ///Suggestions for solving this error
+    pub suggestion: Vec<SlynxSuggestion>,
 }
+
 impl std::error::Error for SlynxError {}
 
 impl std::fmt::Display for SlynxError {
