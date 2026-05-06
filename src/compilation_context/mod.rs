@@ -17,7 +17,7 @@ use slynx_monomorphizer::Monomorphizer;
 use slynx_parser::{ASTDeclaration, Parser};
 use slynx_typechecker::TypeChecker;
 
-use crate::compilation_context::errors::{SlynxError, helpers::suggestions_from_lexer};
+pub use crate::compilation_context::errors::*;
 
 #[derive(Debug)]
 pub struct CompilationOutput {
@@ -104,6 +104,17 @@ pub struct SlynxContext {
     entry_point: Arc<PathBuf>,
 }
 
+pub struct LineInfo<'a> {
+    ///The line where the error occuried
+    pub line: usize,
+    ///The initial column on that line
+    pub column_start: usize,
+    ///The final column on that line
+    pub column_end: usize,
+    ///The source that generated that error
+    pub src: &'a str,
+}
+
 impl SlynxContext {
     pub fn new(entry_point: Arc<PathBuf>) -> Result<Self> {
         let mut out = Self {
@@ -171,7 +182,7 @@ impl SlynxContext {
 
     ///Based on the provided `index`, which is the index of a char on the source code of `path`, returns the line where it's located on the file of the provided `path`.
     ///This will return its line and the column and the line containing the error
-    pub fn get_line_info(&self, path: &Arc<PathBuf>, index: usize) -> (usize, usize, &str) {
+    pub fn get_line_info<'a>(&'a self, path: &Arc<PathBuf>, index: usize) -> LineInfo<'a> {
         let lines = self
             .lines
             .get(path)
@@ -181,7 +192,12 @@ impl SlynxContext {
             .get(path)
             .expect("Path should be provided on the context");
         if source.is_empty() {
-            return (1, 1, "");
+            return LineInfo {
+                line: 1,
+                column_start: 1,
+                column_end: 1,
+                src: "",
+            };
         }
 
         let char_len = source.chars().count();
@@ -205,7 +221,12 @@ impl SlynxContext {
         let end = Self::char_index_to_byte_offset(source, line_end_char);
         let column = clamped_index.saturating_sub(line_start_char) + 1;
 
-        (line_idx + 1, column, &source[start..end])
+        LineInfo {
+            line: line_idx + 1,
+            column_start: column,
+            column_end: end,
+            src: &source[start..end],
+        }
     }
 
     ///The name of the file this context is parsing
@@ -504,11 +525,11 @@ mod tests {
     fn get_line_info_handles_single_line_sources_without_trailing_newline() {
         let (context, path, dir) = temp_context("func main(): int {", "single-line");
 
-        let (line, column, source) = context.get_line_info(&path, 5);
+        let info = context.get_line_info(&path, 5);
 
-        assert_eq!(line, 1);
-        assert_eq!(column, 6);
-        assert_eq!(source, "func main(): int {");
+        assert_eq!(info.line, 1);
+        assert_eq!(info.column_start, 6);
+        assert_eq!(info.src, "func main(): int {");
 
         fs::remove_dir_all(dir).expect("temp dir should be removed");
     }
@@ -520,11 +541,11 @@ mod tests {
 
         let last_line_start = source.rfind('\n').expect("last line should exist") + 1;
         let value_index = source[..last_line_start].chars().count() + 4;
-        let (line, column, line_source) = context.get_line_info(&path, value_index);
+        let info = context.get_line_info(&path, value_index);
 
-        assert_eq!(line, 3);
-        assert_eq!(column, 5);
-        assert_eq!(line_source, "    value");
+        assert_eq!(info.line, 3);
+        assert_eq!(info.column_start, 5);
+        assert_eq!(info.src, "    value");
 
         fs::remove_dir_all(dir).expect("temp dir should be removed");
     }
@@ -534,11 +555,11 @@ mod tests {
         let source = "a\u{00E7}\u{00E3}o\n\u{03B2}";
         let (context, path, dir) = temp_context(source, "utf8");
 
-        let (line, column, line_source) = context.get_line_info(&path, 2);
+        let info = context.get_line_info(&path, 2);
 
-        assert_eq!(line, 1);
-        assert_eq!(column, 3);
-        assert_eq!(line_source, "a\u{00E7}\u{00E3}o");
+        assert_eq!(info.line, 1);
+        assert_eq!(info.column_start, 3);
+        assert_eq!(info.src, "a\u{00E7}\u{00E3}o");
 
         fs::remove_dir_all(dir).expect("temp dir should be removed");
     }
@@ -547,11 +568,11 @@ mod tests {
     fn get_line_info_handles_empty_sources() {
         let (context, path, dir) = temp_context("", "empty");
 
-        let (line, column, line_source) = context.get_line_info(&path, 0);
+        let info = context.get_line_info(&path, 0);
 
-        assert_eq!(line, 1);
-        assert_eq!(column, 1);
-        assert_eq!(line_source, "");
+        assert_eq!(info.line, 1);
+        assert_eq!(info.column_start, 1);
+        assert_eq!(info.src, "");
 
         fs::remove_dir_all(dir).expect("temp dir should be removed");
     }

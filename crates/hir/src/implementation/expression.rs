@@ -278,10 +278,17 @@ impl SlynxHir {
                     ));
                 }
                 let return_type = *return_type;
-                let exprs = args
+                let exprs = match args
                     .iter()
                     .map(|v| self.resolve_expr(v, None))
-                    .collect::<Result<Vec<_>>>()?;
+                    .collect::<Result<Vec<_>>>()
+                {
+                    Ok(exprs) => exprs,
+                    Err(mut e) => {
+                        e.span = expr.span;
+                        return Err(e);
+                    }
+                };
 
                 Ok(HirExpression {
                     id: ExpressionId::new(),

@@ -39,6 +39,8 @@ pub struct SlynxError {
     pub line: usize,
     ///The starting column of this error. Thus, where it initializes inside a buffer
     pub column_start: usize,
+    ///The end column of this error. Thus, where it initializes inside a buffer
+    pub column_end: usize,
     ///The message of this error
     pub message: String,
     ///The file path the error occuried
@@ -91,6 +93,7 @@ macro_rules! impl_slynx_error {
             pub fn $name(
                 line: usize,
                 column: usize,
+                end_column: usize,
                 message: String,
                 file: String,
                 source: String,
@@ -100,6 +103,7 @@ macro_rules! impl_slynx_error {
                     ty: $value,
                     line,
                     column_start: column,
+                    column_end: end_column,
                     message,
                     file,
                     source_code: source,

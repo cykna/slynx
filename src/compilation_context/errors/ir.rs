@@ -34,6 +34,7 @@ impl SlynxContext {
         SlynxError::new_hir(
             1,
             1,
+            1,
             format_ir_generation_error(
                 error,
                 ir,
