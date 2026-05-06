@@ -1,7 +1,6 @@
 use crate::model::{HirExpression, HirType};
 
 use common::{Span, SymbolPointer};
-use slynx_parser::ComponentExpression;
 
 /// An error produced during HIR generation or type checking.
 ///
@@ -192,7 +191,7 @@ impl std::fmt::Display for HIRError {
             HIRErrorKind::MissingProperty { .. } => write!(f, "Missing required property"),
             HIRErrorKind::PropertyNotRecognized { .. } => write!(f, "Property not recognized"),
             HIRErrorKind::PropertyNotVisible { .. } => write!(f, "Property not visible"),
-            HIRErrorKind::InvalidChild { .. } => write!(f, "Invalid child expression"),
+            HIRErrorKind::InvalidChild => write!(f, "Invalid child expression"),
             HIRErrorKind::InvalidType { reason, .. } => write!(f, "Invalid type: {reason}"),
             HIRErrorKind::RecursiveType { .. } => write!(f, "Recursive type definition"),
             HIRErrorKind::NotAFunction(..) => write!(f, "Not a function"),
@@ -211,6 +210,7 @@ impl std::fmt::Display for HIRError {
 }
 
 impl std::error::Error for HIRError {}
+///The reason why some type is being used incorrectly
 #[derive(Debug)]
 pub enum InvalidTypeReason {
     /// The type requires a generic parameter that was not provided.

@@ -19,7 +19,7 @@ impl SlynxHir {
                 rhs,
                 span,
             } => {
-                let interned_name = self.modules.intern_name(&prop_name);
+                let interned_name = self.modules.intern_name(prop_name);
                 let HirType::Component { props } = self.get_type(&ty) else {
                     unreachable!("The type should be a component instead");
                 };
@@ -63,7 +63,7 @@ impl SlynxHir {
         ty: TypeId,
     ) -> Result<Vec<ComponentMemberDeclaration>> {
         let out = members
-            .into_iter()
+            .iter()
             .map(|member| self.resolve_component_member(member, ty))
             .collect::<Result<Vec<_>>>()?;
         Ok(out)
@@ -81,15 +81,15 @@ impl SlynxHir {
         for value in values {
             match value {
                 ComponentMemberValue::Assign { prop_name, rhs, .. } if prop_name == "text" => {
-                    text = Some(self.resolve_expr(&rhs, None)?)
+                    text = Some(self.resolve_expr(rhs, None)?)
                 }
                 ComponentMemberValue::Assign {
                     prop_name, span, ..
                 } => {
-                    let intern = self.modules.intern_name(&prop_name);
+                    let intern = self.modules.intern_name(prop_name);
                     return Err(HIRError::type_unrecognized(intern, *span));
                 }
-                ComponentMemberValue::Child(e) => {
+                ComponentMemberValue::Child(_) => {
                     return Err(HIRError {
                         kind: HIRErrorKind::InvalidChild,
                         span: *span,
@@ -113,12 +113,12 @@ impl SlynxHir {
         _: &Span,
     ) -> Result<SpecializedComponent> {
         let children = children
-            .into_iter()
+            .iter()
             .map(|c| match c {
                 ComponentMemberValue::Assign {
                     prop_name, span, ..
                 } => {
-                    let prop = self.modules.intern_name(&prop_name);
+                    let prop = self.modules.intern_name(prop_name);
                     Err(HIRError::property_unrecognized(vec![prop], *span))
                 }
                 ComponentMemberValue::Child(c) => self.resolve_component(c),

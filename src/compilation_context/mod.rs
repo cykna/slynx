@@ -228,7 +228,7 @@ impl SlynxContext {
     ///Builds the Slynx HIR from the given `ast`. And type checks the HIR. The result hir is already typed. Also returns the types module to be used if needed to get information about the types on the Hir.
     pub fn build_hir(&self, ast: &[ASTDeclaration]) -> Result<(SlynxHir, TypesModule), SlynxError> {
         let mut hir = SlynxHir::new();
-        hir.generate(&ast)
+        hir.generate(ast)
             .map_err(|e| self.handle_hir_error(&hir, &e))?;
         let mut module = TypeChecker::check(&mut hir)
             .map_err(|e| self.handle_checker_error(e.downcast_ref().unwrap()))?;
@@ -269,7 +269,7 @@ impl SlynxContext {
     pub fn build_stages(self) -> color_eyre::eyre::Result<CompilationStages> {
         let stream = self.build_tokens()?;
         let decls = self.build_parser(stream)?;
-        let (hir, types_module) = self.build_hir(decls)?;
+        let (hir, types_module) = self.build_hir(&decls)?;
         let dump = format_hir_dump(&hir, &types_module);
         let ir = self.build_ir(hir, &types_module)?;
 

@@ -53,7 +53,7 @@ impl SlynxContext {
                 let prop_name = hir.get_name(*prop_name);
                 format!("Property with name '{prop_name}' is not visible")
             }
-            HIRErrorKind::InvalidChild { .. } => {
+            HIRErrorKind::InvalidChild => {
                 "Invalid child. Component is not expecting children".to_string()
             }
             HIRErrorKind::InvalidType { ty, reason } => {

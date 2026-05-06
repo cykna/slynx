@@ -426,7 +426,7 @@ impl SlynxHir {
             }
             ASTDeclarationKind::FuncDeclaration {
                 name, args, body, ..
-            } => self.resolve_function(&name, &args, body, &ast.span)?,
+            } => self.resolve_function(name, args, body, &ast.span)?,
             ASTDeclarationKind::ComponentDeclaration { members, name } => {
                 self.modules.enter_scope();
                 let symbol = self.modules.intern_name(&name.identifier);

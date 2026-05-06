@@ -26,12 +26,12 @@ impl SlynxHir {
     pub fn resolve_statement(&mut self, statement: &ASTStatement) -> Result<HirStatement> {
         match &statement.kind {
             ASTStatementKind::Expression(expr) => {
-                let expr = self.resolve_expr(&expr, None)?;
+                let expr = self.resolve_expr(expr, None)?;
                 Ok(HirStatement::new_expression(expr))
             }
             ASTStatementKind::Assign { lhs, rhs } => {
-                let lhs = self.resolve_expr(&lhs, None)?;
-                let rhs = self.resolve_expr(&rhs, None)?;
+                let lhs = self.resolve_expr(lhs, None)?;
+                let rhs = self.resolve_expr(rhs, None)?;
 
                 Ok(HirStatement {
                     kind: HirStatementKind::Assign { lhs, value: rhs },
@@ -44,8 +44,8 @@ impl SlynxHir {
                         .ok()
                         .map(|inner| inner.0)
                 });
-                let rhs = self.resolve_expr(&rhs, typeid)?;
-                let name = self.modules.intern_name(&name);
+                let rhs = self.resolve_expr(rhs, typeid)?;
+                let name = self.modules.intern_name(name);
                 let id = self.create_mutable_variable(name, rhs.ty, &statement.span)?;
 
                 Ok(HirStatement::new_variable(id, rhs, statement.span))
@@ -56,18 +56,18 @@ impl SlynxHir {
                         .ok()
                         .map(|inner| inner.0)
                 });
-                let rhs = self.resolve_expr(&rhs, typeid)?;
-                let name = self.modules.intern_name(&name);
+                let rhs = self.resolve_expr(rhs, typeid)?;
+                let name = self.modules.intern_name(name);
                 let id = self.create_variable(name, rhs.ty, &statement.span)?;
 
                 Ok(HirStatement::new_variable(id, rhs, statement.span))
             }
 
             ASTStatementKind::While { condition, body } => {
-                let condition = self.resolve_expr(&condition, None)?;
+                let condition = self.resolve_expr(condition, None)?;
                 let body = body
-                    .into_iter()
-                    .map(|stmt| self.resolve_statement(&stmt))
+                    .iter()
+                    .map(|stmt| self.resolve_statement(stmt))
                     .collect::<Result<Vec<_>>>()?;
                 Ok(HirStatement::new_while(condition, body, statement.span))
             }

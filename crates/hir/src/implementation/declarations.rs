@@ -27,7 +27,7 @@ impl SlynxHir {
         span: Span,
     ) -> Result<()> {
         let mut fields = fields
-            .into_iter()
+            .iter()
             .map(|field| {
                 let symbol_name = self.modules.intern_name(&name.identifier);
                 if self.modules.intern_name(&field.name.name) == symbol_name {
@@ -102,7 +102,7 @@ impl SlynxHir {
             .collect::<Result<Vec<_>>>()?;
         let body_len = body.len();
         let statements = body
-            .into_iter()
+            .iter()
             .enumerate()
             .map(|(index, statement)| {
                 let is_last = index + 1 == body_len;
@@ -168,14 +168,14 @@ impl SlynxHir {
                         self.infer_type()
                     };
                     let rhs = if let Some(rhs) = rhs {
-                        Some(self.resolve_expr(&rhs, Some(ty))?)
+                        Some(self.resolve_expr(rhs, Some(ty))?)
                     } else {
                         None
                     };
                     out.push(ComponentMemberDeclaration::new_property(
                         prop_idx, rhs, def.span,
                     ));
-                    let name = self.modules.intern_name(&name);
+                    let name = self.modules.intern_name(name);
 
                     self.create_variable(name, ty, &def.span)?;
                     prop_idx += 1;
