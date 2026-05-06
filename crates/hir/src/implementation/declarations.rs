@@ -22,8 +22,8 @@ impl SlynxHir {
     /// Resolves an object declaration, filling in its field types and pushing the declaration.
     pub fn resolve_object(
         &mut self,
-        name: GenericIdentifier,
-        fields: Vec<ObjectField>,
+        name: &GenericIdentifier,
+        fields: &[ObjectField],
         span: Span,
     ) -> Result<()> {
         let mut fields = fields
@@ -80,7 +80,7 @@ impl SlynxHir {
         &mut self,
         name: &GenericIdentifier,
         args: &[TypedName],
-        body: Vec<ASTStatement>,
+        body: &[ASTStatement],
         span: &Span,
     ) -> Result<()> {
         let symbol = self.modules.intern_name(&name.identifier);
@@ -154,12 +154,12 @@ impl SlynxHir {
     /// Resolves the member definitions of a component body into [`ComponentMemberDeclaration`]s.
     pub fn resolve_component_defs(
         &mut self,
-        def: Vec<ComponentMember>,
+        def: &[ComponentMember],
     ) -> Result<Vec<ComponentMemberDeclaration>> {
         let mut out = Vec::with_capacity(def.len());
         let mut prop_idx = 0;
         for def in def {
-            match def.kind {
+            match &def.kind {
                 ComponentMemberKind::Property { ty, rhs, name, .. } => {
                     let ty = if let Some(ty) = ty {
                         self.retrieve_information_of_type(&ty.identifier, &ty.span)?
@@ -168,7 +168,7 @@ impl SlynxHir {
                         self.infer_type()
                     };
                     let rhs = if let Some(rhs) = rhs {
-                        Some(self.resolve_expr(rhs, Some(ty))?)
+                        Some(self.resolve_expr(&rhs, Some(ty))?)
                     } else {
                         None
                     };

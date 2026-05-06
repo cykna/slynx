@@ -13,7 +13,7 @@ impl SlynxHir {
     pub fn organized_object_fields(
         &mut self,
         ty: TypeId,
-        fields: Vec<NamedExpr>,
+        fields: &[NamedExpr],
         span: &Span,
     ) -> Result<HirExpressionKind> {
         let Some(defined_layout) = self.retrieve_object_fields(ty) else {
@@ -64,7 +64,7 @@ impl SlynxHir {
                 let ty = field_types[field_idx];
                 out.insert(
                     field_idx.max(out.len()),
-                    self.resolve_expr(field.expr, Some(ty))?,
+                    self.resolve_expr(&field.expr, Some(ty))?,
                 );
             } else {
                 let field_symbol = self.modules.intern_name(&field.name);
@@ -180,9 +180,9 @@ impl SlynxHir {
     /// Resolves an `if` expression, type-checking the condition and both branches.
     pub fn resolve_if_expression(
         &mut self,
-        condition: ASTExpression,
-        if_body: Vec<ASTStatement>,
-        else_body: Option<Vec<ASTStatement>>,
+        condition: &ASTExpression,
+        if_body: &[ASTStatement],
+        else_body: Option<&[ASTStatement]>,
         span: Span,
     ) -> Result<HirExpression> {
         let condition = self.resolve_expr(condition, Some(self.bool_type()))?;
@@ -219,15 +219,15 @@ impl SlynxHir {
     /// Ty only serves to tell the type of the expression if it's needed to infer and check if it doesnt correspond
     pub fn resolve_expr(
         &mut self,
-        expr: ASTExpression,
+        expr: &ASTExpression,
         ty: Option<TypeId>,
     ) -> Result<HirExpression> {
-        match expr.kind {
+        match &expr.kind {
             ASTExpressionKind::Tuple(vector) => {
                 let mut types = Vec::new();
                 let mut hir_elements = Vec::new();
                 for element in vector {
-                    let resolved = self.resolve_expr(element, None)?;
+                    let resolved = self.resolve_expr(&element, None)?;
                     types.push(resolved.ty);
                     hir_elements.push(resolved);
                 }
@@ -235,21 +235,26 @@ impl SlynxHir {
                 Ok(self.create_tuple_expression(tuple_ty, hir_elements, expr.span))
             }
             ASTExpressionKind::TupleAccess { tuple, index } => {
-                let tuple = self.resolve_expr(*tuple, None)?;
+                let tuple = self.resolve_expr(&tuple, None)?;
                 let tuple_field_ty = self.add_unnamed_type(HirType::Field(
                     // Keep tuple accesses distinct from object fields so later
                     // phases can reject numeric access on non-tuples.
-                    FieldMethod::Tuple(tuple.ty, index),
+                    FieldMethod::Tuple(tuple.ty, *index),
                 ));
 
-                Ok(self.create_field_access_expression(tuple, index, tuple_field_ty, expr.span))
+                Ok(self.create_field_access_expression(tuple, *index, tuple_field_ty, expr.span))
             }
 
             ASTExpressionKind::If {
                 condition,
                 body,
                 else_body,
-            } => self.resolve_if_expression(*condition, body, else_body, expr.span),
+            } => self.resolve_if_expression(
+                &*condition,
+                body,
+                else_body.as_ref().map(|v| &**v),
+                expr.span,
+            ),
 
             ASTExpressionKind::FunctionCall { name, args } => {
                 let func_symbol = self.modules.intern_name(&name.identifier);
@@ -275,7 +280,7 @@ impl SlynxHir {
                 let return_type = *return_type;
                 let exprs = args
                     .into_iter()
-                    .map(|v| self.resolve_expr(v, None))
+                    .map(|v| self.resolve_expr(&v, None))
                     .collect::<Result<Vec<_>>>()?;
 
                 Ok(HirExpression {
@@ -288,10 +293,13 @@ impl SlynxHir {
                     span: expr.span,
                 })
             }
-            ASTExpressionKind::Boolean(b) => Ok(self.create_boolean_expression(b, expr.span)),
-            ASTExpressionKind::Binary { lhs, op, rhs } => self.resolve_binary(*lhs, op, *rhs, ty),
+            ASTExpressionKind::Boolean(b) => Ok(self.create_boolean_expression(*b, expr.span)),
+            ASTExpressionKind::Binary { lhs, op, rhs } => {
+                self.resolve_binary(&**lhs, *op, &**rhs, ty)
+            }
             ASTExpressionKind::StringLiteral(s) => {
-                Ok(self.create_strliteral_expression(s, expr.span))
+                let ptr = self.modules.intern_name(&s);
+                Ok(self.create_strliteral_expression(ptr, expr.span))
             }
             ASTExpressionKind::Identifier(name) => {
                 let name = self.modules.intern_name(&name);
@@ -299,9 +307,9 @@ impl SlynxHir {
                 let tyid = self.add_type(name, HirType::VarReference(id));
                 Ok(self.create_identifier_expression(id, tyid, expr.span))
             }
-            ASTExpressionKind::IntLiteral(int) => Ok(self.create_int_expression(int, expr.span)),
+            ASTExpressionKind::IntLiteral(int) => Ok(self.create_int_expression(*int, expr.span)),
             ASTExpressionKind::FloatLiteral(float) => {
-                Ok(self.create_float_expression(float, expr.span))
+                Ok(self.create_float_expression(*float, expr.span))
             }
             ASTExpressionKind::Component(component) => {
                 let (id, _) =
@@ -310,7 +318,7 @@ impl SlynxHir {
                 Ok(HirExpression {
                     kind: HirExpressionKind::Component {
                         name: id,
-                        values: self.resolve_component_members(component.values, id)?,
+                        values: self.resolve_component_members(&component.values, id)?,
                     },
                     id: ExpressionId::new(), // Changed to ExpressionId
                     ty: id,
@@ -332,7 +340,7 @@ impl SlynxHir {
             }
             ASTExpressionKind::FieldAccess { parent, field } => {
                 let field_symbol = self.modules.intern_name(&field);
-                let parent = self.resolve_expr(*parent, None)?;
+                let parent = self.resolve_expr(&*parent, None)?;
                 let HirExpression { ref ty, .. } = parent;
                 match self.get_type(ty) {
                     HirType::Reference { rf, .. }
@@ -386,13 +394,13 @@ impl SlynxHir {
     ///Resolves the binary operation with the provided `lhs` and `rhs`.
     pub fn resolve_binary(
         &mut self,
-        lhs: ASTExpression,
+        lhs: &ASTExpression,
         op: Operator,
-        rhs: ASTExpression,
+        rhs: &ASTExpression,
         ty: Option<TypeId>,
     ) -> Result<HirExpression> {
-        let mut lhs = self.resolve_expr(lhs, ty)?;
-        let mut rhs = self.resolve_expr(rhs, ty)?;
+        let mut lhs = self.resolve_expr(&lhs, ty)?;
+        let mut rhs = self.resolve_expr(&rhs, ty)?;
         match discriminant(self.get_type(&lhs.ty)) == discriminant(self.get_type(&rhs.ty)) {
             false if lhs.ty == self.infer_type() => lhs.ty = rhs.ty,
             false if rhs.ty == self.infer_type() => rhs.ty = lhs.ty,

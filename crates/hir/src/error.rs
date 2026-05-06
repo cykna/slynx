@@ -65,10 +65,7 @@ pub enum HIRErrorKind {
         prop_name: SymbolPointer,
     },
     /// A component child expression is not valid in this context.
-    InvalidChild {
-        /// The invalid child expression.
-        child: Box<ComponentExpression>,
-    },
+    InvalidChild,
     /// A type was used in an invalid way (e.g., missing generics or incorrect usage).
     InvalidType {
         /// The type symbol that was used incorrectly.
@@ -182,8 +179,12 @@ impl std::fmt::Display for HIRError {
             HIRErrorKind::TypeNotRecognized(_) => write!(f, "Type not recognized"),
             HIRErrorKind::NameNotRecognized(_) => write!(f, "Name not recognized"),
             HIRErrorKind::NameAlreadyDefined(_) => write!(f, "Name already defined"),
-            HIRErrorKind::InvalidFieldAccessTarget { .. } => write!(f, "Invalid field access target"),
-            HIRErrorKind::InvalidTupleAccessTarget { .. } => write!(f, "Invalid tuple access target"),
+            HIRErrorKind::InvalidFieldAccessTarget { .. } => {
+                write!(f, "Invalid field access target")
+            }
+            HIRErrorKind::InvalidTupleAccessTarget { .. } => {
+                write!(f, "Invalid tuple access target")
+            }
             HIRErrorKind::InvalidTupleIndex { index, length } => {
                 write!(f, "Tuple index {index} out of bounds (length: {length})")
             }
@@ -195,8 +196,15 @@ impl std::fmt::Display for HIRError {
             HIRErrorKind::InvalidType { reason, .. } => write!(f, "Invalid type: {reason}"),
             HIRErrorKind::RecursiveType { .. } => write!(f, "Recursive type definition"),
             HIRErrorKind::NotAFunction(..) => write!(f, "Not a function"),
-            HIRErrorKind::InvalidFuncallArgLength { expected_length, received_length, .. } => {
-                write!(f, "Expected {expected_length} arguments, got {received_length}")
+            HIRErrorKind::InvalidFuncallArgLength {
+                expected_length,
+                received_length,
+                ..
+            } => {
+                write!(
+                    f,
+                    "Expected {expected_length} arguments, got {received_length}"
+                )
             }
         }
     }

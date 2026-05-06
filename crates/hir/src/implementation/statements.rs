@@ -23,15 +23,15 @@ impl SlynxHir {
         Ok(())
     }
     /// Resolves an AST statement into a typed [`HirStatement`].
-    pub fn resolve_statement(&mut self, statement: ASTStatement) -> Result<HirStatement> {
-        match statement.kind {
+    pub fn resolve_statement(&mut self, statement: &ASTStatement) -> Result<HirStatement> {
+        match &statement.kind {
             ASTStatementKind::Expression(expr) => {
-                let expr = self.resolve_expr(expr, None)?;
+                let expr = self.resolve_expr(&expr, None)?;
                 Ok(HirStatement::new_expression(expr))
             }
             ASTStatementKind::Assign { lhs, rhs } => {
-                let lhs = self.resolve_expr(lhs, None)?;
-                let rhs = self.resolve_expr(rhs, None)?;
+                let lhs = self.resolve_expr(&lhs, None)?;
+                let rhs = self.resolve_expr(&rhs, None)?;
 
                 Ok(HirStatement {
                     kind: HirStatementKind::Assign { lhs, value: rhs },
@@ -39,24 +39,24 @@ impl SlynxHir {
                 })
             }
             ASTStatementKind::MutableVar { name, ty, rhs } => {
-                let typeid = ty.and_then(|t| {
+                let typeid = ty.as_ref().and_then(|t| {
                     self.retrieve_information_of_type(&t.identifier, &statement.span)
                         .ok()
                         .map(|inner| inner.0)
                 });
-                let rhs = self.resolve_expr(rhs, typeid)?;
+                let rhs = self.resolve_expr(&rhs, typeid)?;
                 let name = self.modules.intern_name(&name);
                 let id = self.create_mutable_variable(name, rhs.ty, &statement.span)?;
 
                 Ok(HirStatement::new_variable(id, rhs, statement.span))
             }
             ASTStatementKind::Var { name, ty, rhs } => {
-                let typeid = ty.and_then(|t| {
+                let typeid = ty.as_ref().and_then(|t| {
                     self.retrieve_information_of_type(&t.identifier, &statement.span)
                         .ok()
                         .map(|inner| inner.0)
                 });
-                let rhs = self.resolve_expr(rhs, typeid)?;
+                let rhs = self.resolve_expr(&rhs, typeid)?;
                 let name = self.modules.intern_name(&name);
                 let id = self.create_variable(name, rhs.ty, &statement.span)?;
 
@@ -64,10 +64,10 @@ impl SlynxHir {
             }
 
             ASTStatementKind::While { condition, body } => {
-                let condition = self.resolve_expr(condition, None)?;
+                let condition = self.resolve_expr(&condition, None)?;
                 let body = body
                     .into_iter()
-                    .map(|stmt| self.resolve_statement(stmt))
+                    .map(|stmt| self.resolve_statement(&stmt))
                     .collect::<Result<Vec<_>>>()?;
                 Ok(HirStatement::new_while(condition, body, statement.span))
             }
