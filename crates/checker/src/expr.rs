@@ -4,9 +4,7 @@
 //! It handles the resolution of function bodies, component property
 //! initialization, and ensures type safety through unification.
 
-use color_eyre::eyre::Result;
-
-use super::TypeChecker;
+use super::{Result, TypeChecker};
 
 use crate::error::{TypeError, TypeErrorKind};
 use common::Span;

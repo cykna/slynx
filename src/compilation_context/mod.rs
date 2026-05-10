@@ -252,8 +252,7 @@ impl SlynxContext {
         let mut hir = SlynxHir::new();
         hir.generate(ast)
             .map_err(|e| self.handle_hir_error(&hir, &e))?;
-        let mut module = TypeChecker::check(&mut hir)
-            .map_err(|e| self.handle_checker_error(e.downcast_ref().unwrap()))?;
+        let mut module = TypeChecker::check(&mut hir).map_err(|e| self.handle_checker_error(&e))?;
 
         self.monomorphize(&hir, &mut module)?;
 
@@ -410,7 +409,7 @@ mod tests {
         fs::write(path.as_ref(), source).expect("temp source should be written");
 
         (
-            SlynxContext::new(path.clone()).expect("context should be created"),
+            SlynxContext::new((*path).clone()).expect("context should be created"),
             path,
             dir,
         )
