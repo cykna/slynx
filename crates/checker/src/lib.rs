@@ -64,8 +64,7 @@ impl TypeChecker {
                         return Err(TypeError {
                             kind: TypeErrorKind::NotAStruct(other.clone()),
                             span: *span,
-                        }
-                        .into());
+                        });
                     }
                 },
                 HirType::VarReference(variable_id) => {
@@ -82,8 +81,7 @@ impl TypeChecker {
                     return Err(TypeError {
                         kind: TypeErrorKind::NotAStruct(other.clone()),
                         span: *span,
-                    }
-                    .into());
+                    });
                 }
             }
         }
@@ -104,20 +102,16 @@ impl TypeChecker {
                     received: self.types_module.get_type(&resolved_ty).clone(),
                 },
                 span: *span,
-            }
-            .into());
+            });
         };
 
-        fields.get(index).copied().ok_or(
-            TypeError {
-                kind: TypeErrorKind::InvalidTupleIndex {
-                    index,
-                    length: fields.len(),
-                },
-                span: *span,
-            }
-            .into(),
-        )
+        fields.get(index).copied().ok_or(TypeError {
+            kind: TypeErrorKind::InvalidTupleIndex {
+                index,
+                length: fields.len(),
+            },
+            span: *span,
+        })
     }
 
     /// Checks the types of the provided `hir` and mutates them if needed. Any that could not be inferred but, yet is valid, is
@@ -170,8 +164,7 @@ impl TypeChecker {
                             received: HirType::Struct { fields: Vec::new() },
                         },
                         span: *span,
-                    }
-                    .into())
+                    })
                 }
             }
             HirType::Field(FieldMethod::Tuple(rf, index)) => {
@@ -199,8 +192,7 @@ impl TypeChecker {
                     Err(TypeError {
                         kind: TypeErrorKind::Unrecognized,
                         span: *span,
-                    }
-                    .into())
+                    })
                 }
             }
             HirType::Reference { rf, .. } => Ok(rf),
@@ -267,8 +259,7 @@ impl TypeChecker {
                                     },
                                 },
                                 span: *span,
-                            }
-                            .into());
+                            });
                         }
                         let mut unified_props = Vec::with_capacity(aprops.len());
                         for (prop_a, prop_b) in aprops.iter().zip(bprops.iter()) {
@@ -303,8 +294,7 @@ impl TypeChecker {
                                     received: concrete_b,
                                 },
                                 span: *span,
-                            }
-                            .into())
+                            })
                         } else {
                             for idx in 0..f1.len() {
                                 self.unify(&f1[idx], &f2[idx], span)?;
@@ -320,8 +310,7 @@ impl TypeChecker {
                                     received: concrete_b,
                                 },
                                 span: *span,
-                            }
-                            .into())
+                            })
                         } else {
                             let mut new_fields = Vec::with_capacity(f1.len());
 
@@ -349,8 +338,7 @@ impl TypeChecker {
                             received: concrete_a,
                         },
                         span: *span,
-                    }
-                    .into()),
+                    }),
                 }
             }
         }
@@ -374,8 +362,7 @@ impl TypeChecker {
             return Err(TypeError {
                 kind: TypeErrorKind::CiclicType { ty: ty.clone() },
                 span: *span,
-            }
-            .into());
+            });
         }
         self.substitute(rf, ty.clone());
         let ty = self.types_module.insert_unnamed_type(HirType::Reference {
@@ -454,8 +441,7 @@ impl TypeChecker {
                 expected: self.types_module.get_type(&return_type).clone(),
             },
             span: *span,
-        }
-        .into())
+        })
     }
 }
 

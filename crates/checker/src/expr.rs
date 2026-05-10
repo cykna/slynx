@@ -27,8 +27,7 @@ impl TypeChecker {
             v => Err(TypeError {
                 kind: TypeErrorKind::NotAStruct(v.clone()),
                 span: *span,
-            }
-            .into()),
+            }),
         }
     }
 
@@ -83,8 +82,7 @@ impl TypeChecker {
                     return Err(TypeError {
                         kind: TypeErrorKind::Unrecognized,
                         span: *span,
-                    }
-                    .into());
+                    });
                 };
 
                 *field_index = index;
@@ -113,8 +111,7 @@ impl TypeChecker {
             return Err(TypeError {
                 kind: TypeErrorKind::Unrecognized,
                 span: *span,
-            }
-            .into());
+            });
         };
 
         let resolved = self.types_module.get_type(&function_ty).clone();
@@ -125,8 +122,7 @@ impl TypeChecker {
                     received: resolved,
                 },
                 span: *span,
-            }
-            .into());
+            });
         };
         Ok((args, return_type))
     }
@@ -144,8 +140,7 @@ impl TypeChecker {
                     received_length: args.len(),
                 },
                 span: *span,
-            }
-            .into());
+            });
         }
         Ok(())
     }

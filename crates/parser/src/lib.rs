@@ -73,7 +73,7 @@ impl Parser {
                 TokenKind::String(_) => "a string literal".to_string(),
                 _ => format!("'{kind}'",),
             };
-            Err(ParseError::UnexpectedToken(token, kind).into())
+            Err(ParseError::UnexpectedToken(token, kind))
         }
     }
     /// Parses the declarations in the source code and returns them as a vector of `ASTDeclaration`s.
@@ -109,8 +109,7 @@ impl Parser {
                     return Err(ParseError::UnexpectedToken(
                         self.eat()?,
                         "a function, component, object or alias declaration".to_owned(),
-                    )
-                    .into());
+                    ));
                 }
             }
         }

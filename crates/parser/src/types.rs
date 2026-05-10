@@ -40,10 +40,10 @@ impl Parser {
                 (false, n) => return Ok((false, n - initial_ahead)),
             }
         }
-        return Ok((
+        Ok((
             matches!(self.peek_at(ahead + 1)?.kind, TokenKind::Gt),
             ahead - initial_ahead,
-        ));
+        ))
     }
 
     ///Parses a type.
@@ -76,8 +76,7 @@ impl Parser {
                         return Err(ParseError::UnexpectedToken(
                             self.eat()?,
                             "expected ',' or ')' in tuple type".into(),
-                        )
-                        .into());
+                        ));
                     }
                 }
             }
