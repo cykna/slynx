@@ -1,8 +1,10 @@
-use crate::ast::{
-    ASTDeclaration, ASTDeclarationKind, ComponentMember, ComponentMemberKind, GenericIdentifier,
-    VisibilityModifier,
+use crate::{
+    Result,
+    ast::{
+        ASTDeclaration, ASTDeclarationKind, ComponentMember, ComponentMemberKind,
+        GenericIdentifier, VisibilityModifier,
+    },
 };
-use color_eyre::eyre::Result;
 use common::Span;
 
 use crate::error::ParseError;

@@ -2,8 +2,7 @@ use crate::{
     ASTExpression, ASTExpressionKind, ComponentExpression, ComponentMemberValue, GenericIdentifier,
     NamedExpr,
 };
-use crate::{Parser, error::ParseError};
-use color_eyre::eyre::Result;
+use crate::{Parser, Result, error::ParseError};
 use common::{Operator, Span};
 use slynx_lexer::tokens::{Token, TokenKind};
 

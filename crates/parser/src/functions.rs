@@ -1,6 +1,4 @@
-use color_eyre::eyre::Result;
-
-use crate::{Parser, error::ParseError};
+use crate::{Parser, Result, error::ParseError};
 use slynx_lexer::tokens::{Token, TokenKind};
 
 use crate::ast::{ASTDeclaration, ASTDeclarationKind, ASTStatement, ASTStatementKind, TypedName};

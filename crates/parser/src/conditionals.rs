@@ -1,6 +1,4 @@
-use crate::Parser;
-use crate::{ASTExpression, ASTExpressionKind, ASTStatement, ASTStatementKind};
-use color_eyre::eyre::Result;
+use crate::{ASTExpression, ASTExpressionKind, ASTStatement, ASTStatementKind, Parser, Result};
 use common::Span;
 use slynx_lexer::tokens::TokenKind;
 

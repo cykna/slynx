@@ -116,7 +116,8 @@ pub struct LineInfo<'a> {
 }
 
 impl SlynxContext {
-    pub fn new(entry_point: Arc<PathBuf>) -> Result<Self> {
+    pub fn new(entry_point: PathBuf) -> Result<Self> {
+        let entry_point = Arc::new(entry_point);
         let mut out = Self {
             files: HashMap::new(),
             lines: HashMap::new(),
@@ -243,7 +244,7 @@ impl SlynxContext {
     pub fn build_parser(&self, tokens: TokenStream) -> Result<Vec<ASTDeclaration>, SlynxError> {
         Parser::new(tokens)
             .parse_declarations()
-            .map_err(|e| self.handle_parser_error(e.downcast_ref().unwrap()))
+            .map_err(|e| self.handle_parser_error(&e))
     }
 
     ///Builds the Slynx HIR from the given `ast`. And type checks the HIR. The result hir is already typed. Also returns the types module to be used if needed to get information about the types on the Hir.

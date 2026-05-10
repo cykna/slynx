@@ -1,7 +1,6 @@
 use super::Parser;
 use crate::error::ParseError;
-use crate::{ASTDeclaration, ASTDeclarationKind, ast::GenericIdentifier};
-use color_eyre::eyre::Result;
+use crate::{ASTDeclaration, ASTDeclarationKind, Result, ast::GenericIdentifier};
 use common::Span;
 use slynx_lexer::tokens::{Token, TokenKind};
 impl Parser {

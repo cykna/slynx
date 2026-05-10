@@ -8,13 +8,14 @@ pub mod objects;
 mod statement;
 mod types;
 pub use ast::*;
-use color_eyre::eyre::{Report, Result};
 
 use crate::error::ParseError;
 use slynx_lexer::{
     TokenStream,
     tokens::{Token, TokenKind},
 };
+
+pub type Result<T> = std::result::Result<T, ParseError>;
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
 pub enum ParserFlags {
@@ -40,9 +41,7 @@ impl Parser {
     /// Consumes the next token from the input stream and returns it.
     /// If the end of the input stream is reached, it returns an error indicating that there
     pub fn eat(&mut self) -> Result<Token> {
-        self.stream
-            .next()
-            .ok_or(Report::new(ParseError::UnexpectedEndOfInput))
+        self.stream.next().ok_or(ParseError::UnexpectedEndOfInput)
     }
 
     /// Peeks at the token at the specified index without consuming it.
@@ -51,7 +50,7 @@ impl Parser {
         self.stream
             .stream
             .get(idx)
-            .ok_or(Report::new(ParseError::UnexpectedEndOfInput))
+            .ok_or(ParseError::UnexpectedEndOfInput)
     }
 
     /// Peeks at the next token without consuming it.
@@ -139,7 +138,7 @@ impl Parser {
         result
     }
 
-    pub fn finish_current_parse(&mut self) -> Result<(), Report> {
+    pub fn finish_current_parse(&mut self) -> Result<()> {
         if self.flags == ParserFlags::RequireSemicolon {
             self.expect(&TokenKind::SemiColon)?;
         }

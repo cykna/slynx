@@ -1,6 +1,4 @@
-use color_eyre::eyre::Result;
-
-use crate::Parser;
+use crate::{Parser, Result};
 use slynx_lexer::tokens::{Token, TokenKind};
 
 use crate::ast::{ASTStatement, ASTStatementKind};
