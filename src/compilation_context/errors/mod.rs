@@ -13,18 +13,20 @@ use crate::helpers::ErrorMetadata;
 
 ///A column range that's is represented by 48 bits for indexing, and 16 bits to define its range.
 #[derive(Debug)]
-pub struct ColumnRange(usize);
+pub struct ColumnRange(u64);
 impl ColumnRange {
     pub fn new(start: usize, end: usize) -> Self {
+        let start = start as u64;
+        let end = end as u64;
         let dif = end - start;
-        Self(start << 16 | dif & 0xffff)
+        Self(start << 32 | dif & 0xffffffff)
     }
 
     pub fn start(&self) -> usize {
-        self.0 >> 16
+        (self.0 >> 32) as usize
     }
     pub fn end(&self) -> usize {
-        self.start() + (self.0 & 0xffff)
+        self.start() + (self.0 as usize & 0xffffffff)
     }
 }
 

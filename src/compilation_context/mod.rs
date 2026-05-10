@@ -5,7 +5,6 @@ use std::{
     sync::Arc,
 };
 
-use color_eyre::eyre::Result;
 use common::SymbolPointer;
 use slynx_hir::{
     SlynxHir, VariableId,
@@ -287,7 +286,7 @@ impl SlynxContext {
 
     ///Builds typed HIR and IR once so callers can inspect or persist intermediate dumps
     ///before materializing the default `.sir` output.
-    pub fn build_stages(self) -> color_eyre::eyre::Result<CompilationStages> {
+    pub fn build_stages(self) -> Result<CompilationStages, SlynxError> {
         let stream = self.build_tokens()?;
         let decls = self.build_parser(stream)?;
         let (hir, types_module) = self.build_hir(&decls)?;
@@ -298,15 +297,9 @@ impl SlynxContext {
     }
 
     ///Compiles the code from the current contexts and returns the compilation result including the IR
-    pub fn compile(self) -> Result<CompilationOutput> {
+    pub fn compile(self) -> Result<CompilationOutput, SlynxError> {
         let stages = self.build_stages()?;
         Ok(stages.into_output())
-    }
-
-    pub fn start_compilation(self) -> Result<()> {
-        let output = self.compile()?;
-        output.write()?;
-        Ok(())
     }
 }
 
