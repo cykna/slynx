@@ -51,7 +51,7 @@ impl CompilationOutput {
     }
 
     ///Writes the IR of this output into the path of `output_path()`
-    pub fn write(&self) -> Result<()> {
+    pub fn write(&self) -> std::io::Result<()> {
         std::fs::write(&self.output_path, format!("{:#?}", self.ir))?;
         Ok(())
     }
@@ -115,7 +115,7 @@ pub struct LineInfo<'a> {
 }
 
 impl SlynxContext {
-    pub fn new(entry_point: PathBuf) -> Result<Self> {
+    pub fn new(entry_point: PathBuf) -> std::io::Result<Self> {
         let entry_point = Arc::new(entry_point);
         let mut out = Self {
             files: HashMap::new(),
@@ -148,7 +148,7 @@ impl SlynxContext {
     }
 
     ///Inserts the file with provided `path` if it exists.
-    pub fn insert_file(&mut self, path: Arc<PathBuf>) -> Result<()> {
+    pub fn insert_file(&mut self, path: Arc<PathBuf>) -> std::io::Result<()> {
         let file = std::fs::read_to_string(path.as_path())?;
         let lines = file
             .chars()
