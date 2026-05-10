@@ -78,12 +78,12 @@ impl CompilationStages {
         self.entry_point.with_extension(extension)
     }
 
-    pub fn write_hir(&self) -> Result<()> {
+    pub fn write_hir(&self) -> std::io::Result<()> {
         std::fs::write(self.dump_path("hir"), self.hir_text())?;
         Ok(())
     }
 
-    pub fn write_ir(&self) -> Result<()> {
+    pub fn write_ir(&self) -> std::io::Result<()> {
         std::fs::write(self.dump_path("ir"), self.ir_text())?;
         Ok(())
     }
