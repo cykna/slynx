@@ -16,7 +16,7 @@ use slynx_monomorphizer::Monomorphizer;
 use slynx_parser::{ASTDeclaration, Parser};
 use slynx_typechecker::TypeChecker;
 
-pub use crate::compilation_context::errors::*;
+use crate::compilation_context::errors::{SlynxError, helpers::suggestions_from_lexer};
 
 #[derive(Debug)]
 pub struct CompilationOutput {
