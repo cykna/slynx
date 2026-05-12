@@ -211,6 +211,12 @@ pub enum HirDeclarationKind {
         props: Vec<ComponentMemberDeclaration>,
     },
 
+    StyleSheet {
+        args: Vec<VariableId>,
+        statements: Vec<HirStyleStatement>,
+        usages: DeclarationId,
+    },
+
     /// A type alias declaration.
     ///
     /// Aliases create alternative names for existing types.

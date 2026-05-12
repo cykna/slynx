@@ -89,7 +89,7 @@ impl Parser {
     ///Parses a stylesheet. Thus the syntax `stylesheet Name(p1: T) uses Name2(f), F {...}`. The given `span` is the `stylesheet` keyword span
     pub fn parse_stylesheet(&mut self, span: Span) -> Result<ASTDeclaration, ParseError> {
         let name = self.parse_type()?;
-        self.expect(&TokenKind::LParen);
+        self.expect(&TokenKind::LParen)?;
         let args = {
             let mut out = Vec::new();
             loop {
@@ -105,7 +105,7 @@ impl Parser {
         };
 
         self.expect(&TokenKind::RParen)?;
-        let usages = if let TokenKind::Identifier(name) = self.peek()?.kind
+        let usages = if let TokenKind::Identifier(ref name) = self.peek()?.kind
             && name == "uses"
         {
             let span = self.eat()?.span;
@@ -114,16 +114,17 @@ impl Parser {
             vec![]
         };
         self.expect(&TokenKind::LBrace)?;
+        let body = self.parse_stylesheet_body()?;
         let out = ASTDeclaration {
             kind: ASTDeclarationKind::StyleSheet {
                 name,
                 args,
                 usages,
-                body: (),
+                body,
             },
             span,
         };
-        self.expect(&TokenKind::RBrace);
+        self.expect(&TokenKind::RBrace)?;
         Ok(out)
     }
 }

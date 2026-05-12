@@ -65,7 +65,7 @@ pub struct ObjectField {
 }
 
 #[derive(Debug)]
-pub enum StyleSheetStatementKid {
+pub enum StyleSheetStatement {
     Statement(ASTStatement),
     Styles {
         event: Option<String>,
