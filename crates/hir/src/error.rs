@@ -88,9 +88,19 @@ pub enum HIRErrorKind {
         /// The number of arguments that were provided.
         received_length: usize,
     },
+    InvalidStyleEvent {
+        name: SymbolPointer,
+    },
 }
 
 impl HIRError {
+    pub fn invalid_event(name: SymbolPointer, span: Span) -> Self {
+        Self {
+            kind: HIRErrorKind::InvalidStyleEvent { name },
+            span,
+        }
+    }
+
     /// Creates a [`HIRErrorKind::RecursiveType`] error for the given type symbol.
     pub fn recursive(ty: SymbolPointer, span: Span) -> Self {
         Self {
@@ -205,6 +215,7 @@ impl std::fmt::Display for HIRError {
                     "Expected {expected_length} arguments, got {received_length}"
                 )
             }
+            HIRErrorKind::InvalidStyleEvent { .. } => write!(f, "Invalid style event"),
         }
     }
 }

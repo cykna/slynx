@@ -76,9 +76,36 @@
 //!
 //! During HIR generation, this expression is wrapped in a [`Return`] statement.
 
-use common::Span;
+use common::{Span, SymbolPointer};
 
 use crate::{VariableId, model::HirExpression};
+
+#[derive(Debug)]
+pub struct StylesDefinition(pub SymbolPointer, pub HirExpression);
+
+impl StylesDefinition {
+    pub fn new(symb: SymbolPointer, expr: HirExpression) -> Self {
+        Self(symb, expr)
+    }
+}
+
+#[derive(Debug)]
+pub enum HirStyleBlockKind {
+    Default,
+    Hover,
+}
+
+#[derive(Debug)]
+pub struct HirStyleBlock {
+    pub kind: HirStyleBlockKind,
+    pub definitions: Vec<StylesDefinition>,
+}
+
+#[derive(Debug)]
+pub enum HirStyleStatement {
+    Statement(HirStatement),
+    Styles(Vec<HirStyleBlock>),
+}
 
 /// A statement node in the HIR.
 ///

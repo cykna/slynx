@@ -1,7 +1,7 @@
 use rart::{AdaptiveRadixTree, VectorKey};
 
 #[derive(Debug, Clone, Copy, Eq, PartialEq, Hash)]
-///A pointer to some intern string. This is 56bits for the actual position of the string in the internalized string, and 8bits for it's length
+///A pointer to some intern string. This is 48bits for the actual position of the string in the internalized string, and 16bits for it's length
 pub struct SymbolPointer(usize);
 
 impl SymbolPointer {

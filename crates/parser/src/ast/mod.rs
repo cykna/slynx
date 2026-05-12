@@ -65,11 +65,18 @@ pub struct ObjectField {
 }
 
 #[derive(Debug)]
+pub struct StyleBlock {
+    pub event: Option<String>,
+    pub duration: Option<ASTExpression>,
+    pub properties: Vec<NamedExpr>,
+    pub span: Span,
+}
+
+#[derive(Debug)]
 pub enum StyleSheetStatement {
     Statement(ASTStatement),
     Styles {
-        event: Option<String>,
-        properties: Vec<NamedExpr>,
+        styles: Vec<StyleBlock>,
         span: Span,
     },
 }

@@ -137,8 +137,8 @@ impl HirModules {
         self.scope_module.enter_scope()
     }
     /// Pops the current scope from the scope stack and returns a mutable reference to the new top scope.
-    pub fn exit_scope(&mut self) -> &mut HIRScope {
-        self.scope_module.enter_scope()
+    pub fn exit_scope(&mut self) -> Option<HIRScope> {
+        self.scope_module.exit_scope()
     }
 }
 

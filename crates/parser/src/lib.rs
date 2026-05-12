@@ -120,7 +120,7 @@ impl Parser {
                     else {
                         unreachable!();
                     };
-                    out.push(self.parse_func(span)?)
+                    out.push(self.parse_stylesheet(span)?)
                 }
                 _ => {
                     return Err(ParseError::UnexpectedToken(

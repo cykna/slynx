@@ -27,8 +27,14 @@ use common::{Span, SymbolPointer};
 
 use crate::{
     DeclarationId, PropertyId, TypeId, VariableId,
-    model::{HirExpression, HirStatement},
+    model::{HirExpression, HirStatement, HirStyleStatement},
 };
+
+#[derive(Debug)]
+pub struct HirStyleUsage {
+    pub style: DeclarationId,
+    pub params: Vec<HirExpression>,
+}
 
 /// A built-in specialized component with predefined rendering semantics.
 ///
@@ -214,7 +220,7 @@ pub enum HirDeclarationKind {
     StyleSheet {
         args: Vec<VariableId>,
         statements: Vec<HirStyleStatement>,
-        usages: DeclarationId,
+        usages: Vec<HirStyleUsage>,
     },
 
     /// A type alias declaration.
@@ -422,6 +428,25 @@ impl HirDeclaration {
         }
     }
 
+    pub fn new_stylesheet(
+        args: Vec<VariableId>,
+        statements: Vec<HirStyleStatement>,
+        usages: Vec<HirStyleUsage>,
+        span: Span,
+        id: DeclarationId,
+        ty: TypeId,
+    ) -> Self {
+        Self {
+            kind: HirDeclarationKind::StyleSheet {
+                args,
+                statements,
+                usages,
+            },
+            span,
+            id,
+            ty,
+        }
+    }
     /// Creates a new object declaration.
     ///
     /// # Arguments

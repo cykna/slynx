@@ -2,44 +2,66 @@ use common::Span;
 use slynx_lexer::tokens::TokenKind;
 
 use crate::{
-    ASTDeclaration, ASTDeclarationKind, ASTExpression, Parser, StyleSheetStatement,
+    ASTDeclaration, ASTDeclarationKind, ASTExpression, Parser, StyleBlock, StyleSheetStatement,
     error::ParseError,
 };
 
 impl Parser {
-    pub fn parse_styles_statement(&mut self) -> Result<StyleSheetStatement, ParseError> {
-        let styles_span = self.expect(&TokenKind::Styles)?.span;
+    pub fn parse_style_block(&mut self) -> Result<StyleBlock, ParseError> {
+        let block_start = self.peek()?.span;
         let event = match self.peek()?.kind {
-            TokenKind::LParen => {
-                self.expect(&TokenKind::LParen)?;
-                let TokenKind::Identifier(ident) = self.expect_identifier()?.kind else {
-                    unreachable!();
-                };
-                self.expect(&TokenKind::RParen)?;
-                Some(ident)
+            TokenKind::Identifier(_) => {
+                let ident = self.expect_identifier()?;
+                match ident.kind {
+                    TokenKind::Identifier(name) => Some(name),
+                    _ => unreachable!(),
+                }
             }
             _ => None,
         };
-        self.expect(&TokenKind::LBrace);
-        let properties = {
-            let mut properties = Vec::new();
-            loop {
-                if let TokenKind::RBrace = self.peek()?.kind {
-                    break properties;
-                }
-                let stmt = self.parse_named_expr()?;
-                if let TokenKind::Comma | TokenKind::SemiColon = self.peek()?.kind {
-                    self.eat()?;
-                    properties.push(stmt);
-                }
-            }
+        let duration = if let TokenKind::LParen = self.peek()?.kind {
+            self.expect(&TokenKind::LParen)?;
+            let expr = self.parse_expression()?;
+            self.expect(&TokenKind::RParen)?;
+            Some(expr)
+        } else {
+            None
         };
-        let end_span = self.expect(&TokenKind::RBrace)?.span;
-        let span = styles_span.merge_with(end_span);
-        Ok(StyleSheetStatement::Styles {
+        self.expect(&TokenKind::LBrace)?;
+        let mut properties = Vec::new();
+        loop {
+            if let TokenKind::RBrace = self.peek()?.kind {
+                break;
+            }
+            let stmt = self.parse_named_expr()?;
+            if let TokenKind::Comma | TokenKind::SemiColon = self.peek()?.kind {
+                self.eat()?;
+            }
+            properties.push(stmt);
+        }
+        let block_end = self.expect(&TokenKind::RBrace)?.span;
+        Ok(StyleBlock {
             event,
+            duration,
             properties,
-            span,
+            span: block_start.merge_with(block_end),
+        })
+    }
+
+    pub fn parse_styles_statement(&mut self) -> Result<StyleSheetStatement, ParseError> {
+        let styles_span = self.expect(&TokenKind::Styles)?.span;
+        self.expect(&TokenKind::LBrace)?;
+        let mut styles = Vec::new();
+        loop {
+            if let TokenKind::RBrace = self.peek()?.kind {
+                break;
+            }
+            styles.push(self.parse_style_block()?);
+        }
+        let end_span = self.expect(&TokenKind::RBrace)?.span;
+        Ok(StyleSheetStatement::Styles {
+            styles,
+            span: styles_span.merge_with(end_span),
         })
     }
 
@@ -50,18 +72,17 @@ impl Parser {
         }
     }
 
-    ///Parses the body of a stylesheet.
     pub fn parse_stylesheet_body(&mut self) -> Result<Vec<StyleSheetStatement>, ParseError> {
         let mut statements = Vec::new();
         loop {
-            if let TokenKind::LBrace = self.peek()?.kind {
+            if let TokenKind::RBrace = self.peek()?.kind {
                 break Ok(statements);
             }
             let stmt = self.parse_stylesheet_statement()?;
             if let TokenKind::Comma = self.peek()?.kind {
                 self.eat()?;
-                statements.push(stmt);
             }
+            statements.push(stmt);
         }
     }
 

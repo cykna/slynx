@@ -467,6 +467,9 @@ pub enum HirType {
         /// The function's return type.
         return_type: TypeId,
     },
+    Style {
+        args: Vec<TypeId>,
+    },
 
     /// A boolean type.
     ///
