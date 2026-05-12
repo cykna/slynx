@@ -6,6 +6,7 @@ mod expr;
 mod functions;
 pub mod objects;
 mod statement;
+mod styles;
 mod types;
 pub use ast::*;
 
@@ -76,6 +77,12 @@ impl Parser {
             Err(ParseError::UnexpectedToken(token, kind))
         }
     }
+
+    ///Does the same as `self.expect()` but expecting specifically an identifier
+    pub fn expect_identifier(&mut self) -> Result<Token> {
+        self.expect(&TokenKind::Identifier(String::new()))
+    }
+
     /// Parses the declarations in the source code and returns them as a vector of `ASTDeclaration`s.
     /// The parser will continue parsing until it reaches the end of the input stream.
     /// If it encounters an unexpected token, it will return an error indicating the expected token type.
@@ -96,6 +103,16 @@ impl Parser {
                     out.push(self.parse_component(span)?)
                 }
                 TokenKind::Func => {
+                    let Token {
+                        kind: TokenKind::Func,
+                        span,
+                    } = self.eat()?
+                    else {
+                        unreachable!();
+                    };
+                    out.push(self.parse_func(span)?)
+                }
+                TokenKind::StyleSheet => {
                     let Token {
                         kind: TokenKind::Func,
                         span,

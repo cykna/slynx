@@ -65,6 +65,16 @@ pub struct ObjectField {
 }
 
 #[derive(Debug)]
+pub enum StyleSheetStatementKid {
+    Statement(ASTStatement),
+    Styles {
+        event: Option<String>,
+        properties: Vec<NamedExpr>,
+        span: Span,
+    },
+}
+
+#[derive(Debug)]
 pub enum ASTDeclarationKind {
     Alias {
         name: GenericIdentifier,
@@ -83,6 +93,12 @@ pub enum ASTDeclarationKind {
         args: Vec<TypedName>,
         return_type: GenericIdentifier,
         body: Vec<ASTStatement>,
+    },
+    StyleSheet {
+        name: GenericIdentifier,
+        args: Vec<TypedName>,
+        usages: Vec<ASTExpression>,
+        body: Vec<StyleSheetStatement>,
     },
 }
 
