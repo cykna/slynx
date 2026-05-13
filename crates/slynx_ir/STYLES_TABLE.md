@@ -2,7 +2,7 @@
 
 This document describes the table, thus, hardcoded numerics, that represent specific styles to be applied on a ui primitive component. This is a 16bit numeric value that represents an specific style, and thus, contain
 semantic information to tell the backend how to apply that specific value.
-Below it will be written as `NAME=Numeric expects Type`, where the Numeric is a Decimal number, and `Type` is the type its expected by the property
+Below it will be written as `NAME=Numeric expects Type`, where the Numeric is a Decimal number, and `Type` is the type its expected by the property. You can see at the UI types that will be shown here on UI_TYPES.md.
 
 BACKGROUND_COLOR=0 expects Color
 

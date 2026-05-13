@@ -317,48 +317,15 @@ Differently of default values, special values are primitives that are expected t
 
 #### StyleSheets
 StyleSheets on the IR are a method to define styles for the components. Since stylesheets mix both styling with turing complete code, it is fallbacked to 2 separated things: A function and a struct, but for clarity reasons, this primitive will be called
-'style'. A style is a specialized struct used to represent styles on a specific backend. The thing is that the style will contain metadata of which fields it's got. Since it's specialized for defining how a component should work. Operations related to styles
-will carry metadata on how to apply that given style. The metadata is basically a 16bit numeric that has got semantic information.
-By knowing this, we got 3 separated things:
-1. On the slynx syntax level, a 'stylesheet' is a function
-2. The style it generates internally is an struct.
-3. The application of the style on a specific style is monomorphized per style.
-
-Thus, something like the following:
-```
-stylesheet Rounded(size: px) {
+'style'. A style does not differentiate to a normal struct, the thing is how it is used accordingly with `@sapply` ui operation, since it's specialized for defining how a component should work.
+The `@sapply` operation carry metadata how to apply that given style. The metadata is basically a 16bit numeric that has got semantic information.
+Then a style such as:
+`stylesheet A(){
   styles {
-    borderRadius: size
+    backgroundColor: red;
   }
-}
-component C {
-  Div {
-    style: Rounded(12px),
-  }
-}
-```
-should generate the following:
-```
-struct RoundedStyle {i32}; //a pixel should be a 'i32' internally
-RoundedStyle Rounded(i32) {
-$entry:
-  out = %RoundedStyle{p0};
-  ret out;
-}
-
-void ApplyRoundedStyle(PrimitiveComponent, RoundedStyle) {
-$entry:
-  roundness = get_prop p1, 0;
-  @sapply BorderRadius, p0, roundness;
-  ret;
-}
-component %C(){
-  #t0 = specialized Div;
-  
-  @initcall ApplyRoundedStyled, #t0, %RoundedStyle{0}
-}
-```
-both @sapply and @initcall are ui operations.
+}`
+it will contain a struct, and a function for applying the `A` style, and that applies the propertie 0, as 'backgroundColor'
 
 ### UI Operations
 Anything on the IR that initializes with '@' and is being used as an instruction, is an specific UI Operation, which determine what the UI itself should do. If being used as a value, then it's the visual reference to a handle of some internal string
