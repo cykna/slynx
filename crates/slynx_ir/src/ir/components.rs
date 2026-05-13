@@ -1,6 +1,9 @@
 use slynx_hir::{
     TypeId,
-    model::{ComponentMemberDeclaration, HirDeclaration, HirType, SpecializedComponent},
+    model::{
+        ComponentMemberDeclaration, HirDeclaration, HirDeclarationKind, HirStyleUsage, HirType,
+        SpecializedComponent,
+    },
 };
 
 use crate::{
@@ -62,6 +65,22 @@ impl SlynxIR {
             false,
         );
         let instruction = self.dereference_instruction_ptr(instruction).with_length();
+
+        // Emit @initcall for component-level style usages from the component's declaration
+        if let Some(decl) = temp.hir.iter().find(|d| {
+            d.ty == name
+                && matches!(d.kind, HirDeclarationKind::ComponentDeclaration { .. })
+        }) {
+            if let HirDeclarationKind::ComponentDeclaration { props, .. } = &decl.kind {
+                let component_value = self.insert_value(Value::Instruction(instruction));
+                for member in props {
+                    if let ComponentMemberDeclaration::Style { usage, .. } = member {
+                        self.emit_style_initcall(usage, component_value, temp)?;
+                    }
+                }
+            }
+        }
+
         Ok(Value::Instruction(instruction))
     }
 
@@ -116,6 +135,9 @@ impl SlynxIR {
                     let spec = self.get_specialized_component_value(a, temp)?;
                     ir_values.push(spec);
                 }
+                ComponentMemberDeclaration::Style { .. } => {
+                    // Style usages are emitted elsewhere (in the style lowering pass or parent context)
+                }
             }
         }
 
@@ -139,9 +161,20 @@ impl SlynxIR {
                 Value::Specliazed(specialized)
             }
             SpecializedComponent::Div { children } => {
+                let style_usages: Vec<&HirStyleUsage> = children
+                    .iter()
+                    .filter_map(|c| match c {
+                        ComponentMemberDeclaration::Style { usage, .. } => Some(usage),
+                        _ => None,
+                    })
+                    .collect();
                 let children = self.get_component_children(children, temp)?;
                 let children = self.insert_values(&children);
                 let specialized = self.insert_specialized(IRSpecializedComponent::Div(children));
+                let div_value = self.insert_value(Value::Specliazed(specialized));
+                for usage in style_usages {
+                    self.emit_style_initcall(usage, div_value, temp)?;
+                }
                 Value::Specliazed(specialized)
             }
         };
@@ -164,6 +197,9 @@ impl SlynxIR {
                 }
                 ComponentMemberDeclaration::Specialized(v) => {
                     children_values.push(self.get_specialized_component_value(v, temp)?);
+                }
+                ComponentMemberDeclaration::Style { .. } => {
+                    // Style usages are emitted elsewhere
                 }
             }
         }

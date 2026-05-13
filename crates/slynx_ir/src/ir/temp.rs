@@ -1,6 +1,6 @@
 use std::collections::HashMap;
 
-use slynx_hir::{DeclarationId, TypeId, VariableId, modules::TypesModule};
+use slynx_hir::{DeclarationId, TypeId, VariableId, model::HirDeclaration, modules::TypesModule};
 use smallvec::SmallVec;
 
 use crate::{
@@ -19,6 +19,8 @@ pub struct TempComponentData {
 /// slynx ir
 pub struct TempIRData<'a> {
     types_module: &'a TypesModule,
+    /// The full HIR declaration list, used for lookups during IR generation.
+    pub hir: &'a [HirDeclaration],
     ///Maps HIR types to IR types
     types_mapping: HashMap<TypeId, IRTypeId>,
     ///Maps HIR functions to IR functions
@@ -33,12 +35,15 @@ pub struct TempIRData<'a> {
     variables: Vec<(VariableId, IRPointer<Value, 1>)>,
     ///The arguments of the current variable ID
     args: Vec<VariableId>,
+    ///Maps HIR stylesheet declaration IDs to their apply function contexts
+    style_apply_functions: HashMap<DeclarationId, IRPointer<Context, 1>>,
 }
 
 impl<'a> TempIRData<'a> {
-    pub fn new(types_module: &'a TypesModule) -> Self {
+    pub fn new(types_module: &'a TypesModule, hir: &'a [HirDeclaration]) -> Self {
         Self {
             types_module,
+            hir,
             types_mapping: HashMap::new(),
             functions: HashMap::new(),
             current_function: IRPointer::null(),
@@ -46,6 +51,7 @@ impl<'a> TempIRData<'a> {
             current_label: IRPointer::null(),
             args: Vec::new(),
             variables: Vec::new(),
+            style_apply_functions: HashMap::new(),
         }
     }
 
@@ -64,6 +70,18 @@ impl<'a> TempIRData<'a> {
     ///Maps the provided `fid`(hir function id) to the provided `func`(ir function)
     pub fn map_function(&mut self, fid: DeclarationId, func: IRPointer<Context, 1>) {
         self.functions.insert(fid, func);
+    }
+
+    #[inline]
+    ///Maps the provided stylesheet declaration ID to its apply function context
+    pub fn map_style_apply_function(&mut self, sid: DeclarationId, func: IRPointer<Context, 1>) {
+        self.style_apply_functions.insert(sid, func);
+    }
+
+    #[inline]
+    ///Retrieves the apply function context for the given stylesheet declaration ID
+    pub fn get_style_apply_function(&self, sid: DeclarationId) -> Option<IRPointer<Context, 1>> {
+        self.style_apply_functions.get(&sid).cloned()
     }
     #[inline]
     ///Maps the provided `fid`(hir function id) to the provided `func`(ir function)

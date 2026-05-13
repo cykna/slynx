@@ -69,7 +69,7 @@ impl SlynxIR {
     ///Generates all the code on the IR, with types, functions, lowerings, etc, based on the provided `hir`. The `tys` is expected to be the types module used by the `hir` during all frontend process, as well as
     ///the `symbols`, to be the symbols module used by the same `hir` during all the frontend process
     pub fn generate(&mut self, hir: Vec<HirDeclaration>, tys: &TypesModule) -> Result<(), IRError> {
-        let mut temp = TempIRData::new(tys);
+        let mut temp = TempIRData::new(tys, &hir);
         //hoist of the objects
         for declaration in &hir {
             match &declaration.kind {
@@ -100,10 +100,17 @@ impl SlynxIR {
                     temp.map_component(declaration.id, out);
                 }
                 HirDeclarationKind::Alias => {}
+                HirDeclarationKind::StyleSheet { .. } => {
+                    let name = tys.get_type_name(&declaration.ty).cloned();
+                    if let Some(name) = name {
+                        let out = self.types.create_empty_struct(name);
+                        temp.define_type(declaration.ty, out);
+                    }
+                }
             }
         }
-        for declaration in hir {
-            match declaration.kind {
+        for declaration in &hir {
+            match &declaration.kind {
                 HirDeclarationKind::Object => {
                     self.insert_object_fields_for(declaration.ty, &temp)?;
                 }
@@ -115,13 +122,13 @@ impl SlynxIR {
                     debug_assert!(func.len() == 1);
                     self.initialize_function(
                         func.with_length::<1>(),
-                        &statements,
-                        &args,
+                        statements,
+                        args,
                         &mut temp,
                     )?;
                 }
-                HirDeclarationKind::ComponentDeclaration { ref props, .. } => {
-                    self.initialize_component(&declaration, props, &mut temp)?;
+                HirDeclarationKind::ComponentDeclaration { props, .. } => {
+                    self.initialize_component(declaration, props, &mut temp)?;
                 }
                 HirDeclarationKind::Alias => {
                     let HirType::Reference { rf, .. } =
@@ -133,6 +140,9 @@ impl SlynxIR {
                     let t = temp.get_type(*rf)?;
 
                     temp.define_type(declaration.ty, t);
+                }
+                HirDeclarationKind::StyleSheet { .. } => {
+                    self.lower_stylesheet(declaration, &hir, &mut temp)?;
                 }
             }
         }

@@ -96,6 +96,15 @@ pub enum InstructionType {
     SetField(usize),
     ///Returns the operand
     Ret,
+    /// Apply a style property to a component.
+    /// operands[0] = component, operands[1] = value
+    SApply {
+        /// Style property code from STYLES_TABLE.md
+        property_code: u16,
+    },
+    /// Initialize call: apply a style function to a component.
+    /// operands[0] = component, operands[1] = style struct value
+    InitCall(IRPointer<Context, 1>),
 }
 
 #[derive(Debug, Clone)]
@@ -322,6 +331,22 @@ impl Instruction {
         Self {
             operands: value,
             instruction_type: InstructionType::Component,
+            value_type: ty,
+        }
+    }
+
+    pub fn sapply(property_code: u16, operands: IRPointer<Value>, ty: IRTypeId) -> Self {
+        Self {
+            operands,
+            instruction_type: InstructionType::SApply { property_code },
+            value_type: ty,
+        }
+    }
+
+    pub fn initcall(func: IRPointer<Context, 1>, operands: IRPointer<Value>, ty: IRTypeId) -> Self {
+        Self {
+            operands,
+            instruction_type: InstructionType::InitCall(func),
             value_type: ty,
         }
     }
