@@ -114,7 +114,7 @@ impl Parser {
                 }
                 TokenKind::StyleSheet => {
                     let Token {
-                        kind: TokenKind::Func,
+                        kind: TokenKind::StyleSheet,
                         span,
                     } = self.eat()?
                     else {
