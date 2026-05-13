@@ -38,7 +38,7 @@ impl TypeChecker {
                 else {
                     unreachable!("Type of function should be function");
                 };
-                let return_type = return_type.clone();
+                let return_type = *return_type;
                 self.resolve_statements(statements, &return_type)?;
             }
             HirDeclarationKind::ComponentDeclaration { props, .. } => {

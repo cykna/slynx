@@ -68,7 +68,9 @@ impl Parser {
     pub fn parse_stylesheet_statement(&mut self) -> Result<StyleSheetStatement, ParseError> {
         match self.peek()?.kind {
             TokenKind::Styles => self.parse_styles_statement(),
-            _ => self.parse_statement().map(StyleSheetStatement::Statement),
+            _ => self
+                .parse_statement()
+                .map(|arg| StyleSheetStatement::Statement(Box::new(arg))),
         }
     }
 
@@ -92,7 +94,7 @@ impl Parser {
         loop {
             if let TokenKind::LBrace = self.peek()?.kind {
                 break {
-                    if exprs.len() == 0 {
+                    if exprs.is_empty() {
                         Err(ParseError::UnexpectedEndOfInput)
                     } else {
                         Ok(exprs)

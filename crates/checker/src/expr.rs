@@ -290,7 +290,7 @@ impl TypeChecker {
 
             HirStatementKind::Return { expr } => {
                 expr.ty = self.get_type_of_expr(expr)?;
-                expr.ty = self.unify(&expr.ty, &return_type, span)?;
+                expr.ty = self.unify(&expr.ty, return_type, span)?;
             }
 
             HirStatementKind::Expression { expr } => {

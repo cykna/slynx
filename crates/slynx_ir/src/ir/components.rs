@@ -67,16 +67,13 @@ impl SlynxIR {
         let instruction = self.dereference_instruction_ptr(instruction).with_length();
 
         // Emit @initcall for component-level style usages from the component's declaration
-        if let Some(decl) = temp.hir.iter().find(|d| {
-            d.ty == name
-                && matches!(d.kind, HirDeclarationKind::ComponentDeclaration { .. })
-        }) {
-            if let HirDeclarationKind::ComponentDeclaration { props, .. } = &decl.kind {
-                let component_value = self.insert_value(Value::Instruction(instruction));
-                for member in props {
-                    if let ComponentMemberDeclaration::Style { usage, .. } = member {
-                        self.emit_style_initcall(usage, component_value, temp)?;
-                    }
+        if let Some(decl) = temp.hir.iter().find(|d| d.ty == name)
+            && let HirDeclarationKind::ComponentDeclaration { props, .. } = &decl.kind
+        {
+            let component_value = self.insert_value(Value::Instruction(instruction));
+            for member in props {
+                if let ComponentMemberDeclaration::Style { usage, .. } = member {
+                    self.emit_style_initcall(usage, component_value, temp)?;
                 }
             }
         }

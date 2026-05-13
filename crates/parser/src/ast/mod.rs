@@ -74,11 +74,8 @@ pub struct StyleBlock {
 
 #[derive(Debug)]
 pub enum StyleSheetStatement {
-    Statement(ASTStatement),
-    Styles {
-        styles: Vec<StyleBlock>,
-        span: Span,
-    },
+    Statement(Box<ASTStatement>),
+    Styles { styles: Vec<StyleBlock>, span: Span },
 }
 
 #[derive(Debug)]

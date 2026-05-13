@@ -10,9 +10,13 @@ use slynx_hir::{
 };
 
 use crate::{
-    IRError, IRPointer, IRTypeId, Instruction, SlynxIR, StyleProperty, Value,
-    ir::{model::Context, temp::TempIRData},
+    Context, IRError, IRPointer, IRTypeId, Instruction, SlynxIR, StyleProperty, Value,
+    ir::temp::TempIRData,
 };
+
+type StyleValue<'a> = (StyleProperty, &'a HirExpression);
+
+type ResolvedStyle<'a> = (Vec<StyleValue<'a>>, Vec<DeclarationId>);
 
 impl SlynxIR {
     /// Collect style property definitions from a list of style statements.
@@ -97,7 +101,7 @@ impl SlynxIR {
         own_props: &[&'a StylesDefinition],
         hir: &'a [HirDeclaration],
         _temp: &TempIRData,
-    ) -> Result<(Vec<(StyleProperty, &'a HirExpression)>, Vec<DeclarationId>), IRError> {
+    ) -> Result<ResolvedStyle<'a>, IRError> {
         let mut merged: Vec<(StyleProperty, &HirExpression)> = Vec::new();
         let mut seen_codes: HashSet<StyleProperty> = HashSet::new();
         let mut parent_ids: Vec<DeclarationId> = Vec::new();
@@ -167,11 +171,11 @@ impl SlynxIR {
     }
 
     /// Create the apply function for a stylesheet.
-    fn create_style_apply_function<'a>(
+    fn create_style_apply_function(
         &mut self,
         style_name: SymbolPointer,
         struct_ty: IRTypeId,
-        properties: &[(StyleProperty, &'a HirExpression)],
+        properties: &[(StyleProperty, &HirExpression)],
         parent_ids: &[DeclarationId],
         temp: &mut TempIRData,
     ) -> Result<IRPointer<Context, 1>, IRError> {

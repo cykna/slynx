@@ -120,12 +120,7 @@ impl SlynxIR {
                     self.insert_function_type_for(declaration.ty, &temp)?;
                     let func = temp.get_function(declaration.id);
                     debug_assert!(func.len() == 1);
-                    self.initialize_function(
-                        func.with_length::<1>(),
-                        statements,
-                        args,
-                        &mut temp,
-                    )?;
+                    self.initialize_function(func.with_length::<1>(), statements, args, &mut temp)?;
                 }
                 HirDeclarationKind::ComponentDeclaration { props, .. } => {
                     self.initialize_component(declaration, props, &mut temp)?;

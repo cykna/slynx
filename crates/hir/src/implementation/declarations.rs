@@ -16,7 +16,7 @@ impl SlynxHir {
     ///Hoists a `stylesheet` declaration
     pub fn hoist_stylesheet(&mut self, name: &str, args: &[TypedName]) {
         self.modules.create_declaration(
-            &name,
+            name,
             HirType::Style {
                 args: args.iter().map(|_| self.void_type()).collect(),
             },
