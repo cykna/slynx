@@ -29,14 +29,18 @@ impl TypeChecker {
     /// property initializers and updates the component type accordingly.
     pub(super) fn check_decl(&mut self, decl: &mut HirDeclaration) -> Result<()> {
         match &mut decl.kind {
-            HirDeclarationKind::Function { statements, .. } => {
-                self.resolve_statements(statements, &decl.ty)?;
-            }
-
+            HirDeclarationKind::StyleSheet { .. } => self.check_stylesheet(decl)?,
             // Objects and aliases have no bodies to type-check at this pass.
-            HirDeclarationKind::Object => {}
-            HirDeclarationKind::Alias => {}
+            HirDeclarationKind::Object | HirDeclarationKind::Alias => {}
 
+            HirDeclarationKind::Function { statements, .. } => {
+                let HirType::Function { return_type, .. } = self.types_module.get_type(&decl.ty)
+                else {
+                    unreachable!("Type of function should be function");
+                };
+                let return_type = return_type.clone();
+                self.resolve_statements(statements, &return_type)?;
+            }
             HirDeclarationKind::ComponentDeclaration { props, .. } => {
                 let ty = self.types_module.get_type(&decl.ty).clone();
                 let HirType::Component {

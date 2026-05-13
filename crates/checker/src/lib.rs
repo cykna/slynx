@@ -17,9 +17,11 @@
 //! fully concrete type information.
 
 mod decl;
+mod defaults;
 pub mod error;
 mod expr;
 mod statement;
+mod styles;
 use std::collections::HashMap;
 
 use common::SymbolPointer;
@@ -31,7 +33,7 @@ use slynx_hir::model::{ComponentProperty, HirStatement, HirStatementKind};
 use slynx_hir::modules::TypesModule;
 use slynx_hir::{
     SlynxHir, TypeId,
-    model::{FieldMethod, HirDeclaration, HirDeclarationKind, HirType},
+    model::{FieldMethod, HirType},
 };
 
 pub type Result<T> = std::result::Result<T, TypeError>;
@@ -389,31 +391,6 @@ impl TypeChecker {
             }),
             _ => false,
         }
-    }
-
-    ///Sets the default types on the given `decl`. This replaces the infer types on everything on the given `decl` with the correct(or default) type
-    fn set_default(&mut self, decl: &mut HirDeclaration) -> Result<()> {
-        match decl.kind {
-            HirDeclarationKind::Object => {}
-            HirDeclarationKind::Function {
-                ref mut statements, ..
-            } => {
-                let HirType::Function { return_type, .. } =
-                    self.types_module.get_type(&decl.ty).clone()
-                else {
-                    unreachable!("A function should have function type");
-                };
-                for statement in &mut *statements {
-                    self.default_statement(statement, &return_type)?;
-                }
-                self.ensure_function_returns(statements, return_type, &decl.span)?;
-            }
-            HirDeclarationKind::ComponentDeclaration { ref mut props, .. } => {
-                self.resolve_component_members(props, decl.ty)?;
-            }
-            HirDeclarationKind::Alias => {}
-        }
-        Ok(())
     }
 
     fn ensure_function_returns(

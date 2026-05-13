@@ -67,6 +67,18 @@ pub enum TypeErrorKind {
     Unrecognized,
 }
 
+impl TypeError {
+    pub fn invalid_funcall_args(expected: usize, received: usize, span: Span) -> Self {
+        Self {
+            span,
+            kind: TypeErrorKind::InvalidFuncallArgLength {
+                expected_length: expected,
+                received_length: received,
+            },
+        }
+    }
+}
+
 impl std::fmt::Display for TypeError {
     /// Formats the type error as a string.
     ///

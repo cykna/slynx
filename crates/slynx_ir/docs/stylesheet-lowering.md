@@ -33,12 +33,6 @@ should generate the following:
 ```slynxir
 struct RoundedStyle {i32}; // a pixel is a 'i32' internally
 
-RoundedStyle Rounded(i32) {
-$entry:
-  out = %RoundedStyle{p0};
-  ret out;
-}
-
 void ApplyRoundedStyle(PrimitiveComponent, RoundedStyle) {
 $entry:
   roundness = get_prop p1, 0;
@@ -76,9 +70,8 @@ stylesheet B() uses A() {
 }
 ```
 
-The `B` style should be internally represented as:
-
-```slynxir
+The `B` style could be represented as the following:
+```
 struct A {
   borderRadius: i32
 }
@@ -89,6 +82,7 @@ struct BIntermediate {
 
 struct B = merge(A, BIntermediate);
 ```
+note: the given code is a simple example to exemplify, internally only A and B will exist and no `merge` function exists.
 
 Where `merge` should **not copy fields** — if `A` has the same fields as `BIntermediate`, it uses the ones from `A` and ignores the ones from `BIntermediate`.
 

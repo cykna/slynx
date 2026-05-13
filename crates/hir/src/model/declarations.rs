@@ -31,9 +31,14 @@ use crate::{
 };
 
 #[derive(Debug)]
+///A style usage. This contains an ID to another stylesheet, and the parameters used to generate before the actual style.
 pub struct HirStyleUsage {
+    /// The id of the style to use
     pub style: DeclarationId,
+    ///The parameters to it
     pub params: Vec<HirExpression>,
+    ///The span of this usage, Covers from the name until the ')'
+    pub span: Span,
 }
 
 /// A built-in specialized component with predefined rendering semantics.
@@ -217,9 +222,13 @@ pub enum HirDeclarationKind {
         props: Vec<ComponentMemberDeclaration>,
     },
 
+    ///A stylesheet declaration
     StyleSheet {
+        ///The IDs of the arguments
         args: Vec<VariableId>,
+        ///The statements this stylesheet has got
         statements: Vec<HirStyleStatement>,
+        ///The usages to be applied before
         usages: Vec<HirStyleUsage>,
     },
 

@@ -89,6 +89,7 @@ impl SlynxHir {
         Ok(HirStyleUsage {
             style: decl,
             params,
+            span: usage.span,
         })
     }
 

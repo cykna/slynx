@@ -270,6 +270,38 @@ impl TypeChecker {
         value.ty = self.unify(&ty, &value.ty, &value.span)?;
         Ok(())
     }
+
+    pub(super) fn resolve_statement(
+        &mut self,
+        statement: &mut HirStatement,
+        return_type: &TypeId,
+    ) -> Result<()> {
+        let span = &statement.span;
+        match &mut statement.kind {
+            HirStatementKind::While { condition, body } => {
+                self.resolve_statement_while(condition, body, return_type)?
+            }
+
+            HirStatementKind::Variable { value, .. } => {
+                value.ty = self.get_type_of_expr(value)?;
+            }
+
+            HirStatementKind::Return { expr } => {
+                expr.ty = self.get_type_of_expr(expr)?;
+                expr.ty = self.unify(&expr.ty, &return_type, span)?;
+            }
+
+            HirStatementKind::Expression { expr } => {
+                expr.ty = self.get_type_of_expr(expr)?;
+            }
+
+            HirStatementKind::Assign { lhs, value } => {
+                self.resolve_statement_assign(lhs, value, span)?
+            }
+        }
+        Ok(())
+    }
+
     /// Resolves the types of the provided `statements`.
     ///
     /// This function resolves the types of the provided `statements` by updating
@@ -278,36 +310,10 @@ impl TypeChecker {
     pub(super) fn resolve_statements(
         &mut self,
         statements: &mut [HirStatement],
-        ty: &TypeId,
+        return_type: &TypeId,
     ) -> Result<()> {
-        let HirType::Function { return_type, .. } = self.types_module.get_type(ty).clone() else {
-            unreachable!();
-        };
         for statement in statements {
-            let span = &statement.span;
-
-            match &mut statement.kind {
-                HirStatementKind::While { condition, body } => {
-                    self.resolve_statement_while(condition, body, ty)?
-                }
-
-                HirStatementKind::Variable { value, .. } => {
-                    value.ty = self.get_type_of_expr(value)?;
-                }
-
-                HirStatementKind::Return { expr } => {
-                    expr.ty = self.get_type_of_expr(expr)?;
-                    expr.ty = self.unify(&expr.ty, &return_type, span)?;
-                }
-
-                HirStatementKind::Expression { expr } => {
-                    expr.ty = self.get_type_of_expr(expr)?;
-                }
-
-                HirStatementKind::Assign { lhs, value } => {
-                    self.resolve_statement_assign(lhs, value, span)?
-                }
-            }
+            self.resolve_statement(statement, return_type)?;
         }
 
         Ok(())

@@ -78,14 +78,35 @@
 
 use common::{Span, SymbolPointer};
 
-use crate::{VariableId, model::HirExpression};
+use crate::{TypeId, VariableId, model::HirExpression};
 
 #[derive(Debug)]
-pub struct StylesDefinition(pub SymbolPointer, pub HirExpression);
+///A Style definition when declaring a stylesheet
+pub struct StylesDefinition {
+    ///The name of the style
+    pub name: SymbolPointer,
+    ///The expression related to it
+    pub expr: HirExpression,
+    ///The type it should have. Used on Type checker
+    pub expected_type: TypeId,
+    pub span: Span,
+}
 
 impl StylesDefinition {
-    pub fn new(symb: SymbolPointer, expr: HirExpression) -> Self {
-        Self(symb, expr)
+    ///Creates a new style definition with the given `symb` name, `expr` and `expected_type`. The given `expected_type` may not be the same as `expr` type when created,
+    ///but that'll be asserted on Type checking
+    pub fn new(
+        symb: SymbolPointer,
+        expr: HirExpression,
+        expected_type: TypeId,
+        span: Span,
+    ) -> Self {
+        Self {
+            name: symb,
+            expr,
+            expected_type,
+            span,
+        }
     }
 }
 

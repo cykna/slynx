@@ -91,9 +91,18 @@ pub enum HIRErrorKind {
     InvalidStyleEvent {
         name: SymbolPointer,
     },
+    InvalidStyleDefinition {
+        name: SymbolPointer,
+    },
 }
 
 impl HIRError {
+    pub fn invalid_style(name: SymbolPointer, span: Span) -> Self {
+        Self {
+            kind: HIRErrorKind::InvalidStyleDefinition { name },
+            span,
+        }
+    }
     pub fn invalid_event(name: SymbolPointer, span: Span) -> Self {
         Self {
             kind: HIRErrorKind::InvalidStyleEvent { name },
@@ -216,6 +225,9 @@ impl std::fmt::Display for HIRError {
                 )
             }
             HIRErrorKind::InvalidStyleEvent { .. } => write!(f, "Invalid style event"),
+            HIRErrorKind::InvalidStyleDefinition { .. } => {
+                write!(f, "Invalid style definition name")
+            }
         }
     }
 }

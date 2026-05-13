@@ -1,10 +1,11 @@
 use crate::{
-    HIRError, Result, SlynxHir,
+    HIRError, Result, SlynxHir, TypeId,
     model::{
         HirStatement, HirStatementKind, HirStyleBlock, HirStyleBlockKind, HirStyleStatement,
         StylesDefinition,
     },
 };
+use common::Span;
 use slynx_parser::{
     ASTExpression, ASTExpressionKind, ASTStatement, ASTStatementKind, NamedExpr, StyleBlock,
     StyleSheetStatement,
@@ -94,6 +95,18 @@ impl SlynxHir {
         }
     }
 
+    ///Type of styles is made by its name.
+    pub fn resolve_style_type(&mut self, name: &str, span: Span) -> Result<TypeId> {
+        let ty = match name {
+            "backgroundColor" | "foregroundColor" => self.int32_type(),
+            _ => {
+                let name = self.modules.intern_name(name);
+                return Err(HIRError::invalid_style(name, span));
+            }
+        };
+        Ok(ty)
+    }
+
     pub fn resolve_style_definitions(
         &mut self,
         definitions: &[NamedExpr],
@@ -102,8 +115,9 @@ impl SlynxHir {
             .iter()
             .map(|def| {
                 let expr = self.resolve_expr(&def.expr, None)?;
+                let expected_type = self.resolve_style_type(&def.name, def.span)?;
                 let symbol = self.modules.intern_name(&def.name);
-                Ok(StylesDefinition::new(symbol, expr))
+                Ok(StylesDefinition::new(symbol, expr, expected_type, def.span))
             })
             .collect::<Result<Vec<_>>>()
     }

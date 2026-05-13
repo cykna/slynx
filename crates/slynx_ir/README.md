@@ -325,7 +325,13 @@ Then a style such as:
     backgroundColor: red;
   }
 }`
-it will contain a struct, and a function for applying the `A` style, and that applies the propertie 0, as 'backgroundColor'
+it will contain a struct, and a function for applying the `A` style, and that applies the propertie 0, as 'backgroundColor'.
+The usage of the stylesheet, which follows:
+```
+SpecializedComponent {
+  style: A()
+}```
+generates a call for the function that applies the struct `A` on that given `SpecializedComponent`. It is being explained on the [stylesheet lowering](./docs/stylesheet-lowering.md)
 
 ### UI Operations
 Anything on the IR that initializes with '@' and is being used as an instruction, is an specific UI Operation, which determine what the UI itself should do. If being used as a value, then it's the visual reference to a handle of some internal string
