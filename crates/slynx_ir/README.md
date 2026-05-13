@@ -315,6 +315,51 @@ $entry:
 
 Differently of default values, special values are primitives that are expected to exist on the runtime we are compiling to.
 
+#### StyleSheets
+StyleSheets on the IR are a method to define styles for the components. Since stylesheets mix both styling with turing complete code, it is fallbacked to 2 separated things: A function and a struct, but for clarity reasons, this primitive will be called
+'style'. A style is a specialized struct used to represent styles on a specific backend. The thing is that the style will contain metadata of which fields it's got. Since it's specialized for defining how a component should work. Operations related to styles
+will carry metadata on how to apply that given style. The metadata is basically a 10bit numeric that has got semantic information.
+By knowing this, we got 3 separated things:
+1. On the slynx syntax level, a 'stylesheet' is a function
+2. The style it generates internally is an struct.
+3. The application of the style on a specific style is monomorphized per style.
+
+Thus, something like the following:
+```
+stylesheet Rounded(size: px) {
+  styles {
+    borderRadius: size
+  }
+}
+component C {
+  Div {
+    style: Rounded(12px),
+  }
+}
+```
+should generate the following:
+```
+struct RoundedStyle {i32}; //a pixel should be a 'i32' internally
+RoundedStyle Rounded(i32) {
+$entry:
+  out = %RoundedStyle{p0};
+  ret out;
+}
+
+void ApplyRoundedStyle(PrimitiveComponent, RoundedStyle) {
+$entry:
+  roundness = get_prop p1, 0;
+  @sapply BorderRadius, p0, roundness;
+  ret;
+}
+component %C(){
+  #t0 = specialized Div;
+  
+  @initcall ApplyRoundedStyled, #t0, %RoundedStyle{0}
+}
+```
+both @sapply and @initcall are ui operations.
+
 ### UI Operations
 Anything on the IR that initializes with '@' and is being used as an instruction, is an specific UI Operation, which determine what the UI itself should do. If being used as a value, then it's the visual reference to a handle of some internal string
 On Components, @binds are way to determine which value on the component should update which dependency. On the %Counter example above, we had
@@ -332,7 +377,8 @@ The `@emit p0, %count` on the function, tells that `p0` should execute its `%cou
 * @rerender: which follows: `@rerender Component`, means that the `Component` should be re-rendered
 * @hide: which follows `@hide Component, #child`, means that the `#child` of the provided `Component` should quit the UI tree. This instruction does not determine if the backend should kill or not the component, this is a compiler's choice
 * @reveal: which follows `@reveal Component, #child`, does the opposite of `@hide`. It tells the `child` of the `Component` should be revealed on the UI. This instruction does not determine if the backend should create a new component or use a cached one, this is a compiler's choice
-
+* @sapply: which follows `@sapply Kind, Component, value`, applies the given `value` into the given primitive `component`. The `kind` is a metadata to tell what specifically that style is. The table is at STYLES_TABLE.md. This instruction does not determine how it's applied, just that the given value should be applied as the given `Kind` style. 'sapply' stands for: 'style apple'
+* @initcall` which follows `@initcall Func, Arg1, Arg2, Arg3, ...` calls the given `Func` when that component is initialized. 'initialized' means it is called BEFORE being inserted on the ui, since @initcalls are intended to component initialization. More than a single @initcall is permitted, and the order should be the same its ordered.
 
 ### Instructions
 
