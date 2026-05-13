@@ -1,73 +1,41 @@
+use std::collections::HashSet;
+
 use common::SymbolPointer;
 use slynx_hir::{
     DeclarationId,
     model::{
         HirDeclaration, HirDeclarationKind, HirExpression, HirStyleBlockKind, HirStyleStatement,
-        HirStyleUsage,
+        HirStyleUsage, StylesDefinition,
     },
 };
 
 use crate::{
-    IRError, IRPointer, IRTypeId, IRTypes, Instruction, SlynxIR, Value,
-    ir::{
-        model::Context,
-        temp::TempIRData,
-    },
+    IRError, IRPointer, IRTypeId, Instruction, SlynxIR, StyleProperty, Value,
+    ir::{model::Context, temp::TempIRData},
 };
 
-/// Maps a style property name (from the stylesheet definition) to its
-/// STYLES_TABLE numeric code (0..9).
-pub fn style_name_to_code(name: &str) -> Option<u16> {
-    match name {
-        "backgroundColor" => Some(0),
-        "foregroundColor" => Some(1),
-        "padding" => Some(2),
-        "margin" => Some(3),
-        "size" => Some(4),
-        "fontSize" => Some(5),
-        "fontWeight" => Some(6),
-        "opacity" => Some(7),
-        "border" => Some(8),
-        "shadow" => Some(9),
-        _ => None,
-    }
-}
-
-/// Map a STYLES_TABLE code to its IR type for struct fields.
-pub fn style_code_to_ir_type(types: &IRTypes, code: u16) -> IRTypeId {
-    match code {
-        0 | 1 => types.int_type(),     // Color -> i32
-        2 | 3 | 4 => types.int_type(), // Vec4 -> placeholder i32
-        5 => types.int_type(),         // px -> i32
-        6 => types.int_type(),         // u16 -> i32
-        7 => types.float_type(),       // f32 -> f32
-        8 | 9 => types.int_type(),     // Border/Shadow -> placeholder i32
-        _ => types.int_type(),
-    }
-}
-
-/// Collect style property definitions from a list of style statements.
-/// Returns (property_name_symbol, &expression) pairs.
-fn collect_style_properties<'a>(
-    statements: &'a [HirStyleStatement],
-) -> Vec<(SymbolPointer, &'a HirExpression)> {
-    let mut props = Vec::new();
-    for stmt in statements {
-        if let HirStyleStatement::Styles(blocks) = stmt {
-            for block in blocks {
-                if !matches!(block.kind, HirStyleBlockKind::Default) {
-                    continue;
-                }
-                for def in &block.definitions {
-                    props.push((def.name, &def.expr));
+impl SlynxIR {
+    /// Collect style property definitions from a list of style statements.
+    /// Returns (property_name_symbol, &expression) pairs.
+    fn collect_style_properties<'a>(
+        &self,
+        statements: &'a [HirStyleStatement],
+    ) -> Vec<&'a StylesDefinition> {
+        let mut props = Vec::new();
+        for stmt in statements {
+            if let HirStyleStatement::Styles(blocks) = stmt {
+                for block in blocks
+                    .iter()
+                    .filter(|block| matches!(block.kind, HirStyleBlockKind::Default))
+                {
+                    for def in &block.definitions {
+                        props.push(def);
+                    }
                 }
             }
         }
+        props
     }
-    props
-}
-
-impl SlynxIR {
     /// Lower a stylesheet declaration into IR.
     ///
     /// 1. Resolve inheritance from `uses` clauses.
@@ -95,7 +63,7 @@ impl SlynxIR {
             .ok_or(IRError::IRTypeNotRecognized(decl.ty))?;
 
         // 1. Collect own properties from stylesheet body
-        let own_props = collect_style_properties(statements);
+        let own_props = self.collect_style_properties(statements);
 
         // 2. Resolve inheritance: merge parent properties with own properties
         let (merged_props, parent_usage_decls) =
@@ -126,45 +94,42 @@ impl SlynxIR {
     fn resolve_style_inheritance<'a>(
         &self,
         usages: &[HirStyleUsage],
-        own_props: &[(SymbolPointer, &'a HirExpression)],
+        own_props: &[&'a StylesDefinition],
         hir: &'a [HirDeclaration],
         _temp: &TempIRData,
-    ) -> Result<(Vec<(u16, &'a HirExpression)>, Vec<DeclarationId>), IRError> {
-        let mut merged: Vec<(u16, &HirExpression)> = Vec::new();
-        let mut seen_codes: Vec<u16> = Vec::new();
+    ) -> Result<(Vec<(StyleProperty, &'a HirExpression)>, Vec<DeclarationId>), IRError> {
+        let mut merged: Vec<(StyleProperty, &HirExpression)> = Vec::new();
+        let mut seen_codes: HashSet<StyleProperty> = HashSet::new();
         let mut parent_ids: Vec<DeclarationId> = Vec::new();
 
         for usage in usages {
-            if let Some(parent_decl) = hir.iter().find(|d| d.id == usage.style) {
-                parent_ids.push(parent_decl.id);
-                if let HirDeclarationKind::StyleSheet {
-                    ref statements, ..
-                } = parent_decl.kind
-                {
-                    let parent_props = collect_style_properties(statements);
-                    for (_name, expr) in &parent_props {
-                        let name_str = self.strings.get_name(*_name);
-                        if let Some(code) = style_name_to_code(name_str) {
-                            if !seen_codes.contains(&code) {
-                                seen_codes.push(code);
-                                merged.push((code, *expr));
-                            }
-                        }
+            parent_ids.push(usage.style);
+            let style = &hir[usage.style.as_raw() as usize];
+            if let HirDeclarationKind::StyleSheet { ref statements, .. } = style.kind {
+                let parent_props = self.collect_style_properties(statements);
+
+                for def in &parent_props {
+                    let name_str = self.strings.get_name(def.name);
+                    let property = StyleProperty::from_name(name_str);
+
+                    if !seen_codes.contains(&property) {
+                        seen_codes.insert(property);
+                        merged.push((property, &def.expr));
                     }
                 }
             }
         }
 
         // Own properties override parent properties with the same code
-        for (name, expr) in own_props {
-            let name_str = self.strings.get_name(*name);
-            if let Some(code) = style_name_to_code(name_str) {
-                if let Some(pos) = seen_codes.iter().position(|c| *c == code) {
-                    merged[pos] = (code, *expr);
-                } else {
-                    seen_codes.push(code);
-                    merged.push((code, *expr));
-                }
+        for def in own_props {
+            let name_str = self.strings.get_name(def.name);
+            let code = StyleProperty::from_name(name_str);
+
+            if let Some(pos) = seen_codes.iter().position(|c| *c == code) {
+                merged[pos] = (code, &def.expr);
+            } else {
+                seen_codes.insert(code);
+                merged.push((code, &def.expr));
             }
         }
 
@@ -178,14 +143,14 @@ impl SlynxIR {
     fn populate_style_struct_fields(
         &mut self,
         struct_ty: IRTypeId,
-        properties: &[(u16, &HirExpression)],
+        properties: &[(StyleProperty, &HirExpression)],
     ) -> Result<(), IRError> {
         use crate::IRType;
 
         // Compute all field types first to avoid borrow conflicts
         let field_types: Vec<IRTypeId> = properties
             .iter()
-            .map(|(code, _)| style_code_to_ir_type(&self.types, *code))
+            .map(|(code, _)| code.ir_type(&self.types))
             .collect();
 
         let struct_id = match self.types.get_type(struct_ty) {
@@ -206,7 +171,7 @@ impl SlynxIR {
         &mut self,
         style_name: SymbolPointer,
         struct_ty: IRTypeId,
-        properties: &[(u16, &'a HirExpression)],
+        properties: &[(StyleProperty, &'a HirExpression)],
         parent_ids: &[DeclarationId],
         temp: &mut TempIRData,
     ) -> Result<IRPointer<Context, 1>, IRError> {
@@ -331,8 +296,7 @@ impl SlynxIR {
             false,
         );
         let struct_lit_ptr = self.dereference_instruction_ptr(struct_lit_instr);
-        let struct_lit_value =
-            self.insert_value(Value::Instruction(struct_lit_ptr.with_length()));
+        let struct_lit_value = self.insert_value(Value::Instruction(struct_lit_ptr.with_length()));
 
         // Emit @initcall
         let operands = {

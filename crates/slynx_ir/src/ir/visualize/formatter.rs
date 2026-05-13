@@ -382,7 +382,7 @@ impl<'a> Formatter<'a> {
             }
             InstructionType::RawValue => self.fmt_value(&instr.operands.ptr_to(0)),
             InstructionType::SApply { property_code } => {
-                let name = style_code_to_name(*property_code);
+                let name = property_code.to_string();
                 let component = self.fmt_value(&instr.operands.ptr_to(0));
                 let value = self.fmt_value(&instr.operands.ptr_to(1));
                 format!("@sapply {}, {}, {};", name, component, value)
@@ -541,21 +541,5 @@ impl<'a> Formatter<'a> {
                 }
             }
         }
-    }
-}
-
-pub fn style_code_to_name(code: u16) -> &'static str {
-    match code {
-        0 => "BackgroundColor",
-        1 => "ForegroundColor",
-        2 => "Padding",
-        3 => "Margin",
-        4 => "Size",
-        5 => "FontSize",
-        6 => "FontWeight",
-        7 => "Opacity",
-        8 => "Border",
-        9 => "Shadow",
-        _ => "Unknown",
     }
 }

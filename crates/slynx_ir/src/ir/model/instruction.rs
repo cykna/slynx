@@ -1,6 +1,6 @@
 use common::SymbolPointer;
 
-use crate::{IRTypeId, Label, ir::model::Context};
+use crate::{IRTypeId, Label, StyleProperty, ir::model::Context};
 
 use super::IRPointer;
 
@@ -100,7 +100,7 @@ pub enum InstructionType {
     /// operands[0] = component, operands[1] = value
     SApply {
         /// Style property code from STYLES_TABLE.md
-        property_code: u16,
+        property_code: StyleProperty,
     },
     /// Initialize call: apply a style function to a component.
     /// operands[0] = component, operands[1] = style struct value
@@ -335,7 +335,7 @@ impl Instruction {
         }
     }
 
-    pub fn sapply(property_code: u16, operands: IRPointer<Value>, ty: IRTypeId) -> Self {
+    pub fn sapply(property_code: StyleProperty, operands: IRPointer<Value>, ty: IRTypeId) -> Self {
         Self {
             operands,
             instruction_type: InstructionType::SApply { property_code },
