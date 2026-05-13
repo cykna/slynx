@@ -314,10 +314,15 @@ pub enum ComponentMemberDeclaration {
     },
 
     /// A specialized component with predefined behavior.
-    ///
-    /// Specialized components like `Text` and `Div` have built-in rendering
-    /// logic and don't require full component definitions.
     Specialized(super::SpecializedComponent),
+
+    /// A style usage declaration (e.g., `style: Rounded(12px)`).
+    Style {
+        /// The style usage information.
+        usage: HirStyleUsage,
+        /// The source location of this style usage.
+        span: Span,
+    },
 }
 
 impl ComponentMemberDeclaration {
