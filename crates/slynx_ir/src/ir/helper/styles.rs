@@ -60,11 +60,6 @@ impl SlynxIR {
             unreachable!("lower_stylesheet called on non-stylesheet declaration");
         };
 
-        let style_name = temp
-            .types_module()
-            .get_type_name(&decl.ty)
-            .ok_or(IRError::IRTypeNotRecognized(decl.ty))?;
-
         // 1. Collect own properties from stylesheet body
         let own_props = self.collect_style_properties(statements);
 
@@ -78,7 +73,7 @@ impl SlynxIR {
 
         // 4. Create the apply function
         let apply_func = self.create_style_apply_function(
-            *style_name,
+            decl,
             struct_ty,
             &merged_props,
             &parent_usage_decls,
@@ -171,23 +166,19 @@ impl SlynxIR {
     /// Create the apply function for a stylesheet.
     fn create_style_apply_function(
         &mut self,
-        style_name: SymbolPointer,
+        decl: &HirDeclaration,
         struct_ty: IRTypeId,
         properties: &[(StyleProperty, &HirExpression)],
         parent_ids: &[DeclarationId],
         temp: &mut TempIRData,
     ) -> Result<IRPointer<Context, 1>, IRError> {
-        let apply_name = {
-            let name = self.strings.get_name(style_name);
-            let apply_name_str = format!("Apply{}Style", name);
-            self.strings.intern(&apply_name_str)
-        };
-
         let generic_component_ty = self.types.generic_component_type();
         let void_ty = self.types.void_type();
 
         // Create function context and set arg/return types
-        let ctx = self.create_blank_function(apply_name);
+        let ctx = temp
+            .get_style_apply_function(decl.id)
+            .expect("Expected style apply function to be hoisted");
         {
             use crate::IRType;
             let irty_id = self.get_context(ctx).ty();

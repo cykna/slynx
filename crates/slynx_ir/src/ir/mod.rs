@@ -104,7 +104,9 @@ impl SlynxIR {
                     let name = tys.get_type_name(&declaration.ty).cloned();
                     if let Some(name) = name {
                         let out = self.types.create_empty_struct(name);
+                        let func = self.create_blank_function(name);
                         temp.define_type(declaration.ty, out);
+                        temp.map_style_apply_function(declaration.id, func);
                     }
                 }
             }
