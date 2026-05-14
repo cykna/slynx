@@ -34,10 +34,10 @@ impl Parser {
                 break;
             }
             let stmt = self.parse_named_expr()?;
+            properties.push(stmt);
             if let TokenKind::Comma | TokenKind::SemiColon = self.peek()?.kind {
                 self.eat()?;
             }
-            properties.push(stmt);
         }
         let block_end = self.expect(&TokenKind::RBrace)?.span;
         Ok(StyleBlock {
@@ -81,10 +81,10 @@ impl Parser {
                 break Ok(statements);
             }
             let stmt = self.parse_stylesheet_statement()?;
+            statements.push(stmt);
             if let TokenKind::Comma = self.peek()?.kind {
                 self.eat()?;
             }
-            statements.push(stmt);
         }
     }
 
@@ -123,9 +123,9 @@ impl Parser {
                     break out;
                 }
                 let arg = self.parse_typedname()?;
+                out.push(arg);
                 if let TokenKind::Comma = self.peek()?.kind {
                     self.eat()?;
-                    out.push(arg);
                 }
             }
         };
