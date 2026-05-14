@@ -80,7 +80,7 @@ impl Parser {
                     let Token {
                         kind: TokenKind::Identifier(ident),
                         span,
-                    } = self.expect(&TokenKind::Identifier(String::new()))?
+                    } = self.expect_identifier()?
                     else {
                         unreachable!();
                     };
@@ -94,6 +94,9 @@ impl Parser {
                         },
                         rhs: val,
                     });
+                    if self.peek()?.kind == TokenKind::Comma {
+                        self.eat()?;
+                    }
                 }
                 _ => {
                     let val = self.parse_component_expr()?;
