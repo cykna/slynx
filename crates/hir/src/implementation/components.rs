@@ -78,10 +78,18 @@ impl SlynxHir {
         span: &Span,
     ) -> Result<HirSpecializedComponentExpression> {
         let mut text = None;
+        let mut style = None;
         for value in values {
             match value {
-                ComponentMemberValue::Assign { prop_name, rhs, .. } if prop_name == "text" => {
+                ComponentMemberValue::Assign { prop_name, rhs, .. }
+                    if prop_name == HirSpecializedComponentExpression::RESERVED_TEXT =>
+                {
                     text = Some(self.resolve_expr(rhs, None)?)
+                }
+                ComponentMemberValue::Assign { prop_name, rhs, .. }
+                    if prop_name == HirSpecializedComponentExpression::RESERVED_STYLE =>
+                {
+                    style = Some(self.resolve_style_usage(rhs)?)
                 }
                 ComponentMemberValue::Assign {
                     prop_name, span, ..
@@ -98,7 +106,7 @@ impl SlynxHir {
             }
         }
         match text {
-            Some(text) => Ok(HirSpecializedComponentExpression::new_text(text)),
+            Some(text) => Ok(HirSpecializedComponentExpression::new_text(text, style)),
             None => {
                 let properties = vec![self.modules.intern_name("text")];
                 Err(HIRError::missing_properties(properties, *span))
@@ -112,19 +120,34 @@ impl SlynxHir {
         children: &[ComponentMemberValue],
         _: &Span,
     ) -> Result<HirSpecializedComponentExpression> {
+        let style = {
+            let mut c = None;
+            for child in children {
+                if let ComponentMemberValue::Assign {
+                    prop_name,
+                    rhs,
+                    span,
+                } = child
+                {
+                    if prop_name == HirSpecializedComponentExpression::RESERVED_STYLE {
+                        c = Some(self.resolve_style_usage(rhs)?);
+                    } else {
+                        let prop = self.modules.intern_name(prop_name);
+                        return Err(HIRError::property_unrecognized(vec![prop], *span));
+                    }
+                }
+            }
+            c
+        };
+
         let children = children
             .iter()
-            .map(|c| match c {
-                ComponentMemberValue::Assign {
-                    prop_name, span, ..
-                } => {
-                    let prop = self.modules.intern_name(prop_name);
-                    Err(HIRError::property_unrecognized(vec![prop], *span))
-                }
-                ComponentMemberValue::Child(c) => self.resolve_component_expression(c),
+            .filter_map(|c| match c {
+                ComponentMemberValue::Assign { .. } => None,
+                ComponentMemberValue::Child(c) => Some(self.resolve_component_expression(c)),
             })
             .collect::<Result<Vec<_>>>()?;
-        Ok(HirSpecializedComponentExpression::new_div(children))
+        Ok(HirSpecializedComponentExpression::new_div(children, style))
     }
     ///Tries to resolve the given `child` as, either a specialized component, or a normal user defined component
     pub fn try_resolve_specialized<'a>(

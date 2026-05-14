@@ -84,43 +84,61 @@
 //! - [`crate::hir::model::HirStatement`] — Statement nodes
 //! - [`crate::hir::implementation::expression::resolve_expr`] — Expression resolution
 
-use crate::{DeclarationId, ExpressionId, TypeId, VariableId, model::HirStatement};
+use crate::{
+    DeclarationId, ExpressionId, TypeId, VariableId,
+    model::{HirStatement, HirStyleUsage},
+};
 use common::{Operator, Span, SymbolPointer};
 
+/// A property assignment within a component construction expression.
+///
+/// Links a property index (position within the component's property list) to
+/// the [`HirExpression`] that computes its value at runtime.
 #[derive(Debug)]
 pub struct PropertyExpression {
-    ///The property index this expression will be applied to
+    /// The property index this expression will be applied to
     index: usize,
-    ///The expression of the property
+    /// The expression of the property
     expr: HirExpression,
 }
 
 impl PropertyExpression {
+    /// Creates a new [`PropertyExpression`] with the given property `index` and its value `expr`.
     pub fn new(index: usize, expr: HirExpression) -> Self {
         Self { index, expr }
     }
 
+    /// Returns the property index this expression is assigned to.
     pub fn index(&self) -> usize {
         self.index
     }
+
+    /// Returns a shared reference to the property value expression.
     pub fn expr(&self) -> &HirExpression {
         &self.expr
     }
 
+    /// Returns a mutable reference to the property value expression.
     pub fn expr_mut(&mut self) -> &mut HirExpression {
         &mut self.expr
     }
 }
 
+/// A component construction expression.
+///
+/// Components can be either user-defined (with a name, properties, and children)
+/// or specialized (built-in components with predefined rendering semantics).
 #[derive(Debug)]
 pub enum HirComponentExpression {
+    /// A built-in specialized component (e.g., `Text`, `Div`).
     Specialized(HirSpecializedComponentExpression),
+    /// A user-defined component with an explicit name, property values, and children.
     Normal {
         /// The type of the component.
         name: TypeId,
-        ///The properties of this component
+        /// The properties of this component
         properties: Vec<PropertyExpression>,
-        ///The children of this component
+        /// The children of this component
         children: Vec<HirComponentExpression>,
         /// The source location of this child declaration.
         span: Span,
@@ -128,6 +146,8 @@ pub enum HirComponentExpression {
 }
 
 impl HirComponentExpression {
+    /// Creates a new [`HirComponentExpression::Normal`] with the given type `id`,
+    /// property expressions, child components, and source `span`.
     pub fn new_normal(
         id: TypeId,
         properties: Vec<PropertyExpression>,
@@ -153,23 +173,28 @@ pub enum HirSpecializedComponentExpression {
     Text {
         /// The expression whose value is rendered as text.
         text: Box<HirExpression>,
+        style: Option<HirStyleUsage>,
     },
     /// A layout container component with zero or more child declarations.
     Div {
         /// The child component declarations nested inside this `Div`.
         children: Vec<HirComponentExpression>,
+        style: Option<HirStyleUsage>,
     },
 }
 impl HirSpecializedComponentExpression {
+    pub const RESERVED_STYLE: &'static str = "style";
+    pub const RESERVED_TEXT: &'static str = "text";
     ///Creates a new specialized Text component with the given `text`
-    pub fn new_text(text: HirExpression) -> Self {
+    pub fn new_text(text: HirExpression, style: Option<HirStyleUsage>) -> Self {
         Self::Text {
             text: Box::new(text),
+            style,
         }
     }
     ///Creates a new specialized Div component with the given `children`
-    pub fn new_div(children: Vec<HirComponentExpression>) -> Self {
-        Self::Div { children }
+    pub fn new_div(children: Vec<HirComponentExpression>, style: Option<HirStyleUsage>) -> Self {
+        Self::Div { children, style }
     }
 }
 
