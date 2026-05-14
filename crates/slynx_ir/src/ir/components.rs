@@ -155,7 +155,7 @@ impl SlynxIR {
             SpecializedComponent::Text { text } => {
                 let v = self.get_value_for(text, temp)?;
                 let specialized = self.insert_specialized(IRSpecializedComponent::Text(v));
-                Value::Specliazed(specialized)
+                Value::Specialized(specialized)
             }
             SpecializedComponent::Div { children } => {
                 let style_usages: Vec<&HirStyleUsage> = children
@@ -168,11 +168,11 @@ impl SlynxIR {
                 let children = self.get_component_children(children, temp)?;
                 let children = self.insert_values(&children);
                 let specialized = self.insert_specialized(IRSpecializedComponent::Div(children));
-                let div_value = self.insert_value(Value::Specliazed(specialized));
+                let div_value = self.insert_value(Value::Specialized(specialized));
                 for usage in style_usages {
                     self.emit_style_initcall(usage, div_value, temp)?;
                 }
-                Value::Specliazed(specialized)
+                Value::Specialized(specialized)
             }
         };
         Ok(value)

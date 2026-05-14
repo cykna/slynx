@@ -128,11 +128,11 @@ impl SlynxHir {
             return Err(HIRError::name_unrecognized(identifier_symbol, name.span));
         };
         let HirType::Reference { rf, .. } = self.get_type(&declty) else {
-            unreachable!("WTF, type of custom object should be a reference to its real type");
+            unreachable!("Type of custom object should be a reference to its real type");
         };
         let rf = *rf;
         let HirType::Struct { fields: ty_field } = self.get_type_mut(&rf) else {
-            unreachable!("WTF. Type of object should be a Struct ty");
+            unreachable!("Type of object should be a Struct ty");
         };
 
         ty_field.append(&mut fields);

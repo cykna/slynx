@@ -196,7 +196,7 @@ impl<'a> Formatter<'a> {
         for i in 0..values_range.len() {
             let child_str = match &self.values[values_range.ptr_to(i).ptr()] {
                 Value::Instruction(p) => format!("#t{}: component %t{}", i, p.ptr()),
-                Value::Specliazed(spec_ptr) => {
+                Value::Specialized(spec_ptr) => {
                     let kind = match &self.specialized[spec_ptr.ptr()] {
                         IRSpecializedComponent::Text(_) => "specialized(text)",
                         IRSpecializedComponent::Div(_) => "specialized(div)",
@@ -422,7 +422,7 @@ impl<'a> Formatter<'a> {
             }
             Value::StructLiteral(_, _) => format!("%lit{}", ptr.ptr()),
             Value::Void => "void".to_string(),
-            Value::Specliazed(_) => "specialized".to_string(),
+            Value::Specialized(_) => "specialized".to_string(),
         }
     }
 
