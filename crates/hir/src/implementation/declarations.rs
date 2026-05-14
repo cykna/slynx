@@ -42,10 +42,9 @@ impl SlynxHir {
             .iter()
             .map(|arg| {
                 let symbol = self.modules.intern_name(&arg.name);
-                match self.retrieve_information_of_type(&arg.kind.identifier, &arg.kind.span) {
-                    Ok((ty, _)) => self.create_variable(symbol, ty, &arg.span).map(|v| (v, ty)),
-                    Err(e) => Err(e),
-                }
+                let (ty, _) =
+                    self.retrieve_information_of_type(&arg.kind.identifier, &arg.kind.span)?;
+                self.create_variable(symbol, ty, &arg.span).map(|v| (v, ty))
             })
             .collect::<Result<(Vec<_>, Vec<_>)>>()?;
         {
@@ -172,10 +171,9 @@ impl SlynxHir {
             .iter()
             .map(|arg| {
                 let symbol = self.modules.intern_name(&arg.name);
-                match self.retrieve_information_of_type(&arg.kind.identifier, &arg.kind.span) {
-                    Ok((ty, _)) => self.create_variable(symbol, ty, &arg.span).map(|v| (v, ty)),
-                    Err(e) => Err(e),
-                }
+                let (ty, _) =
+                    self.retrieve_information_of_type(&arg.kind.identifier, &arg.kind.span)?;
+                self.create_variable(symbol, ty, &arg.span).map(|v| (v, ty))
             })
             .collect::<Result<(Vec<_>, Vec<_>)>>()?;
         {

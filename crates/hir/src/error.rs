@@ -7,7 +7,6 @@ use common::{Span, SymbolPointer};
 /// Each error carries a [`HIRErrorKind`] describing what went wrong and a
 /// [`Span`] pointing to the relevant source location.
 #[derive(Debug)]
-#[warn(unused)]
 pub struct HIRError {
     /// The specific kind of error that occurred.
     pub kind: HIRErrorKind,

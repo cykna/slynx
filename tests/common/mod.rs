@@ -1,3 +1,5 @@
+#![allow(dead_code)]
+
 use slynx_hir::{
     SlynxHir,
     model::HirDeclaration,
