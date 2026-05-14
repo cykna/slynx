@@ -92,19 +92,22 @@ impl Parser {
     pub fn parse_usages(&mut self, _: Span) -> Result<Vec<ASTExpression>, ParseError> {
         let mut exprs = vec![];
         loop {
-            if let TokenKind::LBrace = self.peek()?.kind {
-                break {
-                    if exprs.is_empty() {
-                        Err(ParseError::UnexpectedEndOfInput)
-                    } else {
-                        Ok(exprs)
-                    }
-                };
-            }
             let usage = self.parse_funcall()?;
-            if let TokenKind::Comma = self.peek()?.kind {
-                self.eat()?;
-                exprs.push(usage);
+            exprs.push(usage);
+            match self.peek()?.kind {
+                TokenKind::Comma => {
+                    self.eat()?;
+                }
+                TokenKind::LBrace => {
+                    break {
+                        if exprs.is_empty() {
+                            Err(ParseError::NoStyleUsagesProvided)
+                        } else {
+                            Ok(exprs)
+                        }
+                    };
+                }
+                _ => continue,
             }
         }
     }
