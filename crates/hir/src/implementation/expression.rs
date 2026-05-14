@@ -18,7 +18,7 @@ impl SlynxHir {
     ) -> Result<HirExpressionKind> {
         let Some(defined_layout) = self.retrieve_object_fields(ty) else {
             unreachable!(
-                "The deffinition of this should have been defined during hoisting and the resolving of it"
+                "The definition of this should have been defined during hoisting and the resolving of it"
             )
         };
         let defined_layout = defined_layout.to_vec();

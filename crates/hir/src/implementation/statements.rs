@@ -6,29 +6,9 @@ use crate::{
     },
 };
 use common::Span;
-use slynx_parser::{
-    ASTExpression, ASTExpressionKind, ASTStatement, ASTStatementKind, NamedExpr, StyleBlock,
-    StyleSheetStatement,
-};
+use slynx_parser::{ASTStatement, ASTStatementKind, NamedExpr, StyleBlock, StyleSheetStatement};
 
 impl SlynxHir {
-    /// Checks that the given expression refers to an already-defined name, returning an error if not.
-    pub fn check_existance(&mut self, expr: &ASTExpression) -> Result<()> {
-        match &expr.kind {
-            ASTExpressionKind::FieldAccess { parent, .. } => {
-                self.check_existance(parent)?;
-            }
-            ASTExpressionKind::TupleAccess { tuple, .. } => {
-                self.check_existance(tuple)?;
-            }
-            ASTExpressionKind::Identifier(name) => {
-                let name = self.modules.intern_name(name);
-                self.get_variable(name, &expr.span)?;
-            }
-            _ => {}
-        }
-        Ok(())
-    }
     /// Resolves an AST statement into a typed [`HirStatement`].
     pub fn resolve_statement(&mut self, statement: &ASTStatement) -> Result<HirStatement> {
         match &statement.kind {

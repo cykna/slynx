@@ -75,7 +75,7 @@ impl SlynxIR {
             Value::LabelArg(index) => self.get_label(temp.current_label()).arguments()[*index],
             Value::Slot(v) => self.get_slot_type(*v),
             Value::StructLiteral(t, _) => *t,
-            Value::Specliazed(v) => self.specialized_type(*v),
+            Value::Specialized(v) => self.specialized_type(*v),
         }
     }
 

@@ -9,7 +9,7 @@ impl TypeChecker {
             ref mut statements, ..
         } = decl.kind
         else {
-            unreachable!("default_function should receive a function declaration");
+            unreachable!("default_stylesheet should receive a stylesheet declaration");
         };
 
         for statement in &mut *statements {

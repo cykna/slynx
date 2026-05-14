@@ -419,20 +419,20 @@ impl SlynxHir {
     fn resolve(&mut self, ast: &ASTDeclaration) -> Result<()> {
         match &ast.kind {
             ASTDeclarationKind::ObjectDeclaration { name, fields, .. } => {
-                self.resolve_object(name, fields, ast.span)?
+                self.resolve_object(name, fields, ast.span)
             }
             ASTDeclarationKind::FuncDeclaration {
                 name,
                 args,
                 body,
                 return_type,
-            } => self.resolve_function(name, args, return_type, body, &ast.span)?,
+            } => self.resolve_function(name, args, return_type, body, &ast.span),
             ASTDeclarationKind::ComponentDeclaration { members, name } => {
-                self.resolve_component_declaration(members, name, ast.span)?
+                self.resolve_component_declaration(members, name, ast.span)
             }
 
             ASTDeclarationKind::Alias { name, target } => {
-                self.resolve_alias(name, target, ast.span)?
+                self.resolve_alias(name, target, ast.span)
             }
 
             ASTDeclarationKind::StyleSheet {
@@ -440,10 +440,7 @@ impl SlynxHir {
                 args,
                 usages,
                 body,
-            } => {
-                self.resolve_stylesheet(name, args, usages, body, ast.span)?;
-            }
+            } => self.resolve_stylesheet(name, args, usages, body, ast.span),
         }
-        Ok(())
     }
 }
