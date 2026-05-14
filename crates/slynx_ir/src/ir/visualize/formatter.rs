@@ -80,7 +80,7 @@ impl<'a> Formatter<'a> {
             IRType::ISIZE => "isize".to_string(),
             IRType::USIZE => "usize".to_string(),
             IRType::Function(_) => "fn".to_string(),
-            IRType::GenericComponent => "component".to_string(),
+            IRType::GenericComponent => "anycomponent".to_string(),
             IRType::Struct(t) => self.fmt_struct_type(t),
             IRType::Component(c) => self.fmt_component_type(c),
             IRType::Specialized(IRSpecializedComponentType::Div) => "specialized(div)".to_string(),
@@ -145,16 +145,27 @@ impl<'a> Formatter<'a> {
         out.join("\n")
     }
 
+    fn format_function_name(&self, ctx: &Context) -> String {
+        format!("{}", self.symbols.get_name(ctx.name()))
+    }
+
     fn format_function(&self, ctx: &Context) -> String {
         let IRType::Function(fty) = self.types.get_type(ctx.ty()) else {
             unreachable!("Type of context should be function");
         };
+        let func_ty = self.types.get_function_type(fty);
+        let args = func_ty
+            .get_args()
+            .iter()
+            .map(|ty| self.fmt_type(&self.types.get_type(*ty)))
+            .collect::<Vec<_>>()
+            .join(", ");
         let ret_ty = self.fmt_type(
             &self
                 .types
                 .get_type(self.types.get_function_type(fty).get_return_type()),
         );
-        let mut out = format!("{ret_ty} {}(){{\n", self.symbols.get_name(ctx.name()));
+        let mut out = format!("{ret_ty} {}({args}){{\n", self.symbols.get_name(ctx.name()));
 
         let labels_ptr = ctx.labels_ptr();
         let fmt = self.with_label_offset(labels_ptr.ptr());
@@ -347,7 +358,8 @@ impl<'a> Formatter<'a> {
             }
             InstructionType::FunctionCall(func) => {
                 let args = self.fmt_operands_range(0, instr.operands.len(), &instr.operands);
-                format!("call f{}, {};", func.ptr(), args)
+                let ctx = self.format_function_name(self.ir.get_context(*func));
+                format!("call {ctx}, {args};")
             }
             InstructionType::Allocate(_) => {
                 format!(
@@ -388,9 +400,9 @@ impl<'a> Formatter<'a> {
                 format!("@sapply {}, {}, {};", name, component, value)
             }
             InstructionType::InitCall(func) => {
-                let component = self.fmt_value(&instr.operands.ptr_to(0));
-                let struct_val = self.fmt_value(&instr.operands.ptr_to(1));
-                format!("@initcall f{}, {}, {};", func.ptr(), component, struct_val)
+                let values = self.fmt_value_range(&instr.operands);
+
+                format!("@initcall f{}, {values}", func.ptr())
             }
             InstructionType::Struct | InstructionType::Component => {
                 let ty_str = self.fmt_type(&self.types.get_type(instr.value_type));

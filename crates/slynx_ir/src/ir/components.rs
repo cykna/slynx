@@ -1,9 +1,6 @@
-use slynx_hir::{
-    TypeId,
-    model::{
-        ComponentMemberDeclaration, HirComponentExpression, HirDeclaration,
-        HirSpecializedComponentExpression, HirType,
-    },
+use slynx_hir::model::{
+    ComponentMemberDeclaration, HirComponentExpression, HirDeclaration,
+    HirSpecializedComponentExpression, HirStyleUsage, HirType,
 };
 
 use crate::{
@@ -20,6 +17,7 @@ impl SlynxIR {
         &self.specialized[ptr.ptr()]
     }
     ///Inserts the given `specialized` component and returns its pointer(or, id)
+    #[allow(dead_code)]
     pub(crate) fn insert_specialized(
         &mut self,
         specialized: IRSpecializedComponent,
@@ -36,10 +34,13 @@ impl SlynxIR {
         temp: &mut TempIRData,
     ) -> Result<Value, IRError> {
         let mut vals = Vec::new();
+        let mut style: Option<&HirStyleUsage> = None;
         let ty = match value {
             HirComponentExpression::Specialized(HirSpecializedComponentExpression::Text {
                 text,
+                style: s,
             }) => {
+                style = s.as_ref();
                 let value = self.get_value_for(&*text, temp)?;
                 let value = self.get_value(value);
                 vals.push(value);
@@ -47,7 +48,9 @@ impl SlynxIR {
             }
             HirComponentExpression::Specialized(HirSpecializedComponentExpression::Div {
                 children,
+                style: s,
             }) => {
+                style = s.as_ref();
                 for child in children {
                     let value = self.get_component_expression(&child, temp)?;
                     vals.push(value);
@@ -80,6 +83,11 @@ impl SlynxIR {
             false,
         );
         let instruction = self.dereference_instruction_ptr(instruction).with_length();
+
+        if let Some(style_usage) = style {
+            let comp_value = self.insert_value(Value::Instruction(instruction));
+            self.emit_style_initcall(style_usage, comp_value, temp)?;
+        }
 
         Ok(Value::Instruction(instruction))
     }

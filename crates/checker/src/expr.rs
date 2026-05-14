@@ -12,7 +12,7 @@ use slynx_hir::{
     DeclarationId, TypeId,
     model::{
         FieldMethod, HirComponentExpression, HirExpression, HirExpressionKind,
-        HirSpecializedComponentExpression, HirStatement, HirStatementKind, HirType,
+        HirSpecializedComponentExpression, HirStatement, HirStatementKind, HirStyleUsage, HirType,
     },
 };
 impl TypeChecker {
@@ -189,6 +189,21 @@ impl TypeChecker {
         Ok(())
     }
 
+    pub fn resolve_style_usage(&mut self, style_usage: &mut HirStyleUsage) -> Result<()> {
+        let HirType::Style { args } = self
+            .types_module
+            .get_type(&self.declarations[style_usage.style.as_raw() as usize])
+        else {
+            unreachable!("Type of style should be style");
+        };
+        let args = args.clone();
+        for (idx, param) in style_usage.params.iter_mut().enumerate() {
+            param.ty = self.unify(&args[idx], &param.ty, &param.span)?;
+        }
+
+        Ok(())
+    }
+
     /// Resolves the type of a specialized component expression.
     ///
     /// This function resolves the type of a specialized component expression by
@@ -199,13 +214,19 @@ impl TypeChecker {
         spec: &mut HirSpecializedComponentExpression,
     ) -> Result<()> {
         match spec {
-            HirSpecializedComponentExpression::Text { text } => {
+            HirSpecializedComponentExpression::Text { text, style } => {
                 text.ty = self.get_type_of_expr(text)?;
                 text.ty = self.unify(&text.ty, &self.types_module.str_id(), &text.span)?;
+                if let Some(style) = style {
+                    self.resolve_style_usage(style)?;
+                }
             }
-            HirSpecializedComponentExpression::Div { children } => {
+            HirSpecializedComponentExpression::Div { children, style } => {
                 for child in children {
                     self.resolve_component_expression(child)?;
+                }
+                if let Some(style) = style {
+                    self.resolve_style_usage(style)?;
                 }
             }
         }
@@ -540,14 +561,14 @@ impl TypeChecker {
                 expr.ty = name;
             }
             HirExpressionKind::Component(HirComponentExpression::Specialized(
-                HirSpecializedComponentExpression::Text { ref mut text },
+                HirSpecializedComponentExpression::Text { ref mut text, .. },
             )) => {
                 let str_id = self.types_module.str_id();
                 text.ty = self.unify(&text.ty, &str_id, &expr.span)?;
                 expr.ty = self.types_module.generic_component_id(); //change to SpecializedComponent<Text> later
             }
             HirExpressionKind::Component(HirComponentExpression::Specialized(
-                HirSpecializedComponentExpression::Div { children: _ },
+                HirSpecializedComponentExpression::Div { children: _, .. },
             )) => {
                 //todo: default component expression
             }
