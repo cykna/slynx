@@ -98,6 +98,12 @@ pub struct PropertyExpression {
     expr: HirExpression,
 }
 
+impl PropertyExpression {
+    pub fn new(index: usize, expr: HirExpression) -> Self {
+        Self { index, expr }
+    }
+}
+
 #[derive(Debug)]
 pub enum HirComponentExpression {
     Specialized(HirSpecializedComponentExpression),
@@ -111,6 +117,22 @@ pub enum HirComponentExpression {
         /// The source location of this child declaration.
         span: Span,
     },
+}
+
+impl HirComponentExpression {
+    pub fn new_normal(
+        id: TypeId,
+        properties: Vec<PropertyExpression>,
+        children: Vec<HirComponentExpression>,
+        span: Span,
+    ) -> Self {
+        Self::Normal {
+            name: id,
+            properties,
+            children,
+            span,
+        }
+    }
 }
 
 /// A built-in specialized component with predefined rendering semantics.

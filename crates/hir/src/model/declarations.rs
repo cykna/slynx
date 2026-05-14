@@ -24,11 +24,10 @@
 //! - [`ComponentMemberDeclaration`] — Members of a component declaration
 
 use common::{Span, SymbolPointer};
-use slynx_parser::ComponentExpression;
 
 use crate::{
     DeclarationId, PropertyId, TypeId, VariableId,
-    model::{HirExpression, HirStatement, HirStyleStatement},
+    model::{HirComponentExpression, HirExpression, HirStatement, HirStyleStatement},
 };
 
 #[derive(Debug)]
@@ -272,7 +271,7 @@ pub enum ComponentMemberDeclaration {
     /// - `name` — The child component's type
     /// - `values` — The child's property values
     /// - `span` — Source location for error reporting
-    Child(ComponentExpression),
+    Child(HirComponentExpression),
 }
 
 impl ComponentMemberDeclaration {

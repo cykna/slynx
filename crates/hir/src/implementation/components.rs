@@ -1,7 +1,10 @@
 use crate::{
     Result, SlynxHir, TypeId,
     error::{HIRError, HIRErrorKind},
-    model::{ComponentMemberDeclaration, HirType, SpecializedComponent},
+    model::{
+        ComponentMemberDeclaration, HirComponentExpression, HirSpecializedComponentExpression,
+        HirType, PropertyExpression,
+    },
 };
 ///Module that implements anything related Specialized Component on the HIR
 use common::Span;
@@ -12,7 +15,9 @@ impl SlynxHir {
         &mut self,
         member: &ComponentMemberValue,
         ty: TypeId,
-    ) -> Result<ComponentMemberDeclaration> {
+        properties: &mut Vec<PropertyExpression>,
+        children: &mut Vec<HirComponentExpression>,
+    ) -> Result<()> {
         match member {
             ComponentMemberValue::Assign {
                 prop_name,
@@ -36,22 +41,16 @@ impl SlynxHir {
 
                     Some(index) => {
                         let expr = self.resolve_expr(rhs, Some(*props[index].prop_type()))?;
-                        Ok(ComponentMemberDeclaration::new_property(
-                            index,
-                            Some(expr),
-                            *span,
-                        ))
+                        properties.push(PropertyExpression::new(index, expr));
+                        Ok(())
                     }
                 }
             }
             ComponentMemberValue::Child(child) => {
                 //By now this won't track whether it can or cannot have children, since a method better than 'children' might be implemented in the future.
-                let (id, _) =
-                    self.retrieve_information_of_type(&child.name.identifier, &child.name.span)?;
-                let values = self.resolve_component_members(&child.values, id)?;
-                Ok(ComponentMemberDeclaration::new_child(
-                    id, values, child.span,
-                ))
+                let child = self.resolve_component_expression(&child)?;
+                children.push(child);
+                Ok(())
             }
         }
     }
@@ -61,12 +60,14 @@ impl SlynxHir {
         &mut self,
         members: &[ComponentMemberValue],
         ty: TypeId,
-    ) -> Result<Vec<ComponentMemberDeclaration>> {
-        let out = members
-            .iter()
-            .map(|member| self.resolve_component_member(member, ty))
-            .collect::<Result<Vec<_>>>()?;
-        Ok(out)
+    ) -> Result<(Vec<PropertyExpression>, Vec<HirComponentExpression>)> {
+        let mut properties = Vec::with_capacity(members.len());
+        let mut children = Vec::with_capacity(members.len());
+        for member in members {
+            self.resolve_component_member(member, ty, &mut properties, &mut children)?;
+        }
+
+        Ok((properties, children))
     }
 
     /// Resolves the provided `values` as members of the `Text` specialized component.
@@ -76,7 +77,7 @@ impl SlynxHir {
         &mut self,
         values: &[ComponentMemberValue],
         span: &Span,
-    ) -> Result<SpecializedComponent> {
+    ) -> Result<HirSpecializedComponentExpression> {
         let mut text = None;
         for value in values {
             match value {
@@ -98,7 +99,7 @@ impl SlynxHir {
             }
         }
         match text {
-            Some(text) => Ok(SpecializedComponent::new_text(text)),
+            Some(text) => Ok(HirSpecializedComponentExpression::new_text(text)),
             None => {
                 let properties = vec![self.modules.intern_name("text")];
                 Err(HIRError::missing_properties(properties, *span))
@@ -111,7 +112,7 @@ impl SlynxHir {
         &mut self,
         children: &[ComponentMemberValue],
         _: &Span,
-    ) -> Result<SpecializedComponent> {
+    ) -> Result<HirSpecializedComponentExpression> {
         let children = children
             .iter()
             .map(|c| match c {
@@ -121,17 +122,17 @@ impl SlynxHir {
                     let prop = self.modules.intern_name(prop_name);
                     Err(HIRError::property_unrecognized(vec![prop], *span))
                 }
-                ComponentMemberValue::Child(c) => self.resolve_component(c),
+                ComponentMemberValue::Child(c) => self.resolve_component_expression(c),
             })
             .collect::<Result<Vec<_>>>()?;
-        Ok(SpecializedComponent::new_div(children))
+        Ok(HirSpecializedComponentExpression::new_div(children))
     }
     ///Tries to resolve the given `child` as, either a specialized component, or a normal user defined component
     pub fn try_resolve_specialized<'a>(
         &mut self,
         child: &'a ComponentExpression,
     ) -> (
-        Option<Result<SpecializedComponent>>,
+        Option<Result<HirSpecializedComponentExpression>>,
         Option<&'a ComponentExpression>,
     ) {
         match (child.name.identifier.as_str(), &child.name.generic) {
@@ -148,19 +149,21 @@ impl SlynxHir {
     }
 
     ///Resolves the provided `component` expression. If it's a specialized one, resolves as a `SpecializedComponent`, otherwise as a normal 'Component'
-    pub fn resolve_component(
+    pub fn resolve_component_expression(
         &mut self,
         component: &ComponentExpression,
-    ) -> Result<ComponentMemberDeclaration> {
+    ) -> Result<HirComponentExpression> {
         match self.try_resolve_specialized(component) {
-            (Some(spec), None) => spec.map(ComponentMemberDeclaration::Specialized),
+            (Some(spec), None) => spec.map(HirComponentExpression::Specialized),
             (None, Some(component)) => {
                 let (id, _) =
                     self.retrieve_information_of_type(&component.name.identifier, &component.span)?;
-                let values = self.resolve_component_members(&component.values, id)?;
-                Ok(ComponentMemberDeclaration::new_child(
+                let (properties, children) =
+                    self.resolve_component_members(&component.values, id)?;
+                Ok(HirComponentExpression::new_normal(
                     id,
-                    values,
+                    properties,
+                    children,
                     component.span,
                 ))
             }
