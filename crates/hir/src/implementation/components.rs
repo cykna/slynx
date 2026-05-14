@@ -2,8 +2,7 @@ use crate::{
     Result, SlynxHir, TypeId,
     error::{HIRError, HIRErrorKind},
     model::{
-        ComponentMemberDeclaration, HirComponentExpression, HirSpecializedComponentExpression,
-        HirType, PropertyExpression,
+        HirComponentExpression, HirSpecializedComponentExpression, HirType, PropertyExpression,
     },
 };
 ///Module that implements anything related Specialized Component on the HIR

@@ -321,10 +321,9 @@ impl SlynxHir {
                     self.retrieve_information_of_type(&component.name.identifier, &component.span)?;
 
                 Ok(HirExpression {
-                    kind: HirExpressionKind::Component {
-                        name: id,
-                        values: self.resolve_component_members(&component.values, id)?,
-                    },
+                    kind: HirExpressionKind::Component(
+                        self.resolve_component_expression(&component)?,
+                    ),
                     id: ExpressionId::new(), // Changed to ExpressionId
                     ty: id,
                     span: expr.span,

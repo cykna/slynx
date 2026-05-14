@@ -272,8 +272,8 @@ impl SlynxHir {
                     prop_idx += 1;
                 }
                 ComponentMemberKind::Child(child) => {
-                    let component = self.resolve_component(child)?;
-                    out.push(component);
+                    let component = self.resolve_component_expression(child)?;
+                    out.push(ComponentMemberDeclaration::Child(component));
                 }
             }
         }

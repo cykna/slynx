@@ -27,7 +27,9 @@ use common::{Span, SymbolPointer};
 
 use crate::{
     DeclarationId, PropertyId, TypeId, VariableId,
-    model::{HirComponentExpression, HirExpression, HirStatement, HirStyleStatement},
+    model::{
+        HirComponentExpression, HirExpression, HirStatement, HirStyleStatement, PropertyExpression,
+    },
 };
 
 #[derive(Debug)]
@@ -331,8 +333,18 @@ impl ComponentMemberDeclaration {
     /// # let values = vec![];
     /// let child = ComponentMemberDeclaration::new_child(name, values, span);
     /// ```
-    pub fn new_child(name: TypeId, values: Vec<ComponentMemberDeclaration>, span: Span) -> Self {
-        Self::Child { name, values, span }
+    pub fn new_child(
+        name: TypeId,
+        properties: Vec<PropertyExpression>,
+        children: Vec<HirComponentExpression>,
+        span: Span,
+    ) -> Self {
+        Self::Child(HirComponentExpression::Normal {
+            name,
+            properties,
+            children,
+            span,
+        })
     }
 }
 

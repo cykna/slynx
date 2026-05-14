@@ -84,10 +84,7 @@
 //! - [`crate::hir::model::HirStatement`] — Statement nodes
 //! - [`crate::hir::implementation::expression::resolve_expr`] — Expression resolution
 
-use crate::{
-    DeclarationId, ExpressionId, TypeId, VariableId,
-    model::{ComponentMemberDeclaration, HirStatement},
-};
+use crate::{DeclarationId, ExpressionId, TypeId, VariableId, model::HirStatement};
 use common::{Operator, Span, SymbolPointer};
 
 #[derive(Debug)]
@@ -503,24 +500,18 @@ pub enum HirExpressionKind {
     /// # Example
     ///
     /// ```slynx
-    /// component Button(props: ButtonProps) {
+    /// component Button{
     ///     prop label: str = "Click me";
     /// }
     ///
-    /// let button = Button(label: "Submit");
+    /// let button = Button {label: "Submit"};
     /// ```
     ///
     /// # Fields
     ///
     /// - `name` — The component's type ID
     /// - `values` — Property values and child members
-    Component {
-        /// The component's type ID.
-        name: TypeId,
-
-        /// The component's property values and child members.
-        values: Vec<ComponentMemberDeclaration>,
-    },
+    Component(HirComponentExpression),
 
     /// An object construction expression.
     ///
