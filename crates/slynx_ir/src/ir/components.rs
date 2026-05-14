@@ -53,7 +53,7 @@ impl SlynxIR {
                     vals.push(self.get_component_expression(*name, values, temp)?);
                 }
                 _ => {
-                    unimplemented!("Specialized components, not i");
+                    unimplemented!("Specialized components, not implemented");
                 }
             }
         }
