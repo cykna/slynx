@@ -4,6 +4,19 @@ use crate::{IRTypeId, Label, StyleProperty, ir::model::Context};
 
 use super::IRPointer;
 
+#[derive(Debug, Clone)]
+pub enum UIInstruction {
+    /// Apply a style property to a component.
+    /// operands[0] = component, operands[1] = value
+    SApply {
+        /// Style property code from STYLES_TABLE.md
+        property_code: StyleProperty,
+    },
+    /// Initialize call: apply a style function to a component.
+    /// operands[0] = component, operands[1] = style struct value
+    InitCall(IRPointer<Context, 1>),
+}
+
 #[derive(Debug, Clone, Copy)]
 ///A value that represents something on a slot. A slot is something on memory, anywhere, so this is practically a pointer to some value. But it's better to be
 ///understood as a variable
@@ -29,6 +42,7 @@ pub enum Value {
     Slot(IRPointer<Slot, 1>),
     LabelArg(usize),
     FuncArg(usize),
+    ComponentChild(usize),
 }
 #[derive(Debug, Clone)]
 ///An operand that is used on a instruction. Mainly it's values that are used on the instructions
@@ -96,15 +110,7 @@ pub enum InstructionType {
     SetField(usize),
     ///Returns the operand
     Ret,
-    /// Apply a style property to a component.
-    /// operands[0] = component, operands[1] = value
-    SApply {
-        /// Style property code from STYLES_TABLE.md
-        property_code: StyleProperty,
-    },
-    /// Initialize call: apply a style function to a component.
-    /// operands[0] = component, operands[1] = style struct value
-    InitCall(IRPointer<Context, 1>),
+    UI(UIInstruction),
 }
 
 #[derive(Debug, Clone)]
@@ -338,7 +344,7 @@ impl Instruction {
     pub fn sapply(property_code: StyleProperty, operands: IRPointer<Value>, ty: IRTypeId) -> Self {
         Self {
             operands,
-            instruction_type: InstructionType::SApply { property_code },
+            instruction_type: InstructionType::UI(UIInstruction::SApply { property_code }),
             value_type: ty,
         }
     }
@@ -346,7 +352,7 @@ impl Instruction {
     pub fn initcall(func: IRPointer<Context, 1>, operands: IRPointer<Value>, ty: IRTypeId) -> Self {
         Self {
             operands,
-            instruction_type: InstructionType::InitCall(func),
+            instruction_type: InstructionType::UI(UIInstruction::InitCall(func)),
             value_type: ty,
         }
     }

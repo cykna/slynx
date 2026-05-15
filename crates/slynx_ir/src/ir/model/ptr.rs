@@ -139,4 +139,29 @@ impl<T, const N: usize> IRPointer<T, N> {
     pub fn range(&self) -> Range<usize> {
         self.ptr()..self.ptr() + self.len()
     }
+
+    pub fn iter(&self) -> IRPointerIterator<T> {
+        IRPointerIterator {
+            init: self.with_length(),
+            current: self.with_length(),
+        }
+    }
+}
+
+pub struct IRPointerIterator<T> {
+    init: IRPointer<T>,
+    current: IRPointer<T, 1>,
+}
+
+impl<T> Iterator for IRPointerIterator<T> {
+    type Item = IRPointer<T, 1>;
+    fn next(&mut self) -> Option<Self::Item> {
+        if self.current.ptr() > self.init.ptr_to_last().ptr() {
+            None
+        } else {
+            let out = self.current;
+            self.current = self.current.ptr_to(1);
+            Some(out)
+        }
+    }
 }
