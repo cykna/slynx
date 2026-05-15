@@ -8,6 +8,12 @@ use crate::{
     ir::model::{Context, IRPointer, Label, Value},
 };
 
+pub struct AuxiliaryStyle {
+    pub init_func: IRPointer<Context, 1>,
+    pub apply_func: IRPointer<Context, 1>,
+    pub strct: IRTypeId,
+}
+
 ///Data to save Component information, such as its IRPointer, and values for the default fields
 pub struct TempComponentData {
     pub ptr: IRPointer<Component, 1>,
@@ -35,8 +41,7 @@ pub struct TempIRData<'a> {
     variables: Vec<(VariableId, IRPointer<Value, 1>)>,
     ///The arguments of the current variable ID
     args: Vec<VariableId>,
-    ///Maps HIR stylesheet declaration IDs to their apply function contexts
-    style_apply_functions: HashMap<DeclarationId, IRPointer<Context, 1>>,
+    styles: HashMap<DeclarationId, AuxiliaryStyle>,
 }
 
 impl<'a> TempIRData<'a> {
@@ -51,7 +56,7 @@ impl<'a> TempIRData<'a> {
             current_label: IRPointer::null(),
             args: Vec::new(),
             variables: Vec::new(),
-            style_apply_functions: HashMap::new(),
+            styles: HashMap::new(),
         }
     }
 
@@ -73,15 +78,31 @@ impl<'a> TempIRData<'a> {
     }
 
     #[inline]
-    ///Maps the provided stylesheet declaration ID to its apply function context
-    pub fn map_style_apply_function(&mut self, sid: DeclarationId, func: IRPointer<Context, 1>) {
-        self.style_apply_functions.insert(sid, func);
+    pub fn map_style(&mut self, sid: DeclarationId, data: AuxiliaryStyle) {
+        self.styles.insert(sid, data);
+    }
+
+    #[inline]
+    pub fn get_style(&self, sid: DeclarationId) -> Option<&AuxiliaryStyle> {
+        self.styles.get(&sid)
     }
 
     #[inline]
     ///Retrieves the apply function context for the given stylesheet declaration ID
     pub fn get_style_apply_function(&self, sid: DeclarationId) -> Option<IRPointer<Context, 1>> {
-        self.style_apply_functions.get(&sid).cloned()
+        self.styles.get(&sid).map(|s| s.apply_func)
+    }
+
+    #[inline]
+    ///Retrieves the IR struct type for the given stylesheet declaration ID
+    pub fn get_style_struct_type(&self, sid: DeclarationId) -> Option<IRTypeId> {
+        self.styles.get(&sid).map(|s| s.strct)
+    }
+
+    #[inline]
+    ///Retrieves the init function for the given stylesheet declaration ID
+    pub fn get_style_init_function(&self, sid: DeclarationId) -> Option<IRPointer<Context, 1>> {
+        self.styles.get(&sid).map(|s| s.init_func)
     }
     #[inline]
     ///Maps the provided `fid`(hir function id) to the provided `func`(ir function)

@@ -18,7 +18,7 @@ use slynx_hir::{
 
 use crate::{BUILTIN_TYPES, IRError, IRTypes};
 
-use temp::TempIRData;
+use temp::{AuxiliaryStyle, TempIRData};
 
 #[derive(Debug)]
 ///All the IR containing contexts, labels, instructions and operands
@@ -103,10 +103,20 @@ impl SlynxIR {
                 HirDeclarationKind::StyleSheet { .. } => {
                     let name = tys.get_type_name(&declaration.ty).cloned();
                     if let Some(name) = name {
+                        let name_str = self.strings.get_name(name);
+                        let init_name = self.strings.intern(&format!("__init_{}", name_str));
                         let out = self.types.create_empty_struct(name);
-                        let func = self.create_blank_function(name);
+                        let init_func = self.create_blank_function(init_name);
+                        let apply_func = self.create_blank_function(name);
                         temp.define_type(declaration.ty, out);
-                        temp.map_style_apply_function(declaration.id, func);
+                        temp.map_style(
+                            declaration.id,
+                            AuxiliaryStyle {
+                                init_func: init_func.with_length(),
+                                apply_func: apply_func.with_length(),
+                                strct: out,
+                            },
+                        );
                     }
                 }
             }

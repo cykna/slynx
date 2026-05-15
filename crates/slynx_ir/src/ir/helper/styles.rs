@@ -1,6 +1,5 @@
 use std::collections::HashSet;
 
-use common::SymbolPointer;
 use slynx_hir::{
     DeclarationId,
     model::{
@@ -44,8 +43,8 @@ impl SlynxIR {
     ///
     /// 1. Resolve inheritance from `uses` clauses.
     /// 2. Populate the IR struct type for the style (fields in STYLES_TABLE order).
-    /// 3. Create the Apply function that emits @sapply for each property.
-    /// 4. Register the apply function in temp data.
+    /// 3. Create the constructor function that returns the struct with default values.
+    /// 4. Create the Apply function that emits @sapply for each property.
     pub(crate) fn lower_stylesheet(
         &mut self,
         decl: &HirDeclaration,
@@ -71,17 +70,17 @@ impl SlynxIR {
         let struct_ty = temp.get_type(decl.ty)?;
         self.populate_style_struct_fields(struct_ty, &merged_props)?;
 
-        // 4. Create the apply function
-        let apply_func = self.create_style_apply_function(
+        // 4. Create the constructor function (builds the struct with default values)
+        self.create_style_constructor(decl, struct_ty, &merged_props, temp)?;
+
+        // 5. Create the apply function
+        self.create_style_apply_function(
             decl,
             struct_ty,
             &merged_props,
             &parent_usage_decls,
             temp,
         )?;
-
-        // 5. Register the apply function so @initcall can reference it
-        temp.map_style_apply_function(decl.id, apply_func);
 
         Ok(())
     }
@@ -163,6 +162,71 @@ impl SlynxIR {
         Ok(())
     }
 
+    /// Create the constructor function for a stylesheet.
+    ///
+    /// The constructor evaluates the merged property expressions and builds the
+    /// struct literal, returning it. Usage sites call this function instead of
+    /// inlining the struct literal, keeping defaults in one place.
+    fn create_style_constructor(
+        &mut self,
+        decl: &HirDeclaration,
+        struct_ty: IRTypeId,
+        properties: &[(StyleProperty, &HirExpression)],
+        temp: &mut TempIRData,
+    ) -> Result<IRPointer<Context, 1>, IRError> {
+        let ctx = temp
+            .get_style_init_function(decl.id)
+            .expect("Expected style init function to be hoisted");
+
+        // Set return type
+        {
+            use crate::IRType;
+            let irty_id = self.get_context(ctx).ty();
+            let IRType::Function(func_id) = self.types.get_type(irty_id) else {
+                unreachable!();
+            };
+            let func_ty = self.types.get_function_type_mut(func_id);
+            func_ty.set_return_type(struct_ty);
+        }
+
+        // Set up entry label
+        let prev_func = temp.current_function();
+        let prev_label = temp.current_label();
+        temp.set_current_function(ctx);
+        let entry_label = self.insert_label(ctx, "entry");
+        self.get_context_mut(ctx)
+            .set_label_ptr(entry_label.with_length());
+        temp.set_current_label(entry_label);
+
+        // Evaluate each merged property expression and build struct literal
+        let mut field_values = Vec::new();
+        for (_, expr) in properties {
+            let val = self.get_value_for(expr, temp)?;
+            field_values.push(self.get_value(val));
+        }
+
+        let fields_ptr = self.insert_values(&field_values);
+        let struct_lit = self.insert_instruction(
+            temp.current_label(),
+            Instruction::struct_literal(struct_ty, fields_ptr),
+            false,
+        );
+        let struct_lit_ptr = self.dereference_instruction_ptr(struct_lit);
+        let struct_value = self.insert_value(Value::Instruction(struct_lit_ptr.with_length()));
+
+        // Return the struct
+        self.insert_instruction(
+            temp.current_label(),
+            Instruction::ret(struct_value, struct_ty),
+            true,
+        );
+
+        temp.set_current_function(prev_func);
+        temp.set_current_label(prev_label);
+
+        Ok(ctx)
+    }
+
     /// Create the apply function for a stylesheet.
     fn create_style_apply_function(
         &mut self,
@@ -202,23 +266,6 @@ impl SlynxIR {
         // Insert FuncArg values for p0 (component) and p1 (struct)
         let comp_value = self.insert_value(Value::FuncArg(0));
         let struct_value = self.insert_value(Value::FuncArg(1));
-
-        // Emit call to each parent apply function first (lower precedence first)
-        for parent_id in parent_ids {
-            if let Some(parent_func) = temp.get_style_apply_function(*parent_id) {
-                let parent_ret_ty = self.return_type_of_context(parent_func);
-                let args = {
-                    let comp = self.get_value(comp_value);
-                    let st = self.get_value(struct_value);
-                    self.insert_values(&[comp, st])
-                };
-                self.insert_instruction(
-                    temp.current_label(),
-                    Instruction::call(parent_func, parent_ret_ty, args),
-                    true,
-                );
-            }
-        }
 
         // For each property, emit: getfield + @sapply
         for (field_idx, (code, _)) in properties.iter().enumerate() {
@@ -260,57 +307,5 @@ impl SlynxIR {
         temp.set_current_label(prev_label);
 
         Ok(ctx)
-    }
-
-    /// Emit @initcall for a style usage on a component.
-    pub(crate) fn emit_style_initcall(
-        &mut self,
-        style_usage: &HirStyleUsage,
-        component_value: IRPointer<Value, 1>,
-        temp: &mut TempIRData,
-    ) -> Result<(), IRError> {
-        let apply_func = temp
-            .get_style_apply_function(style_usage.style)
-            .ok_or(IRError::DeclarationNotRecognized(style_usage.style))?;
-
-        let style_decl = temp
-            .hir
-            .iter()
-            .find(|d| d.id == style_usage.style)
-            .ok_or(IRError::DeclarationNotRecognized(style_usage.style))?;
-        let struct_ty = temp.get_type(style_decl.ty)?;
-
-        // Evaluate each parameter expression
-        let mut field_values = Vec::new();
-        for param in &style_usage.params {
-            let val = self.get_value_for(param, temp)?;
-            field_values.push(self.get_value(val));
-        }
-
-        let fields_ptr = self.insert_values(&field_values);
-        let struct_lit_instr = self.insert_instruction(
-            temp.current_label(),
-            Instruction::struct_literal(struct_ty, fields_ptr),
-            false,
-        );
-        let struct_lit_ptr = self.dereference_instruction_ptr(struct_lit_instr);
-        let struct_lit_value = self.insert_value(Value::Instruction(struct_lit_ptr.with_length()));
-
-        // Emit @initcall
-        let operands = {
-            let comp = self.get_value(component_value);
-            let st = self.get_value(struct_lit_value);
-            self.insert_values(&[comp, st])
-        };
-        let initcall_operands = operands.with_runtime_length(2);
-
-        let void_ty = self.types.void_type();
-        self.insert_instruction(
-            temp.current_label(),
-            Instruction::initcall(apply_func, initcall_operands, void_ty),
-            true,
-        );
-
-        Ok(())
     }
 }
