@@ -65,7 +65,11 @@ impl<T, const N: usize> IRPointer<T, N> {
 
     ///If the length of this Pointer is >1, then this retrieves a pointer to the last element
     pub fn ptr_to_last(&self) -> IRPointer<T, 1> {
-        self.ptr_to(self.len() - 1)
+        if self.len() == 0 {
+            self.with_length()
+        } else {
+            self.ptr_to(self.len() - 1)
+        }
     }
 
     pub fn with_runtime_length(mut self, len: usize) -> IRPointer<T, 0> {

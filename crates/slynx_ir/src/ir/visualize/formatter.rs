@@ -1,11 +1,14 @@
-use std::collections::{BTreeSet, HashMap, HashSet};
+use std::{
+    collections::{BTreeSet, HashMap, HashSet},
+    ops::Deref,
+};
 
 use common::SymbolsModule;
 
 use crate::{
-    Component, Context, IRComponentId, IRPointer, IRSpecializedComponent,
-    IRSpecializedComponentType, IRStructId, IRType, IRTypeId, IRTypes, Instruction,
-    InstructionType, Label, Operand, SlynxIR, UIInstruction, Value,
+    Component, Context, IRComponentId, IRPointer, IRSpecializedComponentType, IRStructId, IRType,
+    IRTypes, Instruction, InstructionType, Label, Operand, SlynxIR, UIInstruction, Value,
+    ValueKind,
 };
 
 pub struct Formatter<'a> {
@@ -17,7 +20,6 @@ pub struct Formatter<'a> {
     pub operands: &'a [Operand],
     pub types: &'a IRTypes,
     pub symbols: &'a SymbolsModule,
-    pub specialized: &'a [IRSpecializedComponent],
     instruction_pointers: &'a [IRPointer<Instruction>],
     instructions: &'a [Instruction],
     label_offset: usize,
@@ -32,7 +34,6 @@ impl<'a> Formatter<'a> {
         let values = &ir.values;
         let operands = &ir.operands;
         let types = &ir.types;
-        let specialized = &ir.specialized;
         let instruction_pointers = &ir.instruction_pointers;
         let instructions = &ir.instructions;
         Self {
@@ -44,7 +45,6 @@ impl<'a> Formatter<'a> {
             operands,
             types,
             symbols,
-            specialized,
             instruction_pointers,
             instructions,
             label_offset: 0,
@@ -124,9 +124,8 @@ impl<'a> Formatter<'a> {
                 .collect::<Vec<_>>()
                 .join(",");
             out.push_str(&format!(
-                "struct %{}{{{}}};\n",
+                "struct %{}{{{fields}}};\n",
                 self.symbols.get_name(name),
-                fields
             ));
         }
         out
@@ -187,40 +186,36 @@ impl<'a> Formatter<'a> {
             .join(", ");
 
         let mut out = format!(
-            "component %{}({}) {{\n",
+            "component %{}({params}) {{\n",
             self.symbols.get_name(comp_ty.name()),
-            params
         );
 
         for (i, field_ty) in comp_ty.fields().iter().enumerate() {
             out.push_str(&format!(
-                "  %field{}: {} = p{};\n",
-                i,
+                "  %field{i}: {} = p{i};\n",
                 self.fmt_type(&self.types.get_type(*field_ty)),
-                i
             ));
         }
 
         let values_range = component.values();
-        for i in 0..values_range.len() {
-            let child_str = match &self.values[values_range.ptr_to(i).ptr()] {
-                Value::Instruction(p) => format!("#t{}: component %t{}", i, p.ptr()),
-                Value::Specialized(spec_ptr) => {
-                    let kind = match &self.specialized[spec_ptr.ptr()] {
-                        IRSpecializedComponent::Text(_) => "@text",
-                        IRSpecializedComponent::Div(_) => "@div",
-                    };
-                    format!("#t{}: {}", i, kind)
+
+        for (i, val) in values_range.iter().enumerate() {
+            let child_str = match &*self.values[val.ptr()] {
+                ValueKind::Instruction(instruction_ptr) => {
+                    let instruction = &self.instructions[instruction_ptr.ptr()];
+                    let ty = self.types.get_type(instruction.value_type);
+
+                    format!("#t{i}: {}", self.fmt_type(&ty))
                 }
-                _ => format!("#t{}: unknown", i),
+                _ => format!("#t{i}: unknown"),
             };
-            out.push_str(&format!("  {};\n", child_str));
+            out.push_str(&format!("  {child_str};\n"));
         }
 
         for ptr in component.ui_instruction.iter() {
             out.push_str("  ");
             out.push_str(&self.format_instruction(&self.instructions[ptr.ptr()]));
-            out.push_str(";\n");
+            out.push_str("\n");
         }
 
         out.push_str("}\n");
@@ -231,7 +226,7 @@ impl<'a> Formatter<'a> {
 
     pub fn format_label(&self, label: &Label, idx: usize) -> String {
         let header = if label.arguments().is_empty() {
-            format!("$label_{}:\n", idx)
+            format!("$label_{idx}:\n")
         } else {
             let params = label
                 .arguments()
@@ -240,7 +235,7 @@ impl<'a> Formatter<'a> {
                 .map(|(i, _)| format!("lp{}", i))
                 .collect::<Vec<_>>()
                 .join(", ");
-            format!("$label_{}({}):\n", idx, params)
+            format!("$label_{idx}({params}):\n",)
         };
 
         let inline_set = self.build_inline_set(label);
@@ -261,8 +256,7 @@ impl<'a> Formatter<'a> {
             for dep_idx in deps {
                 if emitted.insert(dep_idx) {
                     body.push_str(&format!(
-                        "  %t{} = {}\n",
-                        dep_idx,
+                        "  %t{dep_idx} = {}\n",
                         fmt.format_instruction(&fmt.instructions[dep_idx])
                     ));
                 }
@@ -275,16 +269,16 @@ impl<'a> Formatter<'a> {
                 let lhs = if let InstructionType::Allocate(slot) = &instr.instruction_type {
                     format!("${}", slot.ptr())
                 } else {
-                    format!("%t{}", real_idx)
+                    format!("%t{real_idx}")
                 };
-                body.push_str(&format!("{} = {}", lhs, line));
+                body.push_str(&format!("{lhs} = {line}"));
             } else {
                 body.push_str(&line);
             }
             body.push('\n');
         }
 
-        format!("{}{}", header, body)
+        format!("{header}{body}")
     }
 
     pub fn format_labels(&self) -> String {
@@ -303,9 +297,9 @@ impl<'a> Formatter<'a> {
                 let label_str = self.fmt_label_ref(label_ptr);
                 let args = self.fmt_operands_range(0, instr.operands.len(), &instr.operands);
                 if args.is_empty() {
-                    format!("br {};", label_str)
+                    format!("br {label_str};")
                 } else {
-                    format!("br {}({});", label_str, args)
+                    format!("br {label_str}({args});")
                 }
             }
             InstructionType::Cbr {
@@ -315,14 +309,12 @@ impl<'a> Formatter<'a> {
                 else_args,
             } => {
                 let cond = self.fmt_value(&instr.operands.ptr_to(0));
-                format!(
-                    "cbr {}, {}({}), {}({});",
-                    cond,
-                    self.fmt_label_ref(then_label),
-                    self.fmt_value_range(then_args),
-                    self.fmt_label_ref(else_label),
-                    self.fmt_value_range(else_args),
-                )
+                let then = self.fmt_label_ref(then_label);
+
+                let then_args = self.fmt_value_range(then_args);
+                let otherwise = self.fmt_label_ref(else_label);
+                let otherwise_args = self.fmt_value_range(else_args);
+                format!("cbr {cond}, {otherwise}({otherwise_args}), {otherwise}({otherwise_args});")
             }
             InstructionType::Ret => format!("ret {};", self.fmt_value(&instr.operands.ptr_to(0))),
 
@@ -342,23 +334,15 @@ impl<'a> Formatter<'a> {
             InstructionType::Shr => self.fmt_binary("shr", instr),
             InstructionType::AShr => self.fmt_binary("ashr", instr),
 
-            InstructionType::GetField(u) => {
+            InstructionType::GetField(index) => {
                 let ty_str = self.fmt_type(&self.types.get_type(instr.value_type));
-                format!(
-                    "getfield {}, {}, {};",
-                    ty_str,
-                    self.fmt_value(&instr.operands.ptr_to(0)),
-                    u
-                )
+                let target = self.fmt_value(&instr.operands.ptr_to(0));
+                format!("getfield {ty_str}, {target}, {index};")
             }
-            InstructionType::SetField(u) => {
-                let ty_str = self.fmt_type(&self.types.get_type(instr.value_type));
-                format!(
-                    "setfield {}, {}, {};",
-                    ty_str,
-                    self.fmt_value(&instr.operands.ptr_to(0)),
-                    u
-                )
+            InstructionType::SetField(index) => {
+                let target = self.fmt_value(&instr.operands.ptr_to(0));
+                let value = self.fmt_value(&instr.operands.ptr_to(1));
+                format!("propset {target}, {index}, {value};",)
             }
             InstructionType::FunctionCall(func) => {
                 let args = self.fmt_operands_range(0, instr.operands.len(), &instr.operands);
@@ -374,8 +358,7 @@ impl<'a> Formatter<'a> {
             InstructionType::Write(slot) => {
                 let ty_str = self.fmt_type(&self.types.get_type(instr.value_type));
                 format!(
-                    "write {}, ${}, {};",
-                    ty_str,
+                    "write {ty_str}, ${}, {};",
                     slot.ptr(),
                     self.fmt_value(&instr.operands.ptr_to(0))
                 )
@@ -383,16 +366,14 @@ impl<'a> Formatter<'a> {
             InstructionType::Read => {
                 let ty_str = self.fmt_type(&self.types.get_type(instr.value_type));
                 format!(
-                    "read {}, {};",
-                    ty_str,
+                    "read {ty_str}, {};",
                     self.fmt_value(&instr.operands.ptr_to(0))
                 )
             }
             InstructionType::Reinterpret => {
                 let ty_str = self.fmt_type(&self.types.get_type(instr.value_type));
                 format!(
-                    "reinterpret {}, {};",
-                    ty_str,
+                    "reinterpret {ty_str}, {};",
                     self.fmt_value(&instr.operands.ptr_to(0))
                 )
             }
@@ -401,25 +382,31 @@ impl<'a> Formatter<'a> {
                 let name = property_code.to_string();
                 let component = self.fmt_value(&instr.operands.ptr_to(0));
                 let value = self.fmt_value(&instr.operands.ptr_to(1));
-                format!("@sapply {}, {}, {};", name, component, value)
+                format!("@sapply {name}, {component}, {value};")
             }
             InstructionType::UI(UIInstruction::InitCall(func)) => {
                 let comp = self.fmt_value(&instr.operands.ptr_to(0));
-                let struct_operand = instr.operands.ptr_to(1);
-                let struct_str = match &self.values[struct_operand.ptr()] {
-                    Value::Instruction(p) => {
-                        let call_instr = &self.instructions[p.ptr()];
-                        self.format_instruction(call_instr).trim_end_matches(';').to_string()
-                    }
-                    _ => self.fmt_value(&struct_operand),
-                };
                 let fname = self.format_function_name(self.ir.get_context(*func));
-                format!("@initcall {fname}, {comp}, {struct_str}")
+                if instr.operands.len() == 1 {
+                    format!("@initcall {fname}, {comp};")
+                } else {
+                    let struct_operand = instr.operands.ptr_to(1);
+                    let struct_str = match &*self.values[struct_operand.ptr()] {
+                        ValueKind::Instruction(p) => {
+                            let call_instr = &self.instructions[p.ptr()];
+                            self.format_instruction(call_instr)
+                                .trim_end_matches(';')
+                                .to_string()
+                        }
+                        _ => self.fmt_value(&struct_operand),
+                    };
+                    format!("@initcall {fname}, {comp}, {struct_str};")
+                }
             }
             InstructionType::Struct | InstructionType::Component => {
                 let ty_str = self.fmt_type(&self.types.get_type(instr.value_type));
                 let args = self.fmt_operands_range(0, instr.operands.len(), &instr.operands);
-                format!("{}{{{}}};", ty_str, args)
+                format!("{ty_str}{{{args}}};")
             }
         }
     }
@@ -427,12 +414,13 @@ impl<'a> Formatter<'a> {
     // --- value / operand helpers ---
 
     fn fmt_value(&self, ptr: &IRPointer<Value, 1>) -> String {
-        match &self.values[ptr.ptr()] {
-            Value::FuncArg(n) => format!("p{}", n),
-            Value::LabelArg(n) => format!("lp{}", n),
-            Value::Slot(p) => format!("${}", p.ptr()),
-            Value::Raw(op_ptr) => self.fmt_operand(&self.operands[op_ptr.ptr()]),
-            Value::Instruction(p) => {
+        let value = &self.values[ptr.ptr()];
+        match value.deref() {
+            ValueKind::FuncArg(n) => format!("p{}", n),
+            ValueKind::LabelArg(n) => format!("lp{}", n),
+            ValueKind::Slot(p) => format!("${}", p.ptr()),
+            ValueKind::Raw(op_ptr) => self.fmt_operand(&self.operands[op_ptr.ptr()]),
+            ValueKind::Instruction(p) => {
                 let instr = &self.instructions[p.ptr()];
                 if matches!(instr.instruction_type, InstructionType::RawValue) {
                     self.fmt_value(&instr.operands.ptr_to(0))
@@ -444,14 +432,13 @@ impl<'a> Formatter<'a> {
                     format!("%t{}", p.ptr())
                 }
             }
-            Value::StructLiteral(ty, values) => {
-                let struct_name = self.fmt_type(&self.types.get_type(*ty));
+            ValueKind::StructLiteral(values) => {
+                let struct_name = self.fmt_type(&self.types.get_type(value.ir_type()));
                 let values = self.fmt_value_range(values);
                 format!("{struct_name}{{{values}}}")
             }
-            Value::Void => "void".to_string(),
-            Value::Specialized(_) => "specialized".to_string(),
-            Value::ComponentChild(index) => format!("#t{index}",),
+            ValueKind::Void => "void".to_string(),
+            ValueKind::ComponentChild(index) => format!("#t{index}",),
         }
     }
 
@@ -510,6 +497,7 @@ impl<'a> Formatter<'a> {
             InstructionType::Br(_)
                 | InstructionType::Cbr { .. }
                 | InstructionType::Write(_)
+                | InstructionType::SetField(_)
                 | InstructionType::Ret
         )
     }
@@ -517,7 +505,8 @@ impl<'a> Formatter<'a> {
     fn count_refs(&self, instr_idx: usize, counts: &mut HashMap<usize, usize>) {
         let instr = &self.instructions[instr_idx];
         for i in 0..instr.operands.len() {
-            if let Value::Instruction(p) = &self.values[instr.operands.ptr_to(i).ptr()] {
+            if let ValueKind::Instruction(p) = &self.values[instr.operands.ptr_to(i).ptr()].deref()
+            {
                 let dep = p.ptr();
                 if matches!(
                     self.instructions[dep].instruction_type,
@@ -552,7 +541,8 @@ impl<'a> Formatter<'a> {
     fn collect_unmapped_deps(&self, instr_idx: usize, out: &mut BTreeSet<usize>) {
         let instr = &self.instructions[instr_idx];
         for i in 0..instr.operands.len() {
-            if let Value::Instruction(p) = &self.values[instr.operands.ptr_to(i).ptr()] {
+            if let ValueKind::Instruction(p) = &self.values[instr.operands.ptr_to(i).ptr()].deref()
+            {
                 let dep_idx = p.ptr();
                 if matches!(
                     self.instructions[dep_idx].instruction_type,

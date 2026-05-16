@@ -178,7 +178,7 @@ impl IRTypes {
     }
     ///Creates a new empty struct and returns its type ID
     pub fn create_empty_component(&mut self, name: common::SymbolPointer) -> IRTypeId {
-        let sout = self.structs.len();
+        let sout = self.components.len();
         self.components.push(IRComponent::new(name));
         let out = self.types.len();
         self.types.push(IRType::Component(IRComponentId(sout)));
