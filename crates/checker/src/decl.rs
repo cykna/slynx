@@ -94,8 +94,7 @@ impl TypeChecker {
                 children,
                 span,
             } => {
-                let ty = self.declarations[name.as_raw() as usize];
-                let HirType::Component { props } = self.types_module.get_type(&ty) else {
+                let HirType::Component { props } = self.types_module.get_type(&name) else {
                     unreachable!("Should've received a component type");
                 };
                 let props = props.clone();
