@@ -293,9 +293,9 @@ $entry:
 component %Counter(i32) {
   %count: i32 = p0;
 
-  #t0: specialized Text;
-  #t1: specialized Text;
-  #b1: specialized Button;
+  #t0: @Text;
+  #t1: @Text;
+  #b1: @Button;
 
   #b1.click -> Counter_count_update(self)
 
@@ -310,10 +310,34 @@ $entry:
   Counter1 = %Counter{12};
   ret Counter1;
 }
-
 ```
 
 Differently of default values, special values are primitives that are expected to exist on the runtime we are compiling to.
+Literals values that do not require any kind of mutation during runtime, should be emitted in a `@initcall` instruction, otherwise, into @bind operations. For example:
+```slynx
+component BasicInformation {
+  Div {
+    Text {
+      text: "Example"
+    }
+  }
+}
+```
+should generate the following IR:
+```sir
+
+void InitInformation(@Div) {
+  propset p0, 0, "Example"
+}
+
+component %BasicInformation(){
+  #t0: @Div;
+  @initcall InitInformation, #t0;
+}
+
+A single @initcall should be generated per component, and thus, an Initializer function. In general, the usage of '$self', might be used such as `@initcall InitInformation, $self`. That tells that the created component should
+be used as parameter to the `InitFunction`. This means the component basis should be created before initializing with the raw data. This is not necessarily a requirement to backends, but to the IR only
+```
 
 #### StyleSheets
 StyleSheets on the IR are a method to define styles for the components. Since stylesheets mix both styling with turing complete code, it is fallbacked to 2 separated things: A function and a struct, but for clarity reasons, this primitive will be called
