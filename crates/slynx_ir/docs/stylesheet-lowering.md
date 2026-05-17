@@ -10,9 +10,9 @@ A `stylesheet` in Slynx mixes three distinct concepts, each of which maps to a d
 2. **Turing completeness** — expressions, `let` bindings, parameters → lowered to a **function**
 3. **Reuse / inheritance** — the `uses` keyword → lowered to a **struct merge**
 
-## Basic Lowering
+## Lowering Example
 
-Something like the following:
+Given the following Slynx source:
 
 ```slynx
 stylesheet Rounded(size: px) {
@@ -33,48 +33,54 @@ component C {
 }
 ```
 
-should generate the following:
+The IR generator produces:
 
 ```slynxir
-struct RoundedStyle {i32}; // a pixel is a 'i32' internally
+struct RoundedStyle {i32};
 struct RoundedRed{i32,i32}
 
-%RoundedRed GenerateRoundedRed(){
+%RoundedRed __init_RoundedRed(){
 $entry:
-  %v = %RoundedRet{5px, 0xff0000};
+  %v = %RoundedRed{5px, 0xff0000};
   ret %v;
 }
 
-void ApplyRoundedRedStyle(PrimitiveComponent, RoundedRed) {
+void RoundedRed(PrimitiveComponent, RoundedRed) {
 $entry:
-  roundness = get_prop p1, 0;
+  roundness = getfield p1, 0;
   @sapply BorderRadius, p0, roundness;
-  bg = get_prop p1, 1;
-  @sapplu BackgrounColor, p0, bg;
+  bg = getfield p1, 1;
+  @sapply BackgroundColor, p0, bg;
 }
 
-void ApplyRoundedStyle(PrimitiveComponent, RoundedStyle) {
+void Rounded(PrimitiveComponent, RoundedStyle) {
 $entry:
-  roundness = get_prop p1, 0;
+  roundness = getfield p1, 0;
   @sapply BorderRadius, p0, roundness;
   ret;
 }
 
 component %C() {
   #t0 = specialized Div;
-  @initcall ApplyRoundedStyle, #t0, %RoundedStyle{0, 0xff0000}
+  @initcall CInit, #t0;
+  @initcall Rounded, #t0, __init_Rounded();
 }
 ```
 
-The stylesheet becomes two things:
-- A **constructor function** (`Rounded`) that builds the style struct from parameters
-- An **apply function** (`ApplyRoundedStyle`) that reads the struct fields and calls `@sapply` for each property
+A stylesheet becomes **three** IR constructs:
 
-The component uses `@initcall` to apply the style before the component is inserted into the UI tree.
+1. A **struct type** (`RoundedStyle`) whose fields correspond to properties in `STYLES_TABLE.md` order.
+2. A **constructor function** (`__init_Rounded`) that evaluates the property expressions and builds the struct literal.
+3. An **apply function** (`Rounded`) that takes a component and the style struct, extracts each field, and emits an `@sapply` instruction for every property.
+
+The component that uses the style gets **two** UI instructions:
+
+- `@initcall` to its own init function (sets up children / text)
+- `@initcall` to the style's apply function, with the constructor call result as the second operand
 
 ## Lowering of `uses` (Inheritance)
 
-The lowering of `uses` should create a struct which contains the style properties of all referenced stylesheets merged together. For example:
+The lowering of `uses` merges style properties from parent stylesheets into a single struct. Properties are resolved left-to-right so that higher-precedence styles override lower-precedence ones.
 
 ```slynx
 stylesheet A() {
@@ -90,21 +96,13 @@ stylesheet B() uses A() {
 }
 ```
 
-The `B` style could be represented as the following:
-```
-struct A {
-  borderRadius: i32
-}
+`B`'s struct contains all properties from `A` merged with `B`'s own properties, with `B`'s values taking precedence when a property is defined in both.
 
-struct BIntermediate {
-  backgroundColor: i32,
-}
+Internally, the merge happens at the HIR level during `lower_stylesheet` in `helper/styles.rs`:
 
-struct B = merge(A, BIntermediate);
-```
-note: the given code is a simple example to exemplify, internally only A and B will exist and no `merge` function exists.
-
-Where `merge` should **not copy fields** — if `A` has the same fields as `BIntermediate`, it uses the ones from `A` and ignores the ones from `BIntermediate`.
+- Parent properties are collected first (in `uses` order).
+- Own properties override parents with the same `StyleProperty` code.
+- Fields are sorted by `StyleProperty` code (the numeric order from `STYLES_TABLE.md`).
 
 ## Precedence Rules
 
@@ -115,10 +113,8 @@ stylesheet C() uses A(), B() { ... }
 // precedence: A < B < C
 ```
 
-The apply function for `B` should have a single `@sapply` operation per style property. Properties with lower precedence get their `@sapply` called first, and properties with higher precedence override them. If `A` and `B` define the same property, the `@sapply` for `B`'s value is used.
+The apply function emits one `@sapply` per property. Properties with lower precedence (earlier in `uses`) are emitted first, and higher-precedence values override them because they appear later in the IR.
 
 ## Field Ordering Convention
 
-Style struct fields follow a fixed positional order. Base style properties come first, states come after. The backend identifies each property by its position index, not by name.
-
-The full list of positional style properties and their numeric codes is defined in [STYLES_TABLE.md](./STYLES_TABLE.md).
+Style struct fields follow a fixed positional order defined by `StyleProperty` codes (see `STYLES_TABLE.md`). The backend identifies each property by its position index, not by name.

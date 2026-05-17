@@ -100,8 +100,7 @@ impl SlynxIR {
                 }
                 HirDeclarationKind::Alias => {}
                 HirDeclarationKind::StyleSheet { .. } => {
-                    let name = tys.get_type_name(&declaration.ty).cloned();
-                    if let Some(name) = name {
+                    if let Some(name) = tys.get_type_name(&declaration.ty).cloned() {
                         let name_str = self.strings.get_name(name);
                         let init_name = self.strings.intern(&format!("__init_{}", name_str));
 
@@ -150,6 +149,7 @@ impl SlynxIR {
                     temp.define_type(declaration.ty, t);
                 }
                 HirDeclarationKind::StyleSheet { .. } => {
+                    self.insert_stylesheet_type_for(declaration, &temp)?;
                     self.lower_stylesheet(declaration, &mut temp)?;
                 }
             }

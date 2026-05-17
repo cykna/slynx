@@ -1,5 +1,8 @@
 use common::SymbolPointer;
-use slynx_hir::{TypeId, model::HirType};
+use slynx_hir::{
+    DeclarationId, TypeId,
+    model::{HirDeclaration, HirType},
+};
 
 use crate::{
     Component, IRComponent, IRError, IRType, IRTypeId, SlynxIR,
@@ -130,6 +133,44 @@ impl SlynxIR {
         let ty = self.types.get_function_type_mut(func_tyid);
         ty.insert_arg_types(&extended_args);
         ty.set_return_type(ret);
+        Ok(())
+    }
+    ///Inserts the contents of the provided `decl` type, asserting it's the TypeId for a function type, using both `temp` and `tys` to resolve the arguments and return type. Panics if `decl` is not a function type.
+    pub(crate) fn insert_stylesheet_type_for(
+        &mut self,
+        decl: &HirDeclaration,
+        temp: &TempIRData,
+    ) -> Result<(), IRError> {
+        let HirType::Style { args } = temp.types_module().get_type(&decl.ty) else {
+            unreachable!();
+        };
+
+        let args_to_insert = args
+            .iter()
+            .map(|arg| self.get_ir_type(arg, temp))
+            .collect::<Result<Vec<_>, _>>()?;
+
+        let f = temp
+            .get_style_init_function(decl.id)
+            .expect("Style should be hoisted");
+        let ctx = self.get_context(f);
+        if let IRType::Function(fty) = self.types.get_type(ctx.ty()) {
+            let func_ty = self.types.get_function_type_mut(fty);
+            func_ty.insert_arg_types(&args_to_insert);
+        }
+
+        let f = temp
+            .get_style_apply_function(decl.id)
+            .expect("Style should be hoisted");
+        let ctx = self.get_context(f);
+        if let IRType::Function(fty) = self.types.get_type(ctx.ty())
+            && let Some(strct_type) = temp.get_style_struct_type(decl.id)
+        {
+            let generic_component_type = self.types.generic_component_type();
+            let func_ty = self.types.get_function_type_mut(fty);
+            func_ty.insert_arg_types(&[generic_component_type, strct_type]);
+        }
+
         Ok(())
     }
 }

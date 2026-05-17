@@ -168,9 +168,20 @@ impl SlynxIR {
         properties: &[(StyleProperty, &HirExpression)],
         temp: &mut TempIRData,
     ) -> Result<IRPointer<Context, 1>, IRError> {
+        let HirDeclarationKind::StyleSheet { ref args, .. } = decl.kind else {
+            unreachable!("Should've received a stylesheet");
+        };
+
         let ctx = temp
             .get_style_init_function(decl.id)
             .expect("Expected style init function to be hoisted");
+        temp.set_current_function(ctx);
+
+        let ptr = IRPointer::new(self.values.len(), args.len());
+        temp.set_function_args(args, ptr);
+        for (idx, _) in args.iter().enumerate() {
+            self.insert_value(self.generate_func_arg_value(idx, temp));
+        }
 
         // Set return type
         {
@@ -186,7 +197,7 @@ impl SlynxIR {
         // Set up entry label
         let prev_func = temp.current_function();
         let prev_label = temp.current_label();
-        temp.set_current_function(ctx);
+
         let entry_label = self.insert_label(ctx, "entry");
         self.get_context_mut(ctx)
             .set_label_ptr(entry_label.with_length());

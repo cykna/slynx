@@ -8,12 +8,36 @@ use crate::{
     ir::temp::TempIRData,
 };
 
+/// Holds pointers to the two functions generated for a stylesheet, plus
+/// the IR type of the style struct:
+///   - `init_func`: the constructor (e.g. `__init_Maria`) that builds the style struct
+///   - `apply_func`: the apply function (e.g. `Maria`) that reads the struct and emits @sapply
+///   - `struct_ty`:  the IR type of the style struct (used to produce constructor call values)
+///
+/// This data is produced by [`get_style_application`] and is consumed by
+/// [`initialize_component`] to emit the style's `@initcall`.
 pub struct StyleApplyData {
     init_func: IRPointer<Context, 1>,
     apply_func: IRPointer<Context, 1>,
+    struct_ty: IRTypeId,
+}
+
+/// Internal bookkeeping for one specialized child's style, used when building
+/// the component's UI instruction list in [`initialize_component`].
+struct StyleEntry {
+    child_idx: usize,
+    apply_func: IRPointer<Context, 1>,
+    struct_value_ptr: IRPointer<Value, 1>,
 }
 
 impl SlynxIR {
+    /// Resolves a [`HirStyleUsage`] into the IR function pointers and struct type
+    /// for a stylesheet.
+    ///
+    /// The returned [`StyleApplyData`] contains:
+    /// - `init_func`  – call this to produce the style struct value
+    /// - `apply_func` – call this with (component, struct) to apply every property
+    /// - `struct_ty`  – the IR type of the style struct
     fn get_style_application(
         &mut self,
         style_usage: &HirStyleUsage,
@@ -25,11 +49,26 @@ impl SlynxIR {
         Ok(StyleApplyData {
             init_func: style.init_func,
             apply_func: style.apply_func,
+            struct_ty: style.strct,
         })
     }
 
-    ///Creates a component value and emits SetField (propset) instructions for
-    ///its properties and children in the current context.
+    /// Lowers a [`HirComponentExpression`] into a component IR value and emits
+    /// `SetField` (`propset`) instructions for its properties and children in the
+    /// **current function context**.
+    ///
+    /// The returned `(Value, Option<StyleApplyData>)` pair carries the component
+    /// value and, if the expression is a specialized (Div/Text) node with a
+    /// `style:` clause, the style's application data. Callers that build the
+    /// component's top-level `@initcall` list (see [`initialize_component`]) use
+    /// this style data to emit a second `@initcall` for the style apply function.
+    ///
+    /// ## When this is called
+    /// - **Inside a component declaration** (via [`initialize_component`]) for each
+    ///   top-level child – the style data is handled later.
+    /// - **Inside a function body** (via [`get_value_for`]) – the style data is
+    ///   discarded because function-level component expressions are inlined into
+    ///   the parent component's init.
     pub(crate) fn get_component_expression(
         &mut self,
         value: &HirComponentExpression,
@@ -134,6 +173,7 @@ impl SlynxIR {
         Ok((comp_value, style_application))
     }
 
+    /// Returns the IR type for a component expression without emitting any code.
     pub fn get_type_of_component_expression(
         &mut self,
         expr: &HirComponentExpression,
@@ -151,8 +191,13 @@ impl SlynxIR {
         Ok(v)
     }
 
-    ///Emits SetField (propset) instructions for a specialized component's
-    ///properties and children, targeting `p0` in the init function context.
+    /// Emits `SetField` (`propset`) instructions inside the component's **init
+    /// function** for a specialized (Div/Text) child's built-in properties (text
+    /// content, child components).
+    ///
+    /// Style application is NOT emitted here — it is handled at a higher level
+    /// in [`initialize_component`] via a separate `@initcall` so that the apply
+    /// function can be called separately from the init function.
     fn emit_specialized_component_init(
         &mut self,
         expr: &HirSpecializedComponentExpression,
@@ -189,8 +234,30 @@ impl SlynxIR {
         Ok(())
     }
 
-    ///Initializes a component: creates child values in the main context,
-    ///sets up the init function with propset instructions, and adds @initcall.
+    /// Initializes a component declaration from HIR into IR.
+    ///
+    /// This is the main entry point for lowering a [`HirDeclarationKind::ComponentDeclaration`].
+    /// It performs three phases:
+    ///
+    /// **Phase 1 – Top-level values:** Creates IR component instructions for each
+    /// child and stores them in the component's `values` list. Collects all
+    /// specialized children (Div/Text) for later init and style handling.
+    ///
+    /// **Phase 2 – Init function:** If the first child is specialized, creates an
+    /// init function (e.g. `PedrinhoInit`) that emits `SetField` instructions for
+    /// that child's built-in properties. This function is stored in the component's
+    /// `init_func` field. Only the **first** specialized child gets an init function.
+    ///
+    /// **Phase 3 – UI instructions (initcalls):** Emits `@initcall` instructions
+    /// into the component's `ui_instruction` list:
+    ///   1. Emits constructor calls (unmapped) for every specialized child that has
+    ///      a `style:` clause. These produce the style struct values and are stored
+    ///      in the global instruction pool (NOT in `ui_instruction`).
+    ///   2. Always emits `@initcall ComponentInit, #t0` (calls the init function
+    ///      from Phase 2 to set up the first child).
+    ///   3. For **every** specialized child (including the first) that has a
+    ///      `style:` clause, emits `@initcall ApplyStyle, #t_idx, __init_StyleName()`
+    ///      — a two-operand initcall referencing the constructor result from step 1.
     pub(crate) fn initialize_component(
         &mut self,
         decl: &HirDeclaration,
@@ -216,9 +283,10 @@ impl SlynxIR {
 
         let comp_ptr = temp.get_component(decl.id).ptr;
         let mut ir_values = Vec::new();
-        let mut first_specialized: Option<(usize, &HirSpecializedComponentExpression)> = None;
+        let mut specialized_children: Vec<(usize, &HirSpecializedComponentExpression)> =
+            Vec::new();
 
-        // Phase 1: Create top-level child values in the main context
+        // Phase 1: Create top-level child values in the main context.
         // For top-level children, only create the component VALUE without
         // emitting nested SetField instructions. The init function handles setup.
         for (idx, prop) in props.iter().enumerate() {
@@ -249,10 +317,8 @@ impl SlynxIR {
                     let value = Value::new_instruction(inst_ptr, ty);
                     ir_values.push(value);
 
-                    if idx == 0 {
-                        if let HirComponentExpression::Specialized(spec) = c {
-                            first_specialized = Some((idx, spec));
-                        }
+                    if let HirComponentExpression::Specialized(spec) = c {
+                        specialized_children.push((idx, spec));
                     }
                 }
             }
@@ -260,8 +326,8 @@ impl SlynxIR {
 
         self.components[comp_ptr.ptr()].values = self.insert_values(&ir_values);
 
-        // Phase 2: Set up init function if the first child is specialized
-        if let Some((_, spec)) = first_specialized {
+        // Phase 2: Set up init function if the first child is specialized.
+        if let Some((_, first_spec)) = specialized_children.first() {
             let init_func = temp.get_init_function(decl.id);
             self.components[comp_ptr.ptr()].init_func = Some(init_func);
 
@@ -279,12 +345,14 @@ impl SlynxIR {
             self.get_label_mut(label).set_instructions_pointer(ptr);
             temp.set_current_label(label);
 
-            // Set p0 (FuncArg(0)) as the first specialized child's type
-            let spec_type = match spec {
+            // Set p0 (FuncArg(0)) as the first specialized child's type.
+            let spec_type = match first_spec {
                 HirSpecializedComponentExpression::Text { .. } => {
                     self.types.specialized_text_type()
                 }
-                HirSpecializedComponentExpression::Div { .. } => self.types.specialized_div_type(),
+                HirSpecializedComponentExpression::Div { .. } => {
+                    self.types.specialized_div_type()
+                }
             };
             let arg_ptr = IRPointer::new(self.values.len(), 1);
             {
@@ -299,9 +367,9 @@ impl SlynxIR {
             }
             self.insert_value(self.generate_func_arg_value(0, temp));
 
-            self.emit_specialized_component_init(spec, arg_ptr, temp)?;
+            self.emit_specialized_component_init(first_spec, arg_ptr, temp)?;
 
-            // Emit ret (mapped so it shows in the init function's label)
+            // Emit ret (mapped so it shows in the init function's label).
             let void_value = self.insert_value(self.generate_void_value());
             self.insert_instruction(
                 temp.current_label(),
@@ -309,22 +377,83 @@ impl SlynxIR {
                 true,
             );
 
-            // Restore main context
+            // Restore main context.
             temp.set_current_function(prev_function);
             temp.set_current_label(prev_label);
 
-            // Phase 3: Add @initcall to component ui_instructions
+            // Phase 3: Emit @initcall instructions into the component's ui_instruction list.
             let void_ty = self.types.void_type();
-            let initcall_vals =
-                self.insert_values(&[self.generate_component_child_value(0, comp_ptr)]);
+
+            // Step 3.1: Emit constructor calls (unmapped) for every specialized
+            // child that has a style. These go into the global instruction pool
+            // but NOT into ui_instruction — each style initcall references its
+            // constructor result via Value::Instruction.
+            let mut style_entries: Vec<StyleEntry> = Vec::new();
+            for (child_idx, spec) in &specialized_children {
+                let style_usage = match spec {
+                    HirSpecializedComponentExpression::Text { style, .. } => style.as_ref(),
+                    HirSpecializedComponentExpression::Div { style, .. } => style.as_ref(),
+                };
+                if let Some(usage) = style_usage {
+                    let style_data = self.get_style_application(usage, temp)?;
+
+                    let empty_args = self.insert_values(&[]);
+                    let cons_call = self.insert_instruction(
+                        temp.current_label(),
+                        Instruction::call(
+                            style_data.init_func,
+                            style_data.struct_ty,
+                            empty_args,
+                        ),
+                        false,
+                    );
+                    let cons_ptr = self.dereference_instruction_ptr(cons_call);
+                    let struct_value = self.insert_value(Value::new_instruction(
+                        cons_ptr.with_length(),
+                        style_data.struct_ty,
+                    ));
+
+                    style_entries.push(StyleEntry {
+                        child_idx: *child_idx,
+                        apply_func: style_data.apply_func,
+                        struct_value_ptr: struct_value,
+                    });
+                }
+            }
+
+            // Step 3.2: Emit the component's own initcall (always present for
+            // first specialized child):
+            //   @initcall ComponentInit, #t0;
+            let comp_val = self.generate_component_child_value(0, comp_ptr);
+            let initcall_vals = self.insert_values(&[comp_val]);
             let initcall_ptr = self.insert_instruction(
                 temp.current_label(),
                 Instruction::initcall(init_func, initcall_vals, void_ty),
                 false,
             );
             let inst_ptr = self.dereference_instruction_ptr(initcall_ptr);
-            let ui_ptr = IRPointer::new(inst_ptr.ptr(), 1);
-            self.components[comp_ptr.ptr()].ui_instruction = ui_ptr;
+
+            // Step 3.3: Emit a style initcall for every specialized child that
+            // has a style:
+            //   @initcall ApplyStyle, #t_idx, __init_StyleName();
+            for entry in &style_entries {
+                let comp_val =
+                    self.generate_component_child_value(entry.child_idx, comp_ptr);
+                let style_vals =
+                    self.insert_values(&[comp_val, self.get_value(entry.struct_value_ptr)]);
+                self.insert_instruction(
+                    temp.current_label(),
+                    Instruction::initcall(entry.apply_func, style_vals, void_ty),
+                    false,
+                );
+            }
+
+            // ui_instruction spans the component initcall + all style initcalls.
+            // The constructor calls (Step 3.1) are before them in the instruction
+            // stream and are NOT included.
+            let ui_len = 1 + style_entries.len();
+            self.components[comp_ptr.ptr()].ui_instruction =
+                IRPointer::new(inst_ptr.ptr(), ui_len);
         }
 
         Ok(())
