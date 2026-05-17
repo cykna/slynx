@@ -34,7 +34,6 @@ pub const BUILTIN_TYPES: &[IRType] = &[
 #[derive(Debug, Default)]
 pub struct IRTypes {
     types: Vec<IRType>,
-
     structs: Vec<IRStruct>,
     functions: Vec<IRFunction>,
     components: Vec<IRComponent>,

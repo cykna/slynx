@@ -287,7 +287,6 @@ impl SlynxIR {
                 HirSpecializedComponentExpression::Div { .. } => self.types.specialized_div_type(),
             };
             let arg_ptr = IRPointer::new(self.values.len(), 1);
-            self.insert_value(self.generate_func_arg_value(0, temp));
             {
                 let ctx_ty = self.get_context(init_func).ty();
                 let void_ty = self.types.void_type();
@@ -298,6 +297,7 @@ impl SlynxIR {
                 func.insert_arg_types(&[spec_type]);
                 func.set_return_type(void_ty);
             }
+            self.insert_value(self.generate_func_arg_value(0, temp));
 
             self.emit_specialized_component_init(spec, arg_ptr, temp)?;
 

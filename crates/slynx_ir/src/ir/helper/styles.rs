@@ -259,7 +259,6 @@ impl SlynxIR {
         self.get_context_mut(ctx)
             .set_label_ptr(entry_label.with_length());
         temp.set_current_label(entry_label);
-
         // Insert FuncArg values for p0 (component) and p1 (struct)
         let comp_value = self.insert_value(self.generate_func_arg_value(0, temp));
         let struct_value = self.insert_value(self.generate_func_arg_value(1, temp));
