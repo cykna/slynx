@@ -159,18 +159,6 @@ impl SlynxIR {
             func_ty.insert_arg_types(&args_to_insert);
         }
 
-        let f = temp
-            .get_style_apply_function(decl.id)
-            .expect("Style should be hoisted");
-        let ctx = self.get_context(f);
-        if let IRType::Function(fty) = self.types.get_type(ctx.ty())
-            && let Some(strct_type) = temp.get_style_struct_type(decl.id)
-        {
-            let generic_component_type = self.types.generic_component_type();
-            let func_ty = self.types.get_function_type_mut(fty);
-            func_ty.insert_arg_types(&[generic_component_type, strct_type]);
-        }
-
         Ok(())
     }
 }

@@ -234,6 +234,21 @@ impl SlynxIR {
         Ok(())
     }
 
+    ///Retrieves the arguments required for the given `usage` style
+    pub fn get_usage_args(
+        &mut self,
+        usage: &HirStyleUsage,
+        temp: &mut TempIRData,
+    ) -> Result<IRPointer<Value>, IRError> {
+        let mut out = Vec::with_capacity(usage.params.len());
+        for param in &usage.params {
+            let value = self.get_value_for(&param, temp)?;
+            let value = self.get_value(value);
+            out.push(value);
+        }
+        Ok(self.insert_values(&out))
+    }
+
     /// Initializes a component declaration from HIR into IR.
     ///
     /// This is the main entry point for lowering a [`HirDeclarationKind::ComponentDeclaration`].
@@ -283,8 +298,7 @@ impl SlynxIR {
 
         let comp_ptr = temp.get_component(decl.id).ptr;
         let mut ir_values = Vec::new();
-        let mut specialized_children: Vec<(usize, &HirSpecializedComponentExpression)> =
-            Vec::new();
+        let mut specialized_children: Vec<(usize, &HirSpecializedComponentExpression)> = Vec::new();
 
         // Phase 1: Create top-level child values in the main context.
         // For top-level children, only create the component VALUE without
@@ -350,9 +364,7 @@ impl SlynxIR {
                 HirSpecializedComponentExpression::Text { .. } => {
                     self.types.specialized_text_type()
                 }
-                HirSpecializedComponentExpression::Div { .. } => {
-                    self.types.specialized_div_type()
-                }
+                HirSpecializedComponentExpression::Div { .. } => self.types.specialized_div_type(),
             };
             let arg_ptr = IRPointer::new(self.values.len(), 1);
             {
@@ -396,15 +408,11 @@ impl SlynxIR {
                 };
                 if let Some(usage) = style_usage {
                     let style_data = self.get_style_application(usage, temp)?;
+                    let args = self.get_usage_args(usage, temp)?;
 
-                    let empty_args = self.insert_values(&[]);
                     let cons_call = self.insert_instruction(
                         temp.current_label(),
-                        Instruction::call(
-                            style_data.init_func,
-                            style_data.struct_ty,
-                            empty_args,
-                        ),
+                        Instruction::call(style_data.init_func, style_data.struct_ty, args),
                         false,
                     );
                     let cons_ptr = self.dereference_instruction_ptr(cons_call);
@@ -437,8 +445,7 @@ impl SlynxIR {
             // has a style:
             //   @initcall ApplyStyle, #t_idx, __init_StyleName();
             for entry in &style_entries {
-                let comp_val =
-                    self.generate_component_child_value(entry.child_idx, comp_ptr);
+                let comp_val = self.generate_component_child_value(entry.child_idx, comp_ptr);
                 let style_vals =
                     self.insert_values(&[comp_val, self.get_value(entry.struct_value_ptr)]);
                 self.insert_instruction(
@@ -452,8 +459,7 @@ impl SlynxIR {
             // The constructor calls (Step 3.1) are before them in the instruction
             // stream and are NOT included.
             let ui_len = 1 + style_entries.len();
-            self.components[comp_ptr.ptr()].ui_instruction =
-                IRPointer::new(inst_ptr.ptr(), ui_len);
+            self.components[comp_ptr.ptr()].ui_instruction = IRPointer::new(inst_ptr.ptr(), ui_len);
         }
 
         Ok(())
