@@ -85,7 +85,7 @@ impl SlynxHir {
         debug_assert!(matches!(self.get_type(&tyid), HirType::Style { .. }));
         let params = args
             .iter()
-            .map(|expr| self.resolve_expr(expr, None))
+            .map(|expr| self.generate_expression(expr, None))
             .collect::<Result<_>>()?;
         Ok(HirStyleUsage {
             style: decl,
@@ -202,7 +202,9 @@ impl SlynxHir {
                     ASTStatement {
                         kind: ASTStatementKind::Expression(expr),
                         ..
-                    } if is_last => self.resolve_expr(expr, None).map(HirStatement::new_return),
+                    } if is_last => self
+                        .generate_expression(expr, None)
+                        .map(HirStatement::new_return),
                     statement => self.resolve_statement(statement),
                 }
             })
@@ -259,7 +261,7 @@ impl SlynxHir {
                         self.infer_type()
                     };
                     let rhs = if let Some(rhs) = rhs {
-                        Some(self.resolve_expr(rhs, Some(ty))?)
+                        Some(self.generate_expression(rhs, Some(ty))?)
                     } else {
                         None
                     };

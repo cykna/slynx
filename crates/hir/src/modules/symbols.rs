@@ -37,7 +37,7 @@ impl SymbolsResolver {
     }
 
     /// Associates the given variable ID with its source-level symbol pointer.
-    pub fn register_variable(&mut self, id: VariableId, symbol: SymbolPointer) {
+    pub fn create_variable(&mut self, id: VariableId, symbol: SymbolPointer) {
         self.variable_names.insert(id, symbol);
     }
 

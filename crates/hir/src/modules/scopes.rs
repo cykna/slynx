@@ -31,7 +31,7 @@ impl HIRScope {
     }
 
     ///Inserts the provided `symbol` on this scope
-    pub fn insert_name(&mut self, symbol: SymbolPointer, var: VariableId, mutable: bool) {
+    pub fn create_name(&mut self, symbol: SymbolPointer, var: VariableId, mutable: bool) {
         self.names.insert(symbol, var);
         if mutable {
             self.mutables.push(var);
@@ -39,7 +39,7 @@ impl HIRScope {
     }
 
     ///Retrieves the id of the provided `name` on the scope
-    pub fn retrieve_name(&self, name: &SymbolPointer) -> Option<&VariableId> {
+    pub fn get_name(&self, name: &SymbolPointer) -> Option<&VariableId> {
         self.names.get(name)
     }
 }

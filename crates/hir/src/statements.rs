@@ -13,12 +13,12 @@ impl SlynxHir {
     pub fn resolve_statement(&mut self, statement: &ASTStatement) -> Result<HirStatement> {
         match &statement.kind {
             ASTStatementKind::Expression(expr) => {
-                let expr = self.resolve_expr(expr, None)?;
+                let expr = self.generate_expression(expr, None)?;
                 Ok(HirStatement::new_expression(expr))
             }
             ASTStatementKind::Assign { lhs, rhs } => {
-                let lhs = self.resolve_expr(lhs, None)?;
-                let rhs = self.resolve_expr(rhs, None)?;
+                let lhs = self.generate_expression(lhs, None)?;
+                let rhs = self.generate_expression(rhs, None)?;
 
                 Ok(HirStatement {
                     kind: HirStatementKind::Assign { lhs, value: rhs },
@@ -31,7 +31,7 @@ impl SlynxHir {
                         .ok()
                         .map(|inner| inner.0)
                 });
-                let rhs = self.resolve_expr(rhs, typeid)?;
+                let rhs = self.generate_expression(rhs, typeid)?;
                 let name = self.modules.intern_name(name);
                 let id = self.create_mutable_variable(name, rhs.ty, &statement.span)?;
 
@@ -43,7 +43,7 @@ impl SlynxHir {
                         .ok()
                         .map(|inner| inner.0)
                 });
-                let rhs = self.resolve_expr(rhs, typeid)?;
+                let rhs = self.generate_expression(rhs, typeid)?;
                 let name = self.modules.intern_name(name);
                 let id = self.create_variable(name, rhs.ty, &statement.span)?;
 
@@ -51,7 +51,7 @@ impl SlynxHir {
             }
 
             ASTStatementKind::While { condition, body } => {
-                let condition = self.resolve_expr(condition, None)?;
+                let condition = self.generate_expression(condition, None)?;
                 let body = body
                     .iter()
                     .map(|stmt| self.resolve_statement(stmt))
@@ -96,7 +96,7 @@ impl SlynxHir {
         definitions
             .iter()
             .map(|def| {
-                let expr = self.resolve_expr(&def.expr, None)?;
+                let expr = self.generate_expression(&def.expr, None)?;
                 let expected_type = self.resolve_style_type(&def.name, def.span)?;
                 let symbol = self.modules.intern_name(&def.name);
                 Ok(StylesDefinition::new(symbol, expr, expected_type, def.span))

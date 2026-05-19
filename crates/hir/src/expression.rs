@@ -6,24 +6,24 @@ use crate::{
     model::{FieldMethod, HirExpression, HirExpressionKind, HirStatementKind, HirType},
 };
 use common::{Operator, Span, SymbolPointer};
-use slynx_parser::{ASTExpression, ASTExpressionKind, ASTStatement, NamedExpr};
+use slynx_parser::{ASTExpression, ASTExpressionKind, ASTStatement, GenericIdentifier, NamedExpr};
 
 impl SlynxHir {
-    /// Resolves and reorders the provided object field expressions to match the declared field layout.
-    pub fn organized_object_fields(
+    ///Generates a new object expression for the given `ty` object, and the given `fields`.
+    pub fn generate_object_expression(
         &mut self,
         ty: TypeId,
         fields: &[NamedExpr],
-        span: &Span,
-    ) -> Result<HirExpressionKind> {
-        let Some(defined_layout) = self.retrieve_object_fields(ty) else {
+        span: Span,
+    ) -> Result<HirExpression> {
+        let Some(defined_layout) = self.get_object_fields(ty) else {
             unreachable!(
                 "The definition of this should have been defined during hoisting and the resolving of it"
             )
         };
         let defined_layout = defined_layout.to_vec();
-        match defined_layout.len() != fields.len() {
-            true if defined_layout.len() > fields.len() => {
+        match true {
+            _ if defined_layout.len() > fields.len() => {
                 let missing_fields = defined_layout
                     .iter()
                     .filter_map(|field| {
@@ -33,9 +33,9 @@ impl SlynxHir {
                             .then_some(*field)
                     })
                     .collect::<Vec<_>>();
-                return Err(HIRError::missing_properties(missing_fields, *span));
+                return Err(HIRError::missing_properties(missing_fields, span));
             }
-            true if defined_layout.len() < fields.len() => {
+            _ if defined_layout.len() < fields.len() => {
                 let non_existent_fields = fields
                     .iter()
                     .filter_map(|provided_field| {
@@ -43,11 +43,11 @@ impl SlynxHir {
                         (!defined_layout.contains(&field_symbol)).then_some(field_symbol)
                     })
                     .collect();
-                return Err(HIRError::property_unrecognized(non_existent_fields, *span));
+                return Err(HIRError::property_unrecognized(non_existent_fields, span));
             }
             _ => {}
         }
-        let mut out = Vec::with_capacity(fields.len());
+        let mut resultant_fields = Vec::with_capacity(fields.len());
         let mut non_recognized_fields = Vec::with_capacity(fields.len());
 
         let HirType::Struct {
@@ -62,9 +62,9 @@ impl SlynxHir {
                 .position(|defined_field| &self.modules.intern_name(&field.name) == defined_field)
             {
                 let ty = field_types[field_idx];
-                out.insert(
-                    field_idx.max(out.len()),
-                    self.resolve_expr(&field.expr, Some(ty))?,
+                resultant_fields.insert(
+                    field_idx.max(resultant_fields.len()),
+                    self.generate_expression(&field.expr, Some(ty))?,
                 );
             } else {
                 let field_symbol = self.modules.intern_name(&field.name);
@@ -72,15 +72,17 @@ impl SlynxHir {
             }
         }
         if non_recognized_fields.is_empty() {
-            Ok(HirExpressionKind::Object {
-                name: ty,
-                fields: out,
+            Ok(HirExpression {
+                id: ExpressionId::new(),
+                ty,
+                kind: HirExpressionKind::Object {
+                    name: ty,
+                    fields: resultant_fields,
+                },
+                span,
             })
         } else {
-            Err(HIRError::property_unrecognized(
-                non_recognized_fields,
-                *span,
-            ))
+            Err(HIRError::property_unrecognized(non_recognized_fields, span))
         }
     }
 
@@ -101,17 +103,11 @@ impl SlynxHir {
                 self.resolve_tuple_access_type(field_ty, index, span)
             }
             HirType::Reference { rf, .. } => self.resolve_tuple_access_type(rf, index, span),
-            HirType::Tuple { fields } => fields.get(index).copied().ok_or(HIRError {
-                kind: HIRErrorKind::InvalidTupleIndex {
-                    index,
-                    length: fields.len(),
-                },
-                span: *span,
-            }),
-            other => Err(HIRError {
-                kind: HIRErrorKind::InvalidTupleAccessTarget { ty: other },
-                span: *span,
-            }),
+            HirType::Tuple { fields } => fields
+                .get(index)
+                .copied()
+                .ok_or(HIRError::invalid_tuple_index(index, fields.len(), *span)),
+            other => Err(HIRError::invalid_tuple_target(other, *span)),
         }
     }
 
@@ -130,7 +126,7 @@ impl SlynxHir {
                     .expect("variable type should exist before field access lowering");
                 let object_ref = self.resolve_object_reference_type(variable_ty, span)?;
                 let (layout, fields) = match (
-                    self.retrieve_object_fields(object_ref),
+                    self.get_object_fields(object_ref),
                     self.get_type_from_ref(object_ref),
                 ) {
                     (Some(layout), HirType::Struct { fields }) => (layout, fields),
@@ -164,7 +160,7 @@ impl SlynxHir {
                 self.resolve_object_reference_type(field_ty, span)
             }
             HirType::Reference { rf, .. } => {
-                if self.retrieve_object_fields(ty).is_some() {
+                if self.get_object_fields(ty).is_some() {
                     Ok(ty)
                 } else {
                     self.resolve_object_reference_type(rf, span)
@@ -185,7 +181,7 @@ impl SlynxHir {
         else_body: Option<&[ASTStatement]>,
         span: Span,
     ) -> Result<HirExpression> {
-        let condition = self.resolve_expr(condition, Some(self.bool_type()))?;
+        let condition = self.generate_expression(condition, Some(self.bool_type()))?;
         let then_block: Vec<_> = if_body
             .iter()
             .map(|stmt| self.resolve_statement(stmt))
@@ -215,36 +211,140 @@ impl SlynxHir {
         Ok(self.create_if_expression(condition, then_block, else_block, final_type, span))
     }
 
+    ///Generates a new tuple expression
+    fn generate_tuple(&mut self, values: &[ASTExpression], span: Span) -> Result<HirExpression> {
+        let mut types = Vec::new();
+        let mut hir_elements = Vec::new();
+        for element in values {
+            let resolved = self.generate_expression(element, None)?;
+            types.push(resolved.ty);
+            hir_elements.push(resolved);
+        }
+        let tuple_ty = self.create_unnamed_type(HirType::new_tuple(types));
+        Ok(self.create_tuple_expression(tuple_ty, hir_elements, span))
+    }
+    ///Generates a new tuple expression
+    fn generate_tuple_access(
+        &mut self,
+        tuple: &Box<ASTExpression>,
+        index: usize,
+        span: Span,
+    ) -> Result<HirExpression> {
+        let tuple = self.generate_expression(tuple, None)?;
+        let tuple_field_ty =
+            self.create_unnamed_type(HirType::Field(FieldMethod::Tuple(tuple.ty, index)));
+        Ok(self.create_field_access_expression(tuple, index, tuple_field_ty, span))
+    }
+
+    fn generate_funcall(
+        &mut self,
+        name: &GenericIdentifier,
+        args: &[ASTExpression],
+        span: Span,
+    ) -> Result<HirExpression> {
+        let func_symbol = self.modules.intern_name(&name.identifier);
+        let Some((decl, tyid)) = self.modules.get_declaration_by_name(&func_symbol) else {
+            return Err(HIRError::name_unrecognized(func_symbol, span));
+        };
+        let ty = self.get_type(&tyid);
+        let HirType::Function {
+            return_type,
+            args: expect_args,
+        } = ty
+        else {
+            return Err(HIRError::not_a_func(func_symbol, ty.clone(), span));
+        };
+        if expect_args.len() != args.len() {
+            return Err(HIRError::invalid_funcall_arg_length(
+                func_symbol,
+                expect_args.len(),
+                args.len(),
+                span,
+            ));
+        }
+        let return_type = *return_type;
+        let exprs = match args
+            .iter()
+            .map(|v| self.generate_expression(v, None))
+            .collect::<Result<Vec<_>>>()
+        {
+            Ok(exprs) => exprs,
+            Err(mut e) => {
+                e.span = span;
+                return Err(e);
+            }
+        };
+
+        Ok(HirExpression {
+            id: ExpressionId::new(),
+            ty: return_type,
+            kind: HirExpressionKind::FunctionCall {
+                name: decl,
+                args: exprs,
+            },
+            span,
+        })
+    }
+
+    fn generate_field_access_expression(
+        &mut self,
+        parent: &ASTExpression,
+        field: &str,
+        span: Span,
+    ) -> Result<HirExpression> {
+        let field_symbol = self.modules.intern_name(field);
+        let parent = self.generate_expression(parent, None)?;
+        let HirExpression { ref ty, .. } = parent;
+        match self.get_type(ty) {
+            HirType::Reference { rf, .. }
+                if let Some(decl) = self.get_object_fields(*rf)
+                    && let Some(index) = Self::find_name_index(decl, field_symbol) =>
+            {
+                let ty = self.create_unnamed_type(HirType::type_field(*ty, index));
+                Ok(self.create_field_access_expression(parent, index, ty, span))
+            }
+            HirType::Reference { .. } => {
+                Err(HIRError::property_unrecognized(vec![field_symbol], span))
+            }
+
+            HirType::VarReference(rf) => {
+                let ty = self.create_unnamed_type(HirType::variable_field(*rf, field_symbol));
+                Ok(self.create_field_access_expression(parent, usize::MAX, ty, span))
+            }
+            HirType::Field(_) => {
+                let object_ref = self.resolve_object_reference_type(*ty, &span)?;
+                let field = self.modules.intern_name(field);
+                let Some(layout) = self.get_object_fields(object_ref) else {
+                    unreachable!("object reference should carry a layout");
+                };
+                match Self::find_name_index(layout, field) {
+                    Some(index) => {
+                        let field_ty =
+                            self.create_unnamed_type(HirType::type_field(object_ref, index));
+                        Ok(self.create_field_access_expression(parent, index, field_ty, span))
+                    }
+                    _ => Err(HIRError::property_unrecognized(vec![field], span)),
+                }
+            }
+            u => Err(HIRError {
+                kind: HIRErrorKind::InvalidFieldAccessTarget { ty: u.clone() },
+                span,
+            }),
+        }
+    }
+
     /// Resolves the provided `expr` trying to infer its type, if not able, keeps as infer, and on later phases fallsback to the default value.
     /// Ty only serves to tell the type of the expression if it's needed to infer and check if it doesnt correspond
-    pub fn resolve_expr(
+    pub fn generate_expression(
         &mut self,
         expr: &ASTExpression,
         ty: Option<TypeId>,
     ) -> Result<HirExpression> {
         match &expr.kind {
-            ASTExpressionKind::Tuple(vector) => {
-                let mut types = Vec::new();
-                let mut hir_elements = Vec::new();
-                for element in vector {
-                    let resolved = self.resolve_expr(element, None)?;
-                    types.push(resolved.ty);
-                    hir_elements.push(resolved);
-                }
-                let tuple_ty = self.add_unnamed_type(HirType::new_tuple(types));
-                Ok(self.create_tuple_expression(tuple_ty, hir_elements, expr.span))
-            }
+            ASTExpressionKind::Tuple(vector) => self.generate_tuple(vector, expr.span),
             ASTExpressionKind::TupleAccess { tuple, index } => {
-                let tuple = self.resolve_expr(tuple, None)?;
-                let tuple_field_ty = self.add_unnamed_type(HirType::Field(
-                    // Keep tuple accesses distinct from object fields so later
-                    // phases can reject numeric access on non-tuples.
-                    FieldMethod::Tuple(tuple.ty, *index),
-                ));
-
-                Ok(self.create_field_access_expression(tuple, *index, tuple_field_ty, expr.span))
+                self.generate_tuple_access(tuple, *index, expr.span)
             }
-
             ASTExpressionKind::If {
                 condition,
                 body,
@@ -257,48 +357,7 @@ impl SlynxHir {
             ),
 
             ASTExpressionKind::FunctionCall { name, args } => {
-                let func_symbol = self.modules.intern_name(&name.identifier);
-                let Some((decl, tyid)) = self.modules.get_declaration_by_name(&func_symbol) else {
-                    return Err(HIRError::name_unrecognized(func_symbol, expr.span));
-                };
-                let ty = self.get_type(&tyid);
-                let HirType::Function {
-                    return_type,
-                    args: expect_args,
-                } = ty
-                else {
-                    return Err(HIRError::not_a_func(func_symbol, ty.clone(), expr.span));
-                };
-                if expect_args.len() != args.len() {
-                    return Err(HIRError::invalid_funcall_arg_length(
-                        func_symbol,
-                        expect_args.len(),
-                        args.len(),
-                        expr.span,
-                    ));
-                }
-                let return_type = *return_type;
-                let exprs = match args
-                    .iter()
-                    .map(|v| self.resolve_expr(v, None))
-                    .collect::<Result<Vec<_>>>()
-                {
-                    Ok(exprs) => exprs,
-                    Err(mut e) => {
-                        e.span = expr.span;
-                        return Err(e);
-                    }
-                };
-
-                Ok(HirExpression {
-                    id: ExpressionId::new(),
-                    ty: return_type,
-                    kind: HirExpressionKind::FunctionCall {
-                        name: decl,
-                        args: exprs,
-                    },
-                    span: expr.span,
-                })
+                self.generate_funcall(name, args, expr.span)
             }
             ASTExpressionKind::Boolean(b) => Ok(self.create_boolean_expression(*b, expr.span)),
             ASTExpressionKind::Binary { lhs, op, rhs } => self.resolve_binary(lhs, *op, rhs, ty),
@@ -309,7 +368,7 @@ impl SlynxHir {
             ASTExpressionKind::Identifier(name) => {
                 let name = self.modules.intern_name(name);
                 let id = self.get_variable(name, &expr.span)?;
-                let tyid = self.add_type(name, HirType::VarReference(id));
+                let tyid = self.create_type(name, HirType::VarReference(id));
                 Ok(self.create_identifier_expression(id, tyid, expr.span))
             }
             ASTExpressionKind::IntLiteral(int) => Ok(self.create_int_expression(*int, expr.span)),
@@ -319,72 +378,18 @@ impl SlynxHir {
             ASTExpressionKind::Component(component) => {
                 let (id, _) =
                     self.retrieve_information_of_type(&component.name.identifier, &component.span)?;
-
-                Ok(HirExpression {
-                    kind: HirExpressionKind::Component(
-                        self.resolve_component_expression(component)?,
-                    ),
-                    id: ExpressionId::new(), // Changed to ExpressionId
-                    ty: id,
-                    span: expr.span,
-                })
+                let component = self.resolve_component_expression(component)?;
+                Ok(self.create_component_expression(component, id, expr.span))
             }
             ASTExpressionKind::ObjectExpression { name, fields } => {
                 let symbol = self.modules.intern_name(&name.identifier);
                 let Some((_, ty)) = self.modules.get_declaration_by_name(&symbol) else {
                     return Err(HIRError::name_unrecognized(symbol, name.span));
                 };
-                let kind = self.organized_object_fields(ty, fields, &expr.span)?;
-                Ok(HirExpression {
-                    id: ExpressionId::new(),
-                    ty,
-                    kind,
-                    span: expr.span,
-                })
+                self.generate_object_expression(ty, fields, expr.span)
             }
             ASTExpressionKind::FieldAccess { parent, field } => {
-                let field_symbol = self.modules.intern_name(field);
-                let parent = self.resolve_expr(parent, None)?;
-                let HirExpression { ref ty, .. } = parent;
-                match self.get_type(ty) {
-                    HirType::Reference { rf, .. }
-                        if let Some(decl) = self.retrieve_object_fields(*rf)
-                            && let Some(index) = Self::find_name_index(decl, field_symbol) =>
-                    {
-                        let ty = self.add_unnamed_type(HirType::type_field(*ty, index));
-                        Ok(self.create_field_access_expression(parent, index, ty, expr.span))
-                    }
-                    HirType::Reference { .. } => Err(HIRError::property_unrecognized(
-                        vec![field_symbol],
-                        expr.span,
-                    )),
-
-                    HirType::VarReference(rf) => {
-                        let ty = self.add_unnamed_type(HirType::variable_field(*rf, field_symbol));
-                        Ok(self.create_field_access_expression(parent, usize::MAX, ty, expr.span))
-                    }
-                    HirType::Field(_) => {
-                        let object_ref = self.resolve_object_reference_type(*ty, &expr.span)?;
-                        let field = self.modules.intern_name(field);
-                        let Some(layout) = self.retrieve_object_fields(object_ref) else {
-                            unreachable!("object reference should carry a layout");
-                        };
-                        match Self::find_name_index(layout, field) {
-                            Some(index) => {
-                                let field_ty =
-                                    self.add_unnamed_type(HirType::type_field(object_ref, index));
-                                Ok(self.create_field_access_expression(
-                                    parent, index, field_ty, expr.span,
-                                ))
-                            }
-                            _ => Err(HIRError::property_unrecognized(vec![field], expr.span)),
-                        }
-                    }
-                    u => Err(HIRError {
-                        kind: HIRErrorKind::InvalidFieldAccessTarget { ty: u.clone() },
-                        span: expr.span,
-                    }),
-                }
+                self.generate_field_access_expression(parent, field, expr.span)
             }
         }
     }
@@ -403,8 +408,8 @@ impl SlynxHir {
         rhs: &ASTExpression,
         ty: Option<TypeId>,
     ) -> Result<HirExpression> {
-        let mut lhs = self.resolve_expr(lhs, ty)?;
-        let mut rhs = self.resolve_expr(rhs, ty)?;
+        let mut lhs = self.generate_expression(lhs, ty)?;
+        let mut rhs = self.generate_expression(rhs, ty)?;
         match discriminant(self.get_type(&lhs.ty)) == discriminant(self.get_type(&rhs.ty)) {
             false if lhs.ty == self.infer_type() => lhs.ty = rhs.ty,
             false if rhs.ty == self.infer_type() => rhs.ty = lhs.ty,
