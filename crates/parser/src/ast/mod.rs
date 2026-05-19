@@ -65,10 +65,26 @@ pub struct ObjectField {
 }
 
 #[derive(Debug)]
-pub struct StyleBlock {
-    pub event: Option<String>,
+pub struct StyleState {
+    pub states: Vec<String>,
     pub duration: Option<ASTExpression>,
+    pub transition_curve: Option<String>,
+}
+impl StyleState {
+    ///Creates a style state which represents the base state of the style
+    pub fn new_base() -> Self {
+        Self {
+            states: vec!["default".to_string()],
+            duration: None,
+            transition_curve: None,
+        }
+    }
+}
+#[derive(Debug)]
+pub struct StyleBlock {
+    pub state: StyleState,
     pub properties: Vec<NamedExpr>,
+    pub children: Vec<StyleBlock>,
     pub span: Span,
 }
 

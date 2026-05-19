@@ -108,11 +108,14 @@ impl SlynxHir {
     pub fn resolve_stylesblock(&mut self, styles: &[StyleBlock]) -> Result<Vec<HirStyleBlock>> {
         let mut out = Vec::new();
         for style in styles {
-            let kind = match style.event.as_deref() {
-                Some("hover") => HirStyleBlockKind::Hover,
-                Some("default") | None => HirStyleBlockKind::Default,
-                Some(event) => {
-                    let event = self.modules.intern_name(event);
+            let kind = {
+                let states = &style.state.states;
+                if states.iter().any(|s| s == "hover") {
+                    HirStyleBlockKind::Hover
+                } else if states.is_empty() || states.iter().any(|s| s == "default") {
+                    HirStyleBlockKind::Default
+                } else {
+                    let event = self.modules.intern_name(&states[0]);
                     return Err(HIRError::invalid_style_event(event, style.span));
                 }
             };

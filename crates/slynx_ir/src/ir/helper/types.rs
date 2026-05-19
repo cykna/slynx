@@ -1,6 +1,6 @@
 use common::SymbolPointer;
 use slynx_hir::{
-    DeclarationId, TypeId,
+    TypeId,
     model::{HirDeclaration, HirType},
 };
 

@@ -103,6 +103,50 @@ Internally, the merge happens at the HIR level during `lower_stylesheet` in `hel
 - Parent properties are collected first (in `uses` order).
 - Own properties override parents with the same `StyleProperty` code.
 - Fields are sorted by `StyleProperty` code (the numeric order from `STYLES_TABLE.md`).
+- Each resolved property is tagged with a **source** — either `Own` (from this stylesheet's `styles` block) or `Inherited` (from a specific `uses` entry, tracked by index).
+
+### Constructor with `uses` (argument forwarding)
+
+A child stylesheet with a `uses` clause that passes arguments to its parent generates constructor IR that **calls the parent's constructor** rather than inlining the parent's expressions:
+
+```slynx
+stylesheet Fg(color: int) {
+  styles {
+    foregroundColor: color
+  }
+}
+
+stylesheet Bg(color: int) uses Fg(color - 0x00ffff) {
+  styles {
+    backgroundColor: color
+  }
+}
+```
+
+Lowering of `Bg` produces:
+
+```slynxir
+%Fg __init_Fg(i32){
+$entry:
+  %fg_struct = %Fg{p0};
+  ret %fg_struct;
+}
+
+%Bg __init_Bg(i32){
+$entry:
+  %parent_arg = sub p0, 0x00ffff;
+  %parent_struct = call __init_Fg(%parent_arg);
+  %bg_field = getfield %parent_struct, 0;
+  %result = %Bg{p0, %bg_field};
+  ret %result;
+}
+```
+
+This mirrors how the component init path handles style applications (`initialize_component` in `components.rs`): the `uses` arguments are evaluated in the child's scope (where the child's parameters are bound), then forwarded to the parent's constructor via `call`. The parent's struct fields are extracted via `getfield` and packed into the child's struct literal.
+
+### Dependency ordering
+
+Stylesheets are lowered in dependency order — parents before children — regardless of declaration order in source. This is ensured in `ir/mod.rs` by a topological-sort loop that tracks which stylesheets have been lowered before attempting to lower their dependents.
 
 ## Precedence Rules
 

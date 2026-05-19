@@ -4,7 +4,7 @@ use slynx_hir::{DeclarationId, TypeId, VariableId, model::HirDeclaration, module
 use smallvec::SmallVec;
 
 use crate::{
-    Component, IRError, IRTypeId,
+    Component, IRError, IRTypeId, StyleProperty,
     ir::model::{Context, IRPointer, Label, Value},
 };
 
@@ -12,6 +12,7 @@ pub struct AuxiliaryStyle {
     pub init_func: IRPointer<Context, 1>,
     pub apply_func: IRPointer<Context, 1>,
     pub strct: IRTypeId,
+    pub property_codes: Vec<StyleProperty>,
 }
 
 ///Data to save Component information, such as its IRPointer, and values for the default fields
@@ -87,6 +88,11 @@ impl<'a> TempIRData<'a> {
     #[inline]
     pub fn get_style(&self, sid: DeclarationId) -> Option<&AuxiliaryStyle> {
         self.styles.get(&sid)
+    }
+
+    #[inline]
+    pub fn get_style_mut(&mut self, sid: DeclarationId) -> Option<&mut AuxiliaryStyle> {
+        self.styles.get_mut(&sid)
     }
 
     #[inline]

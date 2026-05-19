@@ -1,7 +1,6 @@
 use std::collections::HashSet;
 
 use slynx_hir::{
-    DeclarationId,
     model::{
         HirDeclaration, HirDeclarationKind, HirExpression, HirStyleBlockKind, HirStyleStatement,
         HirStyleUsage, StylesDefinition,
@@ -13,13 +12,25 @@ use crate::{
     ir::temp::TempIRData,
 };
 
-type StyleValue<'a> = (StyleProperty, &'a HirExpression);
+/// Describes where a style property value originates.
+#[derive(Debug, Clone)]
+pub(crate) enum PropertySource<'a> {
+    /// The property is defined directly by this stylesheet's own `styles` block.
+    Own(&'a HirExpression),
+    /// The property is inherited from a parent stylesheet via a `uses` clause.
+    /// The `usize` is the index into the stylesheet's `usages` array.
+    Inherited(usize),
+}
 
-type ResolvedStyle<'a> = (Vec<StyleValue<'a>>, Vec<DeclarationId>);
+#[derive(Debug, Clone)]
+pub(crate) struct ResolvedProperty<'a> {
+    pub property: StyleProperty,
+    pub source: PropertySource<'a>,
+}
 
 impl SlynxIR {
     /// Collect style property definitions from a list of style statements.
-    fn collect_style_properties<'a>(
+    pub(crate) fn collect_style_properties<'a>(
         &self,
         statements: &'a [HirStyleStatement],
     ) -> Vec<&'a StylesDefinition> {
@@ -43,8 +54,9 @@ impl SlynxIR {
     ///
     /// 1. Resolve inheritance from `uses` clauses.
     /// 2. Populate the IR struct type for the style (fields in STYLES_TABLE order).
-    /// 3. Create the constructor function that returns the struct with default values.
-    /// 4. Create the Apply function that emits @sapply for each property.
+    /// 3. Store the property-to-field-index mapping for parent lookup.
+    /// 4. Create the constructor function that returns the struct with default values.
+    /// 5. Create the Apply function that emits @sapply for each property.
     pub(crate) fn lower_stylesheet(
         &mut self,
         decl: &HirDeclaration,
@@ -63,37 +75,35 @@ impl SlynxIR {
         let own_props = self.collect_style_properties(statements);
 
         // 2. Resolve inheritance: merge parent properties with own properties
-        let (merged_props, _parent_usage_decls) =
-            self.resolve_style_inheritance(usages, &own_props, temp.hir)?;
+        let resolved = self.resolve_style_inheritance(usages, &own_props, temp.hir);
 
         // 3. Populate the struct type fields
         let struct_ty = temp.get_type(decl.ty)?;
-        self.populate_style_struct_fields(struct_ty, &merged_props)?;
+        self.populate_style_struct_fields(struct_ty, &resolved)?;
 
         // 4. Create the constructor function (builds the struct with default values)
-        self.create_style_constructor(decl, struct_ty, &merged_props, temp)?;
+        self.create_style_constructor(decl, struct_ty, usages, &resolved, temp)?;
 
         // 5. Create the apply function
-        self.create_style_apply_function(decl, struct_ty, &merged_props, temp)?;
+        self.create_style_apply_function(decl, struct_ty, &resolved, temp)?;
 
         Ok(())
     }
 
     /// Resolve style inheritance.
     ///
-    /// Returns merged properties in STYLES_TABLE order and parent usage declaration IDs.
-    fn resolve_style_inheritance<'a>(
+    /// Returns merged properties in STYLES_TABLE order, each tagged with its
+    /// origin (own expression or inherited from a specific `uses` entry).
+    pub(crate) fn resolve_style_inheritance<'a>(
         &self,
         usages: &[HirStyleUsage],
         own_props: &[&'a StylesDefinition],
         hir: &'a [HirDeclaration],
-    ) -> Result<ResolvedStyle<'a>, IRError> {
-        let mut merged: Vec<(StyleProperty, &HirExpression)> = Vec::new();
+    ) -> Vec<ResolvedProperty<'a>> {
+        let mut resolved: Vec<ResolvedProperty<'a>> = Vec::new();
         let mut seen_codes: HashSet<StyleProperty> = HashSet::new();
-        let mut parent_ids: Vec<DeclarationId> = Vec::new();
 
-        for usage in usages {
-            parent_ids.push(usage.style);
+        for (usage_idx, usage) in usages.iter().enumerate() {
             let style = &hir[usage.style.as_raw() as usize];
             if let HirDeclarationKind::StyleSheet { ref statements, .. } = style.kind {
                 let parent_props = self.collect_style_properties(statements);
@@ -104,7 +114,10 @@ impl SlynxIR {
 
                     if !seen_codes.contains(&property) {
                         seen_codes.insert(property);
-                        merged.push((property, &def.expr));
+                        resolved.push(ResolvedProperty {
+                            property,
+                            source: PropertySource::Inherited(usage_idx),
+                        });
                     }
                 }
             }
@@ -115,32 +128,38 @@ impl SlynxIR {
             let name_str = self.strings.get_name(def.name);
             let code = StyleProperty::from_name(name_str);
 
-            if let Some(pos) = seen_codes.iter().position(|c| *c == code) {
-                merged[pos] = (code, &def.expr);
+            if let Some(pos) = resolved.iter().position(|rp| rp.property == code) {
+                resolved[pos] = ResolvedProperty {
+                    property: code,
+                    source: PropertySource::Own(&def.expr),
+                };
             } else {
                 seen_codes.insert(code);
-                merged.push((code, &def.expr));
+                resolved.push(ResolvedProperty {
+                    property: code,
+                    source: PropertySource::Own(&def.expr),
+                });
             }
         }
 
         // Sort by STYLES_TABLE code
-        merged.sort_by_key(|(code, _)| *code);
+        resolved.sort_by_key(|rp| rp.property);
 
-        Ok((merged, parent_ids))
+        resolved
     }
 
     /// Populate the fields of the style struct based on resolved properties.
     fn populate_style_struct_fields(
         &mut self,
         struct_ty: IRTypeId,
-        properties: &[(StyleProperty, &HirExpression)],
+        properties: &[ResolvedProperty],
     ) -> Result<(), IRError> {
         use crate::IRType;
 
         // Compute all field types first to avoid borrow conflicts
         let field_types: Vec<IRTypeId> = properties
             .iter()
-            .map(|(code, _)| code.ir_type(&self.types))
+            .map(|rp| rp.property.ir_type(&self.types))
             .collect();
 
         let struct_id = match self.types.get_type(struct_ty) {
@@ -158,14 +177,16 @@ impl SlynxIR {
 
     /// Create the constructor function for a stylesheet.
     ///
-    /// The constructor evaluates the merged property expressions and builds the
-    /// struct literal, returning it. Usage sites call this function instead of
-    /// inlining the struct literal, keeping defaults in one place.
+    /// For own properties the constructor evaluates the HIR expression directly.
+    /// For inherited properties it calls the parent's init function (passing the
+    /// evaluated `uses` arguments) and extracts the needed field from the result.
+    /// The resulting values are packed into a struct literal and returned.
     fn create_style_constructor(
         &mut self,
         decl: &HirDeclaration,
         struct_ty: IRTypeId,
-        properties: &[(StyleProperty, &HirExpression)],
+        usages: &[HirStyleUsage],
+        properties: &[ResolvedProperty],
         temp: &mut TempIRData,
     ) -> Result<IRPointer<Context, 1>, IRError> {
         let HirDeclarationKind::StyleSheet { ref args, .. } = decl.kind else {
@@ -203,11 +224,86 @@ impl SlynxIR {
             .set_label_ptr(entry_label.with_length());
         temp.set_current_label(entry_label);
 
-        // Evaluate each merged property expression and build struct literal
+        // Phase 1: Call each parent's init function where at least one property is inherited
+        let mut parent_structs: Vec<Option<(IRPointer<Value, 1>, IRTypeId)>> =
+            vec![None; usages.len()];
+
+        // Collect which usage indices actually contribute properties
+        let needed_usages: HashSet<usize> = properties
+            .iter()
+            .filter_map(|rp| match rp.source {
+                PropertySource::Inherited(idx) => Some(idx),
+                PropertySource::Own(_) => None,
+            })
+            .collect();
+
+        for &usage_idx in &needed_usages {
+            let usage = &usages[usage_idx];
+
+            // Evaluate usage params (these reference this stylesheet's args, now in scope)
+            let args = self.get_usage_args(usage, temp)?;
+
+            // Get parent's init function and struct type
+            let parent_init = temp
+                .get_style_init_function(usage.style)
+                .expect("Parent style init function should have been hoisted");
+            let parent_struct_ty = temp
+                .get_style_struct_type(usage.style)
+                .expect("Parent style struct type should exist");
+
+            // Call parent's init function
+            let cons_call = self.insert_instruction(
+                temp.current_label(),
+                Instruction::call(parent_init, parent_struct_ty, args),
+                false,
+            );
+            let cons_ptr = self.dereference_instruction_ptr(cons_call);
+            let struct_value = self.insert_value(Value::new_instruction(
+                cons_ptr.with_length(),
+                parent_struct_ty,
+            ));
+
+            parent_structs[usage_idx] = Some((struct_value, parent_struct_ty));
+        }
+
+        // Phase 2: Evaluate each property value
         let mut field_values = Vec::new();
-        for (_, expr) in properties {
-            let val = self.get_value_for(expr, temp)?;
-            field_values.push(self.get_value(val));
+        for resolved_prop in properties {
+            let value = match &resolved_prop.source {
+                PropertySource::Own(expr) => {
+                    let val = self.get_value_for(expr, temp)?;
+                    self.get_value(val)
+                }
+                PropertySource::Inherited(usage_idx) => {
+                    let (parent_struct, parent_struct_ty) = parent_structs[*usage_idx]
+                        .expect("Parent struct should have been computed");
+
+                    // Find the field index in the parent struct for this property code
+                    let parent_style_data = temp
+                        .get_style(usages[*usage_idx].style)
+                        .expect("Parent style data should exist");
+                    let field_idx = parent_style_data
+                        .property_codes
+                        .iter()
+                        .position(|c| *c == resolved_prop.property)
+                        .expect("Property should exist in parent style struct");
+
+                    let field_ty = self.types.get_field_type(parent_struct_ty, field_idx);
+
+                    let getfield_instr = self.insert_instruction(
+                        temp.current_label(),
+                        Instruction::getfield(field_idx, parent_struct, field_ty),
+                        false,
+                    );
+                    let getfield_ptr = self.dereference_instruction_ptr(getfield_instr);
+                    let field_value_ptr = self.insert_value(Value::new_instruction(
+                        getfield_ptr.with_length(),
+                        field_ty,
+                    ));
+                    self.get_value(field_value_ptr)
+                }
+            };
+            field_values.push(value);
         }
 
         let fields_ptr = self.insert_values(&field_values);
@@ -240,8 +336,7 @@ impl SlynxIR {
         &mut self,
         decl: &HirDeclaration,
         struct_ty: IRTypeId,
-        properties: &[(StyleProperty, &HirExpression)],
-
+        properties: &[ResolvedProperty],
         temp: &mut TempIRData,
     ) -> Result<IRPointer<Context, 1>, IRError> {
         let generic_component_ty = self.types.generic_component_type();
@@ -275,7 +370,7 @@ impl SlynxIR {
         let struct_value = self.insert_value(self.generate_func_arg_value(1, temp));
 
         // For each property, emit: getfield + @sapply
-        for (field_idx, (code, _)) in properties.iter().enumerate() {
+        for (field_idx, rp) in properties.iter().enumerate() {
             let field_ty = self.types.get_field_type(struct_ty, field_idx);
 
             // getfield: extract field from struct
@@ -298,7 +393,7 @@ impl SlynxIR {
 
             self.insert_instruction(
                 temp.current_label(),
-                Instruction::sapply(*code, sapply_operands, void_ty),
+                Instruction::sapply(rp.property, sapply_operands, void_ty),
                 true,
             );
         }

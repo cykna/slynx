@@ -115,12 +115,31 @@ impl SlynxIR {
                                 init_func: init_func.with_length(),
                                 apply_func: apply_func.with_length(),
                                 strct: out,
+                                property_codes: Vec::new(),
                             },
                         );
                     }
                 }
             }
         }
+        // Pre-pass: compute property codes for all stylesheets before any lowering.
+        // This ensures parent property_codes are available regardless of declaration order.
+        for declaration in &hir {
+            if let HirDeclarationKind::StyleSheet {
+                ref usages,
+                ref statements,
+                ..
+            } = declaration.kind
+            {
+                let own_props = self.collect_style_properties(statements);
+                let resolved = self.resolve_style_inheritance(usages, &own_props, &hir);
+                if let Some(style_data) = temp.get_style_mut(declaration.id) {
+                    style_data.property_codes = resolved.iter().map(|rp| rp.property).collect();
+                }
+            }
+        }
+
+        // Phase 1: Lower all non-stylesheet declarations (Objects, Functions, Components, Aliases)
         for declaration in &hir {
             match &declaration.kind {
                 HirDeclarationKind::Object => {
@@ -150,10 +169,50 @@ impl SlynxIR {
                 }
                 HirDeclarationKind::StyleSheet { .. } => {
                     self.insert_stylesheet_type_for(declaration, &temp)?;
-                    self.lower_stylesheet(declaration, &mut temp)?;
                 }
             }
         }
+
+        // Phase 2: Lower stylesheets in dependency order (parents before children)
+        {
+            use std::collections::HashSet;
+            let mut lowered: HashSet<usize> = HashSet::new();
+            let all_stylesheets: Vec<usize> = (0..hir.len())
+                .filter(|i| matches!(hir[*i].kind, HirDeclarationKind::StyleSheet { .. }))
+                .collect();
+
+            while lowered.len() < all_stylesheets.len() {
+                let before = lowered.len();
+                for &idx in &all_stylesheets {
+                    if lowered.contains(&idx) {
+                        continue;
+                    }
+                    let decl = &hir[idx];
+                    if let HirDeclarationKind::StyleSheet { ref usages, .. } = decl.kind {
+                        let all_parents_lowered = usages.iter().all(|u| {
+                            let pidx = u.style.as_raw() as usize;
+                            lowered.contains(&pidx)
+                                || !matches!(hir[pidx].kind, HirDeclarationKind::StyleSheet { .. })
+                        });
+                        if all_parents_lowered {
+                            self.lower_stylesheet(decl, &mut temp)?;
+                            lowered.insert(idx);
+                        }
+                    }
+                }
+                // If no progress, lower remaining (handles cycles gracefully)
+                if lowered.len() == before {
+                    for &idx in &all_stylesheets {
+                        if !lowered.contains(&idx) {
+                            self.lower_stylesheet(&hir[idx], &mut temp)?;
+                            lowered.insert(idx);
+                        }
+                    }
+                    break;
+                }
+            }
+        }
+
         Ok(())
     }
 
