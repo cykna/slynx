@@ -69,17 +69,20 @@
 
 #![warn(rustdoc::broken_intra_doc_links)]
 
+mod components;
+mod declarations;
 /// HIR error types and diagnostic information.
 pub mod error;
+mod expression;
 mod helpers;
 /// Unique ID types for HIR elements.
 pub mod id;
-mod implementation;
 pub mod model;
 /// Scope, symbol, type, and declaration management modules.
 pub mod modules;
 /// Name resolution utilities.
 pub mod names;
+mod statements;
 
 pub use crate::error::{HIRError, HIRErrorKind};
 use crate::{model::HirDeclaration, modules::HirModules};
