@@ -363,13 +363,6 @@ These serve different purposes, but having both at different nesting levels
 is confusing. They should either be merged into `src/model/` or both live
 at the same level with clear names.
 
-#### 4. No `pub use` re-export pattern for model types
-
-In idiomatic Rust, a crate's public API is typically re-exported through
-`lib.rs` so consumers write `slynx_hir::HirDeclaration` instead of
-`slynx_hir::model::HirDeclaration`. Some crates do this (HIR re-exports
-model, error, id) but the pattern is not consistently applied.
-
 #### 5. `helpers/` in HIR is inconsistently used
 
 `helpers/expressions.rs`, `helpers/names.rs`, and `helpers/types.rs` contain
@@ -396,3 +389,14 @@ document edge cases.
 | Move `generate()` body to `src/generate.rs` | hir | 15min |
 | Add `pub use` re-exports to lib.rs | all | 10min each |
 | Add inline unit tests | all | ongoing |
+
+#### 7. Name Conventions
+
+The name conventions on this project are intended to determine how a function should be named so it is easier to navigate and find functions.
+The convention SHOULD be implemented in every phase, except by parser phase, which is intended mainly for parsing, thus, is not included due to not saving nor managing much data.
+
+'generate_*' -> A function that takes an input, and returns an output. Such as generating an Hir Function from a Function declaration from AST
+'get_*' -> Retrieves some information that was previously generated
+'create_*' -> A function that takes one or more input, and returns an output. The difference to `generate`is that the inputs are not bound to a phase specifically. So it can be 'create_add_expression' and not 'generate', because 'generate' would require something specific from a phase, in that case, a binary expression. So a 'generate_expression' function might be able to call 'create_add_expression'
+
+Internal functions that ARE NOT exposed are not required to follow this, since they're auxiliary functions, but yet should follow a pattern, which by now wont be determined
