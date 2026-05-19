@@ -1,5 +1,5 @@
 use crate::{
-    ExpressionId, SlynxHir, TypeId, VariableId,
+    ExpressionId, HirComponentExpression, SlynxHir, TypeId, VariableId,
     model::{HirExpression, HirExpressionKind, HirStatement},
 };
 use common::{Operator, Span, SymbolPointer};
@@ -124,6 +124,19 @@ impl SlynxHir {
                 else_branch: else_body,
             },
             id: ExpressionId::new(),
+            ty,
+            span,
+        }
+    }
+    pub fn create_component_expression(
+        &mut self,
+        component: HirComponentExpression,
+        ty: TypeId,
+        span: Span,
+    ) -> HirExpression {
+        HirExpression {
+            kind: HirExpressionKind::Component(component),
+            id: ExpressionId::new(), // Changed to ExpressionId
             ty,
             span,
         }

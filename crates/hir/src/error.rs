@@ -1,4 +1,7 @@
-use crate::model::{HirExpression, HirType};
+use crate::{
+    TypeId,
+    model::{HirExpression, HirType},
+};
 
 use common::{Span, SymbolPointer};
 
@@ -106,6 +109,25 @@ pub enum HIRErrorKind {
 }
 
 impl HIRError {
+    ///Creates a new `InvalidStyleDefinition` error, where the name of the style definition is the given `name` and the given `span` is
+    ///the span on the code that generated so
+    pub fn invalid_tuple_index(index: usize, max_index: usize, span: Span) -> Self {
+        Self {
+            kind: HIRErrorKind::InvalidTupleIndex {
+                index,
+                length: max_index,
+            },
+            span,
+        }
+    }
+    ///Creates a new `InvalidStyleDefinition` error, where the name of the style definition is the given `name` and the given `span` is
+    ///the span on the code that generated so
+    pub fn invalid_tuple_target(target: HirType, span: Span) -> Self {
+        Self {
+            kind: HIRErrorKind::InvalidTupleAccessTarget { ty: target },
+            span,
+        }
+    }
     ///Creates a new `InvalidStyleDefinition` error, where the name of the style definition is the given `name` and the given `span` is
     ///the span on the code that generated so
     pub fn invalid_style_definition(name: SymbolPointer, span: Span) -> Self {

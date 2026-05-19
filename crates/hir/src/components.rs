@@ -39,7 +39,8 @@ impl SlynxHir {
                     }
 
                     Some(index) => {
-                        let expr = self.resolve_expr(rhs, Some(*props[index].prop_type()))?;
+                        let expr =
+                            self.generate_expression(rhs, Some(*props[index].prop_type()))?;
                         properties.push(PropertyExpression::new(index, expr));
                         Ok(())
                     }
@@ -84,7 +85,7 @@ impl SlynxHir {
                 ComponentMemberValue::Assign { prop_name, rhs, .. }
                     if prop_name == HirSpecializedComponentExpression::RESERVED_TEXT =>
                 {
-                    text = Some(self.resolve_expr(rhs, None)?)
+                    text = Some(self.generate_expression(rhs, None)?)
                 }
                 ComponentMemberValue::Assign { prop_name, rhs, .. }
                     if prop_name == HirSpecializedComponentExpression::RESERVED_STYLE =>

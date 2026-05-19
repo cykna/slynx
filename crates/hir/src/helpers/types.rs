@@ -46,21 +46,21 @@ impl SlynxHir {
     }
 
     ///Creates a new tuple type with the given `fields` and returns its typeid
-    pub fn add_tuple_type(&mut self, fields: Vec<TypeId>) -> TypeId {
-        self.modules.types_module.add_tuple_type(fields)
+    pub fn create_tuple_type(&mut self, fields: Vec<TypeId>) -> TypeId {
+        self.modules.types_module.create_tuple_type(fields)
     }
 
     ///Creates a the given `ty` on the hir and returns its id. doesnt map a name to it
-    pub fn add_unnamed_type(&mut self, ty: HirType) -> TypeId {
-        self.modules.types_module.insert_unnamed_type(ty)
+    pub fn create_unnamed_type(&mut self, ty: HirType) -> TypeId {
+        self.modules.types_module.create_unnamed_type(ty)
     }
     /// Inserts a named type into the HIR and returns its [`TypeId`].
-    pub fn add_type(&mut self, name: SymbolPointer, ty: HirType) -> TypeId {
-        self.modules.types_module.insert_type(name, ty)
+    pub fn create_type(&mut self, name: SymbolPointer, ty: HirType) -> TypeId {
+        self.modules.types_module.create_type(name, ty)
     }
 
     /// Returns the [`HirType`] associated with the given name, if it exists.
-    pub fn get_type_from_name(&self, name: &SymbolPointer) -> Option<&HirType> {
+    pub fn get_type_from_pointer(&self, name: &SymbolPointer) -> Option<&HirType> {
         self.modules.types_module.get_type_from_name(name)
     }
 
@@ -75,8 +75,8 @@ impl SlynxHir {
     }
 
     /// Returns the field layout (as a slice of symbol pointers) for the object with the given [`TypeId`].
-    pub fn retrieve_object_fields(&self, ty: TypeId) -> Option<&[SymbolPointer]> {
-        self.modules.declarations_module.retrieve_object_body(ty)
+    pub fn get_object_fields(&self, ty: TypeId) -> Option<&[SymbolPointer]> {
+        self.modules.declarations_module.get_object_body(ty)
     }
 
     /// Returns the [`TypeId`] of the given variable, if it exists.
