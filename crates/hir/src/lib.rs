@@ -85,10 +85,11 @@ pub mod names;
 mod statements;
 
 pub use crate::error::{HIRError, HIRErrorKind};
-use crate::{model::HirDeclaration, modules::HirModules};
+use crate::modules::HirModules;
 use slynx_parser::{ASTDeclaration, ASTDeclarationKind};
 
 pub use id::{DeclarationId, ExpressionId, PropertyId, TypeId, VariableId};
+pub use model::*;
 
 /// Result type for HIR operations.
 ///
