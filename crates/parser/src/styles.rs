@@ -21,7 +21,7 @@ impl Parser {
             }
         }
         let (duration, curve) = if let TokenKind::LParen = self.peek()?.kind
-            && states.len() > 0
+            && !states.is_empty()
         {
             self.eat()?;
             let duration = if self.peek()?.kind != TokenKind::RParen {

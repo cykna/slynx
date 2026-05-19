@@ -94,13 +94,13 @@ impl TypeChecker {
                 children,
                 span,
             } => {
-                let HirType::Component { props } = self.types_module.get_type(&name) else {
+                let HirType::Component { props } = self.types_module.get_type(name) else {
                     unreachable!("Should've received a component type");
                 };
                 let props = props.clone();
 
                 for prop_expr in properties {
-                    let prop_ty = props[prop_expr.index()].prop_type().clone();
+                    let prop_ty = *props[prop_expr.index()].prop_type();
                     prop_expr.expr_mut().ty = self.unify(&prop_ty, &prop_expr.expr().ty, span)?;
                 }
                 for child in children {

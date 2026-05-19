@@ -143,7 +143,7 @@ impl<'a> Formatter<'a> {
     }
 
     fn format_function_name(&self, ctx: &Context) -> String {
-        format!("{}", self.symbols.get_name(ctx.name()))
+        self.symbols.get_name(ctx.name()).to_string()
     }
 
     fn format_function(&self, ctx: &Context) -> String {
@@ -215,7 +215,7 @@ impl<'a> Formatter<'a> {
         for ptr in component.ui_instruction.iter() {
             out.push_str("  ");
             out.push_str(&self.format_instruction(&self.instructions[ptr.ptr()]));
-            out.push_str("\n");
+            out.push('\n');
         }
 
         out.push_str("}\n");
@@ -303,15 +303,11 @@ impl<'a> Formatter<'a> {
                 }
             }
             InstructionType::Cbr {
-                then_label,
                 else_label,
-                then_args,
                 else_args,
+                ..
             } => {
                 let cond = self.fmt_value(&instr.operands.ptr_to(0));
-                let then = self.fmt_label_ref(then_label);
-
-                let then_args = self.fmt_value_range(then_args);
                 let otherwise = self.fmt_label_ref(else_label);
                 let otherwise_args = self.fmt_value_range(else_args);
                 format!("cbr {cond}, {otherwise}({otherwise_args}), {otherwise}({otherwise_args});")

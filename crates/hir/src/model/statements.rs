@@ -133,7 +133,7 @@ pub struct HirStyleBlock {
 ///An statement that might occurr inside a stylesheet
 pub enum HirStyleStatement {
     ///A normal statement
-    Statement(HirStatement),
+    Statement(Box<HirStatement>),
     ///Styling definitions
     Styles(Vec<HirStyleBlock>),
 }

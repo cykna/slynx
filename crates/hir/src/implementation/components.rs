@@ -47,7 +47,7 @@ impl SlynxHir {
             }
             ComponentMemberValue::Child(child) => {
                 //By now this won't track whether it can or cannot have children, since a method better than 'children' might be implemented in the future.
-                let child = self.resolve_component_expression(&child)?;
+                let child = self.resolve_component_expression(child)?;
                 children.push(child);
                 Ok(())
             }

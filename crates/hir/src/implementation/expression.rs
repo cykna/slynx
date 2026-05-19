@@ -322,7 +322,7 @@ impl SlynxHir {
 
                 Ok(HirExpression {
                     kind: HirExpressionKind::Component(
-                        self.resolve_component_expression(&component)?,
+                        self.resolve_component_expression(component)?,
                     ),
                     id: ExpressionId::new(), // Changed to ExpressionId
                     ty: id,

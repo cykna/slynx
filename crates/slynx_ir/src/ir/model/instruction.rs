@@ -1,5 +1,3 @@
-use common::SymbolPointer;
-
 use crate::{IRTypeId, Label, Slot, StyleProperty, Value, ir::model::Context};
 
 use super::IRPointer;

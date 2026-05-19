@@ -104,7 +104,7 @@ impl SlynxIR {
                 text,
                 style: _,
             }) => {
-                let text_value = self.get_value_for(&*text, temp)?;
+                let text_value = self.get_value_for(text, temp)?;
                 let vals = self.insert_values(&[comp_value.clone(), self.get_value(text_value)]);
                 self.insert_instruction(
                     label,
@@ -186,7 +186,7 @@ impl SlynxIR {
             HirComponentExpression::Specialized(HirSpecializedComponentExpression::Div {
                 ..
             }) => self.types.specialized_div_type(),
-            HirComponentExpression::Normal { name, .. } => self.get_ir_type(&name, temp)?,
+            HirComponentExpression::Normal { name, .. } => self.get_ir_type(name, temp)?,
         };
         Ok(v)
     }
@@ -242,7 +242,7 @@ impl SlynxIR {
     ) -> Result<IRPointer<Value>, IRError> {
         let mut out = Vec::with_capacity(usage.params.len());
         for param in &usage.params {
-            let value = self.get_value_for(&param, temp)?;
+            let value = self.get_value_for(param, temp)?;
             let value = self.get_value(value);
             out.push(value);
         }

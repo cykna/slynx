@@ -67,9 +67,9 @@ impl SlynxHir {
         statement: &StyleSheetStatement,
     ) -> Result<HirStyleStatement> {
         match statement {
-            StyleSheetStatement::Statement(s) => {
-                self.resolve_statement(s).map(HirStyleStatement::Statement)
-            }
+            StyleSheetStatement::Statement(s) => self
+                .resolve_statement(s)
+                .map(|s| HirStyleStatement::Statement(Box::new(s))),
             StyleSheetStatement::Styles { styles, .. } => self
                 .resolve_stylesblock(styles)
                 .map(HirStyleStatement::Styles),

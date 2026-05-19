@@ -1,10 +1,8 @@
 use std::collections::HashSet;
 
-use slynx_hir::{
-    model::{
-        HirDeclaration, HirDeclarationKind, HirExpression, HirStyleBlockKind, HirStyleStatement,
-        HirStyleUsage, StylesDefinition,
-    },
+use slynx_hir::model::{
+    HirDeclaration, HirDeclarationKind, HirExpression, HirStyleBlockKind, HirStyleStatement,
+    HirStyleUsage, StylesDefinition,
 };
 
 use crate::{
@@ -296,10 +294,8 @@ impl SlynxIR {
                         false,
                     );
                     let getfield_ptr = self.dereference_instruction_ptr(getfield_instr);
-                    let field_value_ptr = self.insert_value(Value::new_instruction(
-                        getfield_ptr.with_length(),
-                        field_ty,
-                    ));
+                    let field_value_ptr = self
+                        .insert_value(Value::new_instruction(getfield_ptr.with_length(), field_ty));
                     self.get_value(field_value_ptr)
                 }
             };

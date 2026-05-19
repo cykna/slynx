@@ -554,7 +554,7 @@ impl TypeChecker {
                 let props = props.clone();
                 for prop in properties {
                     prop.expr_mut().ty =
-                        self.unify(&props[prop.index()].prop_type(), &prop.expr().ty, &span)?;
+                        self.unify(props[prop.index()].prop_type(), &prop.expr().ty, &span)?;
                 }
                 //todo: default component expression
 
