@@ -4,11 +4,7 @@ use slynx_hir::{
 };
 
 use crate::{
-    IRError, IRTypeId, SlynxIR,
-    ir::{
-        model::{Context, IRPointer, Instruction, Label, Operand, Value},
-        temp::TempIRData,
-    },
+    Context, IRError, IRPointer, IRTypeId, Instruction, Label, Operand, SlynxIR, TempIRData, Value,
 };
 
 impl SlynxIR {

@@ -1,30 +1,14 @@
 use std::collections::HashSet;
 
 use slynx_hir::model::{
-    HirDeclaration, HirDeclarationKind, HirExpression, HirStyleBlockKind, HirStyleStatement,
-    HirStyleUsage, StylesDefinition,
+    HirDeclaration, HirDeclarationKind, HirStyleBlockKind, HirStyleStatement, HirStyleUsage,
+    StylesDefinition,
 };
 
 use crate::{
-    Context, IRError, IRPointer, IRTypeId, Instruction, SlynxIR, StyleProperty, Value,
-    ir::temp::TempIRData,
+    Context, IRError, IRPointer, IRTypeId, Instruction, PropertySource, ResolvedProperty, SlynxIR,
+    StyleProperty, TempIRData, Value,
 };
-
-/// Describes where a style property value originates.
-#[derive(Debug, Clone)]
-pub(crate) enum PropertySource<'a> {
-    /// The property is defined directly by this stylesheet's own `styles` block.
-    Own(&'a HirExpression),
-    /// The property is inherited from a parent stylesheet via a `uses` clause.
-    /// The `usize` is the index into the stylesheet's `usages` array.
-    Inherited(usize),
-}
-
-#[derive(Debug, Clone)]
-pub(crate) struct ResolvedProperty<'a> {
-    pub property: StyleProperty,
-    pub source: PropertySource<'a>,
-}
 
 impl SlynxIR {
     /// Collect style property definitions from a list of style statements.

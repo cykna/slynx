@@ -1,9 +1,6 @@
 use common::SymbolPointer;
 
-use crate::{
-    Component, IRType, IRTypeId, Instruction, SlynxIR,
-    ir::model::{Context, IRPointer, Label, Value},
-};
+use crate::{Component, Context, IRPointer, IRType, IRTypeId, Instruction, Label, SlynxIR, Value};
 
 impl SlynxIR {
     #[inline]

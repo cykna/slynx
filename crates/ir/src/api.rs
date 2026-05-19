@@ -2,7 +2,7 @@ use either::Either::{Left, Right};
 
 use crate::{
     Component, Context, ControlFlowGraph, IRPointer, IRTypes, Instruction, Label, Operand, SlynxIR,
-    Value, ir::instructions::InstructionPtr,
+    Value, instructions::InstructionPtr,
 };
 
 impl SlynxIR {

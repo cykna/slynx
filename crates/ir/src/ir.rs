@@ -1,45 +1,34 @@
-mod api;
-mod components;
-mod contexts;
-mod helper;
-mod instructions;
-mod model;
-mod temp;
-mod visualize;
-
 use common::SymbolsModule;
-pub use model::*;
-pub use visualize::*;
-
 use slynx_hir::{
     model::{HirDeclaration, HirDeclarationKind, HirType},
     modules::TypesModule,
 };
 
-use crate::{IRError, IRTypes};
-
-use temp::{AuxiliaryStyle, TempIRData};
+use crate::{
+    AuxiliaryStyle, Component, Context, Formatter, IRError, IRPointer, IRTypes, Instruction, Label,
+    Operand, Slot, TempIRData, Value,
+};
 
 #[derive(Debug)]
 ///All the IR containing contexts, labels, instructions and operands
 pub struct SlynxIR {
     ///The contexts of this IR
-    contexts: Vec<Context>,
+    pub(crate) contexts: Vec<Context>,
     ///The Components of this IR
-    components: Vec<Component>,
+    pub(crate) components: Vec<Component>,
     ///The labels of this IR
-    labels: Vec<Label>,
+    pub(crate) labels: Vec<Label>,
     ///The instructions of this IR
-    instructions: Vec<Instruction>,
-    instruction_pointers: Vec<IRPointer<Instruction>>,
+    pub(crate) instructions: Vec<Instruction>,
+    pub(crate) instruction_pointers: Vec<IRPointer<Instruction>>,
     ///The operands of this IR
-    operands: Vec<Operand>,
+    pub(crate) operands: Vec<Operand>,
     ///The values of this IR
-    values: Vec<Value>,
-    slots: Vec<Slot>,
-    types: IRTypes,
+    pub(crate) values: Vec<Value>,
+    pub(crate) slots: Vec<Slot>,
+    pub(crate) types: IRTypes,
     ///Pool of interned strings, accessed via StringHandle indices
-    strings: SymbolsModule,
+    pub(crate) strings: SymbolsModule,
 }
 
 impl SlynxIR {
@@ -221,7 +210,7 @@ impl SlynxIR {
     /// This uses the helpers defined in the `visualize` module to format labels and
     /// instructions in the human-readable SIR form described in `middleend/README.md`.
     pub fn format_sir(&self) -> String {
-        let fmt = visualize::Formatter::new(self, &self.strings);
+        let fmt = Formatter::new(self, &self.strings);
         let mut out = fmt.format_types();
         out.push_str(&fmt.format_contexts());
         out

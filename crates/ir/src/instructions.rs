@@ -3,8 +3,8 @@ use either::Either;
 use slynx_hir::model::{HirExpression, HirExpressionKind, HirStatement, HirStatementKind};
 
 use crate::{
-    IRError, IRPointer, IRTypeId, Instruction, Label, Operand, Slot, SlynxIR, Value, ValueKind,
-    ir::temp::TempIRData,
+    IRError, IRPointer, IRTypeId, Instruction, Label, Operand, Slot, SlynxIR, TempIRData, Value,
+    ValueKind,
 };
 
 pub type InstructionPtr<const K: usize = 0> =
