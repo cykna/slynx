@@ -112,15 +112,12 @@ impl Parser {
             if let TokenKind::RBrace = self.peek()?.kind {
                 break Ok(statements);
             }
-            let stmt = self.parse_stylesheet_statement()?;
+            let stmt = statements.push_mut(self.parse_stylesheet_statement()?);
             match stmt {
                 StyleSheetStatement::Statement(_) => {
                     self.expect(&TokenKind::SemiColon)?;
                 }
-                _ => {
-                    statements.push(stmt);
-                    break Ok(statements);
-                }
+                _ => break Ok(statements),
             }
         }
     }
