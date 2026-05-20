@@ -4,7 +4,7 @@
 //! type mismatch errors, cyclic type errors, and component-related errors.
 
 use common::Span;
-use slynx_hir::{DeclarationId, model::HirType};
+use slynx_hir::{DeclarationId, HirType};
 
 /// Represents the reason for an incompatible component error.
 ///
@@ -30,7 +30,7 @@ pub struct TypeError {
 /// a type mismatch or a cyclic type reference.
 #[derive(Debug)]
 pub enum TypeErrorKind {
-    CiclicType {
+    CyclicType {
         ty: HirType,
     },
     IncompatibleComponent {
@@ -81,7 +81,7 @@ impl std::fmt::Display for TypeError {
     /// message, including the expected and received types for type mismatch errors.
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
         let out = match &self.kind {
-            TypeErrorKind::CiclicType { ty } => {
+            TypeErrorKind::CyclicType { ty } => {
                 format!("The type '{ty:?}' is cyclic and cannot exist without recursion")
             }
             TypeErrorKind::IncompatibleComponent { reason } => {

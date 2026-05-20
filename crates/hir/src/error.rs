@@ -1,7 +1,4 @@
-use crate::{
-    TypeId,
-    model::{HirExpression, HirType},
-};
+use crate::model::{HirExpression, HirType};
 
 use common::{Span, SymbolPointer};
 

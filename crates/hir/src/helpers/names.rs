@@ -5,7 +5,7 @@ use crate::{HIRError, HirType, Result, SlynxHir, VariableId};
 
 impl SlynxHir {
     /// Returns the source-level name string for the given symbol pointer.
-    pub fn retrieve_name_from_pointer(&self, ptr: SymbolPointer) -> &str {
+    pub fn get_name_from_pointer(&self, ptr: SymbolPointer) -> &str {
         self.modules.symbols_resolver.get_name(ptr)
     }
     ///Retrieves the type of the provided `name` but in the global scope. The difference of a 'named' to a 'name' is that this function

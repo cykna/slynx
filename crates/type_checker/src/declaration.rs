@@ -18,14 +18,32 @@ access the `TypesModule`.
 use super::{Result, TypeChecker};
 
 use slynx_hir::{
-    TypeId,
-    model::{
-        ComponentMemberDeclaration, HirComponentExpression, HirDeclaration, HirDeclarationKind,
-        HirType,
-    },
+    ComponentMemberDeclaration, ComponentProperty, HirComponentExpression, HirDeclaration,
+    HirDeclarationKind, HirType, TypeId,
 };
 
 impl TypeChecker {
+    fn unify_component_properties(
+        &mut self,
+        members: &mut [ComponentMemberDeclaration],
+        declared_props: &mut [ComponentProperty],
+    ) -> Result<()> {
+        for member in members.iter_mut() {
+            if let ComponentMemberDeclaration::Property {
+                index,
+                value: Some(maybe_expr),
+                span,
+                ..
+            } = member
+            {
+                let expr_ty = self.get_type_of_expr(maybe_expr)?;
+                let unified = self.unify(declared_props[*index].prop_type(), &expr_ty, span)?;
+                *declared_props[*index].prop_type_mut() = unified;
+            }
+        }
+        Ok(())
+    }
+
     /// Type-check a single top-level declaration.
     ///
     /// For functions this resolves statements; for components it resolves
@@ -53,25 +71,7 @@ impl TypeChecker {
                     unreachable!("Component declaration should have component HirType");
                 };
 
-                for member in props.iter_mut() {
-                    match member {
-                        ComponentMemberDeclaration::Property {
-                            index,
-                            value: maybe_expr,
-                            span,
-                            ..
-                        } => {
-                            if let Some(expr) = maybe_expr {
-                                let expr_ty = self.get_type_of_expr(expr)?;
-
-                                *declared_props[*index].prop_type_mut() =
-                                    self.unify(declared_props[*index].prop_type(), &expr_ty, span)?;
-                            }
-                        }
-
-                        ComponentMemberDeclaration::Child { .. } => {}
-                    }
-                }
+                self.unify_component_properties(props, &mut declared_props)?;
 
                 *self.types_module.get_type_mut(&decl.ty) = HirType::Component {
                     props: declared_props,
@@ -131,26 +131,11 @@ impl TypeChecker {
             unreachable!("Expected component type when resolving component members");
         };
 
+        self.unify_component_properties(values, &mut declared_props)?;
+
         for value in values.iter_mut() {
-            match value {
-                ComponentMemberDeclaration::Property {
-                    index,
-                    value: maybe_expr,
-                    span,
-                    ..
-                } => {
-                    if let Some(expr) = maybe_expr {
-                        let expr_ty = self.get_type_of_expr(expr)?;
-                        let unified =
-                            self.unify(declared_props[*index].prop_type(), &expr_ty, span)?;
-
-                        *declared_props[*index].prop_type_mut() = unified;
-                    }
-                }
-
-                ComponentMemberDeclaration::Child(child) => {
-                    self.resolve_component_expression(child)?
-                }
+            if let ComponentMemberDeclaration::Child(child) = value {
+                self.resolve_component_expression(child)?;
             }
         }
 

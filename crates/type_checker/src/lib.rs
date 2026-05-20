@@ -16,25 +16,21 @@
 //! ensuring that subsequent compilation stages (like Codegen) have access to
 //! fully concrete type information.
 
-mod decl;
+mod declaration;
 mod defaults;
 pub mod error;
-mod expr;
+pub use error::{IncompatibleComponentReason, TypeError, TypeErrorKind};
+mod expression;
 mod statement;
 mod styles;
 use std::collections::HashMap;
 
 use common::SymbolPointer;
 
-use crate::error::{IncompatibleComponentReason, TypeError, TypeErrorKind};
-
 use common::Span;
-use slynx_hir::model::{ComponentProperty, HirStatement, HirStatementKind};
 use slynx_hir::modules::TypesModule;
-use slynx_hir::{
-    SlynxHir, TypeId,
-    model::{FieldMethod, HirType},
-};
+use slynx_hir::{ComponentProperty, HirStatement, HirStatementKind};
+use slynx_hir::{FieldMethod, HirType, SlynxHir, TypeId};
 
 pub type Result<T> = std::result::Result<T, TypeError>;
 
@@ -321,7 +317,7 @@ impl TypeChecker {
                                 new_fields.push(unified);
                             }
 
-                            Ok(self.types_module.add_tuple_type(new_fields))
+                            Ok(self.types_module.create_tuple_type(new_fields))
                         }
                     }
                     (HirType::VarReference(rf1), HirType::VarReference(rf2)) => {
@@ -360,14 +356,14 @@ impl TypeChecker {
             return Ok(ty);
         }
         let ty = self.types_module.get_type(&ty);
-        if self.recursive_ty(rf, ty) {
+        if self.is_recursive_type(rf, ty) {
             return Err(TypeError {
-                kind: TypeErrorKind::CiclicType { ty: ty.clone() },
+                kind: TypeErrorKind::CyclicType { ty: ty.clone() },
                 span: *span,
             });
         }
         self.substitute(rf, ty.clone());
-        let ty = self.types_module.insert_unnamed_type(HirType::Reference {
+        let ty = self.types_module.create_unnamed_type(HirType::Reference {
             rf,
             generics: Vec::new(),
         });
@@ -375,19 +371,19 @@ impl TypeChecker {
     }
 
     /// Checks if the provided `ty` is recursive
-    fn recursive_ty(&self, ty_ref: TypeId, ty: &HirType) -> bool {
+    fn is_recursive_type(&self, ty_ref: TypeId, ty: &HirType) -> bool {
         match ty {
             HirType::Reference { rf, .. } => {
                 if ty_ref == *rf {
                     true
                 } else if let Some(resolved) = self.types.get(rf) {
-                    self.recursive_ty(ty_ref, resolved)
+                    self.is_recursive_type(ty_ref, resolved)
                 } else {
                     false
                 }
             }
             HirType::Component { props } => props.iter().any(|prop| {
-                self.recursive_ty(ty_ref, self.types_module.get_type(prop.prop_type()))
+                self.is_recursive_type(ty_ref, self.types_module.get_type(prop.prop_type()))
             }),
             _ => false,
         }

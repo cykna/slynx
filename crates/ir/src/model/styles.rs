@@ -1,4 +1,4 @@
-use slynx_hir::model::HirExpression;
+use slynx_hir::HirExpression;
 
 use crate::{IRTypeId, IRTypes};
 

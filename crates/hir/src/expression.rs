@@ -226,7 +226,7 @@ impl SlynxHir {
     ///Generates a new tuple expression
     fn generate_tuple_access(
         &mut self,
-        tuple: &Box<ASTExpression>,
+        tuple: &ASTExpression,
         index: usize,
         span: Span,
     ) -> Result<HirExpression> {

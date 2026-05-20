@@ -1,4 +1,4 @@
-use slynx_hir::model::{
+use slynx_hir::{
     ComponentMemberDeclaration, HirComponentExpression, HirDeclaration,
     HirSpecializedComponentExpression, HirStyleUsage, HirType,
 };

@@ -22,7 +22,7 @@ fn find_main_call_args(hir: &mut slynx_hir::SlynxHir) -> Option<&mut Vec<HirExpr
     let pos = hir.declarations.iter().position(|v| {
         matches!(
             v.kind,
-            HirDeclarationKind::Function { name, .. } if hir.get_name(name) == "main"
+            HirDeclarationKind::Function { name, .. } if hir.get_name_from_pointer(name) == "main"
         )
     })?;
     let HirDeclaration {
@@ -137,7 +137,7 @@ fn rejects_function_without_return_value_for_non_void_return_type() {
     match &err.kind {
         TypeErrorKind::MissingReturnValue { expected } => {
             assert!(
-                matches!(expected, slynx_hir::model::HirType::Int),
+                matches!(expected, slynx_hir::HirType::Int),
                 "expected missing int return, got {expected:?}"
             );
         }

@@ -64,7 +64,7 @@ impl ErrorMetadata {
 pub enum SlynxSuggestion {
     /// this error is raised when the Typeckeck
     IncompatibleTypes(String, String),
-    CiclicType(String),
+    CyclicType(String),
     IncompatibleComponent(String),
     InvalidFuncallArgLength(String, String),
     /// this error is raised when the lexer
@@ -81,7 +81,7 @@ impl fmt::Display for SlynxSuggestion {
                 f,
                 "expected `{expected}`, but got `{received}` — consider explicitly converting the value to `{expected}`"
             ),
-            SlynxSuggestion::CiclicType(type_name) => write!(
+            SlynxSuggestion::CyclicType(type_name) => write!(
                 f,
                 "type `{type_name}` refers to itself, which creates an infinite cycle — try breaking the cycle with indirection"
             ),
@@ -124,7 +124,7 @@ pub fn suggestions_from_type_error(err: &TypeError) -> Vec<SlynxSuggestion> {
                 format!("{:?}", expected),
             )]
         }
-        TypeErrorKind::CiclicType { ty } => vec![SlynxSuggestion::CiclicType(format!("{:?}", ty))],
+        TypeErrorKind::CyclicType { ty } => vec![SlynxSuggestion::CyclicType(format!("{:?}", ty))],
         TypeErrorKind::IncompatibleComponent { reason } => {
             vec![SlynxSuggestion::IncompatibleComponent(format!(
                 "{:?}",
@@ -183,7 +183,7 @@ pub fn suggestions_from_hir(hir: &SlynxHir, err: &HIRError) -> Vec<SlynxSuggesti
     match &err.kind {
         HIRErrorKind::NameAlreadyDefined(name) => {
             vec![SlynxSuggestion::NameAlreadyDefined(
-                hir.get_name(*name).to_string(),
+                hir.get_name_from_pointer(*name).to_string(),
             )]
         }
         _ => vec![],
