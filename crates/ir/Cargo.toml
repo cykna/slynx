@@ -10,4 +10,5 @@ color-eyre={workspace=true}
 smallvec={workspace=true}
 either = "1.15.0"
 petgraph = "0.8.3"
+paste = "1.0.15"
 
