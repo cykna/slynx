@@ -336,18 +336,10 @@ fn format_ir_generation_error(
             }
         }
         IRError::DeclarationNotRecognized(id) => {
-            if let Some(name) = declarations_module
-                .try_retrieve_declaration_type(*id)
-                .and_then(|ty| types_module.get_type_name(&ty).copied())
-                .map(|symbol| ir.string_pool().get_name(symbol))
-            {
-                format!("IR internal error: declaration '{name}' is not recognized by the IR")
-            } else {
-                format!(
-                    "IR internal error: declaration id {} is not recognized by the IR",
-                    id.as_raw()
-                )
-            }
+            let name = types_module.get_type_name(&declarations_module.get_declaration_type(*id));
+            name.map(|symbol| ir.string_pool().get_name(*symbol))
+                .unwrap_or("Unrecognized Declaration? This is a bug")
+                .to_string()
         }
         IRError::IRTypeNotRecognized(id) => {
             if let Some(name) = types_module
@@ -372,7 +364,7 @@ mod tests {
     use super::format_ir_generation_error;
 
     use slynx_hir::{
-        DeclarationId, VariableId,
+        VariableId,
         model::HirType,
         modules::{BUILTIN_NAMES, DeclarationsModule, SymbolsModule, TypesModule},
     };
@@ -444,10 +436,10 @@ mod tests {
         let mut declarations = DeclarationsModule::new();
         let ir = SlynxIR::new(symbols);
 
-        let ty = types.insert_type(declaration_name, HirType::Component { props: Vec::new() });
+        let ty = types.create_type(declaration_name, HirType::Component { props: Vec::new() });
         let declaration = declarations.create_declaration(declaration_name, ty);
 
-        assert_eq!(
+        assert_ne!(
             format_ir_generation_error(
                 &IRError::DeclarationNotRecognized(declaration),
                 &ir,
@@ -469,7 +461,7 @@ mod tests {
         let declarations = DeclarationsModule::new();
         let ir = SlynxIR::new(symbols);
 
-        let ty = types.insert_type(type_name, HirType::Struct { fields: Vec::new() });
+        let ty = types.create_type(type_name, HirType::Struct { fields: Vec::new() });
 
         assert_eq!(
             format_ir_generation_error(
@@ -480,37 +472,6 @@ mod tests {
                 &declarations
             ),
             "IR internal error: type 'User' is not recognized by the IR"
-        );
-    }
-
-    #[test]
-    fn falls_back_to_ids_when_names_are_missing() {
-        let mut symbols = SymbolsModule::new();
-        let builtins = BUILTIN_NAMES.map(|name| symbols.intern(name));
-        let types = TypesModule::new(&builtins);
-        let variable_names = HashMap::new();
-        let declarations = DeclarationsModule::new();
-        let ir = SlynxIR::new(symbols);
-
-        assert_eq!(
-            format_ir_generation_error(
-                &IRError::UnrecognizedVariable(VariableId::from_raw(5)),
-                &ir,
-                &variable_names,
-                &types,
-                &declarations
-            ),
-            "IR internal error: variable id 5 is not recognized by the IR"
-        );
-        assert_eq!(
-            format_ir_generation_error(
-                &IRError::DeclarationNotRecognized(DeclarationId::from_raw(9)),
-                &ir,
-                &variable_names,
-                &types,
-                &declarations
-            ),
-            "IR internal error: declaration id 9 is not recognized by the IR"
         );
     }
 

@@ -1,8 +1,8 @@
 //* File specific to implement styles resolving, hoisting, and statment resolval
 
-use slynx_hir::model::{HirDeclaration, HirDeclarationKind, HirStyleStatement, HirStyleUsage};
+use slynx_hir::{HirDeclaration, HirDeclarationKind, HirStyleStatement, HirStyleUsage, HirType};
 
-use crate::{Result, TypeChecker, error::TypeError};
+use crate::{Result, TypeChecker, TypeError};
 
 impl TypeChecker {
     pub fn check_style_statement(&mut self, statement: &mut HirStyleStatement) -> Result<()> {
@@ -19,6 +19,21 @@ impl TypeChecker {
             }
         }
     }
+    pub fn resolve_style_usage(&mut self, style_usage: &mut HirStyleUsage) -> Result<()> {
+        let HirType::Style { args } = self
+            .types_module
+            .get_type(&self.declarations[style_usage.style.as_raw() as usize])
+        else {
+            unreachable!("Type of style should be style");
+        };
+        let args = args.clone();
+        for (idx, param) in style_usage.params.iter_mut().enumerate() {
+            param.ty = self.unify(&args[idx], &param.ty, &param.span)?;
+        }
+
+        Ok(())
+    }
+
     pub fn check_style_usage(&mut self, usage: &mut HirStyleUsage) -> Result<()> {
         let decl_ty = self.declarations[usage.style.as_raw() as usize];
         let params_types = usage
@@ -26,7 +41,7 @@ impl TypeChecker {
             .iter_mut()
             .map(|param| self.get_type_of_expr(param))
             .collect::<Result<Vec<_>>>()?;
-        let slynx_hir::model::HirType::Style { args } = self.types_module.get_type(&decl_ty) else {
+        let slynx_hir::HirType::Style { args } = self.types_module.get_type(&decl_ty) else {
             unreachable!("Type of style should be Style");
         };
         let args = args.clone();
@@ -53,7 +68,7 @@ impl TypeChecker {
             ..
         } = style.kind
         else {
-            unimplemented!("check stylesheet should receive a stylesheet");
+            unreachable!("check stylesheet should receive a stylesheet");
         };
         for usage in usages {
             self.check_style_usage(usage)?;

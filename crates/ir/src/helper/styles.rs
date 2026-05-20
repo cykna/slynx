@@ -1,6 +1,6 @@
 use std::collections::HashSet;
 
-use slynx_hir::model::{
+use slynx_hir::{
     HirDeclaration, HirDeclarationKind, HirStyleBlockKind, HirStyleStatement, HirStyleUsage,
     StylesDefinition,
 };
