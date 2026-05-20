@@ -38,7 +38,7 @@
 //! // Access the resulting HIR
 //! for decl in &hir.declarations {
 //!     match &decl.kind {
-//!         hir::model::HirDeclarationKind::Function { name, .. } => {
+//!         HirDeclarationKind::Function { name, .. } => {
 //!             println!("Function: {}", hir.names.symbol_name(name));
 //!         }
 //!         _ => {}
@@ -54,7 +54,7 @@
 //! - Reference types with generics
 //! - Special types: `infer` for type inference
 //!
-//! See [`model::types::HirType`] for complete type documentation.
+//! See [`HirType`] for complete type documentation.
 //!
 //! # Error Handling
 //!

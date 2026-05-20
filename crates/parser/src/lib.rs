@@ -2,6 +2,7 @@ mod ast;
 mod component;
 pub mod conditionals;
 pub mod error;
+pub use error::*;
 mod expr;
 mod functions;
 pub mod objects;
@@ -10,11 +11,7 @@ mod styles;
 mod types;
 pub use ast::*;
 
-use crate::error::ParseError;
-use slynx_lexer::{
-    TokenStream,
-    tokens::{Token, TokenKind},
-};
+use slynx_lexer::{Token, TokenKind, TokenStream};
 
 pub type Result<T> = std::result::Result<T, ParseError>;
 

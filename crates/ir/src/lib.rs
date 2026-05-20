@@ -6,6 +6,7 @@ mod error;
 mod helper;
 mod instructions;
 mod ir;
+mod ir_value;
 mod model;
 mod temporary_data;
 mod types;

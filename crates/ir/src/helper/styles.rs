@@ -183,7 +183,7 @@ impl SlynxIR {
         let ptr = IRPointer::new(self.values.len(), args.len());
         temp.set_function_args(args, ptr);
         for (idx, _) in args.iter().enumerate() {
-            self.insert_value(self.generate_func_arg_value(idx, temp));
+            self.insert_value(self.create_func_arg_value(idx, temp));
         }
 
         // Set return type
@@ -253,7 +253,7 @@ impl SlynxIR {
         for resolved_prop in properties {
             let value = match &resolved_prop.source {
                 PropertySource::Own(expr) => {
-                    let val = self.get_value_for(expr, temp)?;
+                    let val = self.generate_value_for(expr, temp)?;
                     self.get_value(val)
                 }
                 PropertySource::Inherited(usage_idx) => {
@@ -346,8 +346,8 @@ impl SlynxIR {
             .set_label_ptr(entry_label.with_length());
         temp.set_current_label(entry_label);
         // Insert FuncArg values for p0 (component) and p1 (struct)
-        let comp_value = self.insert_value(self.generate_func_arg_value(0, temp));
-        let struct_value = self.insert_value(self.generate_func_arg_value(1, temp));
+        let comp_value = self.insert_value(self.create_func_arg_value(0, temp));
+        let struct_value = self.insert_value(self.create_func_arg_value(1, temp));
 
         // For each property, emit: getfield + @sapply
         for (field_idx, rp) in properties.iter().enumerate() {
@@ -379,7 +379,7 @@ impl SlynxIR {
         }
 
         // Emit ret
-        let void_value = self.insert_value(self.generate_void_value());
+        let void_value = self.insert_value(self.create_void_value());
         self.insert_instruction(
             temp.current_label(),
             Instruction::ret(void_value, void_ty),
