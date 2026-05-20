@@ -1,5 +1,6 @@
 use common::Operator;
 use either::Either;
+use paste::paste;
 use slynx_hir::{HirExpression, HirExpressionKind, HirStatement, HirStatementKind};
 
 use crate::{
@@ -9,6 +10,32 @@ use crate::{
 
 pub type InstructionPtr<const K: usize = 0> =
     Either<IRPointer<IRPointer<Instruction, K>, 1>, IRPointer<Instruction, K>>;
+
+macro_rules! impl_bin_expression {
+    ($($name:ident),* $(,)?) => {
+        paste! {
+            $(
+                fn [<generate_ $name _instruction>](
+                    &mut self,
+                    lhs: IRPointer<Value, 1>,
+                    rhs: IRPointer<Value, 1>,
+                    ty: IRTypeId,
+                    label: IRPointer<Label, 1>,
+                    map: bool,
+                ) -> InstructionPtr {
+                    let values = self.insert_value(self.get_value(lhs));
+                    self.insert_value(self.get_value(rhs));
+
+                    self.insert_instruction(
+                        label,
+                        Instruction::$name(ty, values.with_length()),
+                        map,
+                    )
+                }
+            )*
+        }
+    };
+}
 
 impl SlynxIR {
     fn emit_while_statement(
@@ -140,6 +167,7 @@ impl SlynxIR {
             }
         }
     }
+
     ///Inserts the provided `instr` on the given `label`. If `map` is `true` then the label will be able to read it when compiling, thus, otherwise, its just an intermediate instruction.
     ///On `map=true`, is garanteed to be `Left` variant, otherwise `Right`
     pub(crate) fn insert_instruction(
@@ -160,192 +188,10 @@ impl SlynxIR {
             Either::Right(IRPointer::new(ptr, 1))
         }
     }
-    ///Adds the provided `lhs` and `rhs` as a binary on the provided `label`. Its idealized to be the current one
-    pub(crate) fn generate_add_instruction(
-        &mut self,
-        lhs: IRPointer<Value, 1>,
-        rhs: IRPointer<Value, 1>,
-        ty: IRTypeId,
-        label: IRPointer<Label, 1>,
-        map: bool,
-    ) -> InstructionPtr {
-        let values = self.insert_value(self.get_value(lhs));
-        self.insert_value(self.get_value(rhs));
-        self.insert_instruction(label, Instruction::add(ty, values.with_length()), map)
-    }
-    ///Subtracts the provided `lhs` and `rhs` as a binary on the provided `label`. Its idealized to be the current one
-    fn generate_sub_instruction(
-        &mut self,
-        lhs: IRPointer<Value, 1>,
-        rhs: IRPointer<Value, 1>,
-        ty: IRTypeId,
-        label: IRPointer<Label, 1>,
-        map: bool,
-    ) -> InstructionPtr {
-        let values = self.insert_value(self.get_value(lhs));
-        self.insert_value(self.get_value(rhs));
-        self.insert_instruction(label, Instruction::sub(ty, values.with_length()), map)
-    }
-    ///Multiplies the provided `lhs` and `rhs` as a binary on the provided `label`. Its idealized to be the current one
-    fn generate_mul_instruction(
-        &mut self,
-        lhs: IRPointer<Value, 1>,
-        rhs: IRPointer<Value, 1>,
-        ty: IRTypeId,
-        label: IRPointer<Label, 1>,
-        map: bool,
-    ) -> InstructionPtr {
-        let values = self.insert_value(self.get_value(lhs));
-        self.insert_value(self.get_value(rhs));
-        self.insert_instruction(label, Instruction::mul(ty, values.with_length()), map)
-    }
-    ///Divides the provided `lhs` and `rhs` as a binary on the provided `label`. Its idealized to be the current one
-    fn generate_div_instruction(
-        &mut self,
-        lhs: IRPointer<Value, 1>,
-        rhs: IRPointer<Value, 1>,
-        ty: IRTypeId,
-        label: IRPointer<Label, 1>,
-        map: bool,
-    ) -> InstructionPtr {
-        let values = self.insert_value(self.get_value(lhs));
-        self.insert_value(self.get_value(rhs));
-        self.insert_instruction(label, Instruction::div(ty, values.with_length()), map)
-    }
-    ///Compares the provided `lhs` and `rhs` as a binary on the provided `label`. Its idealized to be the current one
-    fn generate_cmp_instruction(
-        &mut self,
-        lhs: IRPointer<Value, 1>,
-        rhs: IRPointer<Value, 1>,
-        ty: IRTypeId,
-        label: IRPointer<Label, 1>,
-        map: bool,
-    ) -> InstructionPtr {
-        let values = self.insert_value(self.get_value(lhs));
-        self.insert_value(self.get_value(rhs));
-        self.insert_instruction(label, Instruction::cmp(ty, values.with_length()), map)
-    }
-    ///Greater than the provided `lhs` and `rhs` as a binary on the provided `label`. Its idealized to be the current one
-    fn generate_gt_instruction(
-        &mut self,
-        lhs: IRPointer<Value, 1>,
-        rhs: IRPointer<Value, 1>,
-        ty: IRTypeId,
-        label: IRPointer<Label, 1>,
-        map: bool,
-    ) -> InstructionPtr {
-        let values = self.insert_value(self.get_value(lhs));
-        self.insert_value(self.get_value(rhs));
-        self.insert_instruction(label, Instruction::gt(ty, values.with_length()), map)
-    }
-    ///Greater than the the provided `lhs` and `rhs` as a binary on the provided `label`. Its idealized to be the current one
-    fn generate_gte_instruction(
-        &mut self,
-        lhs: IRPointer<Value, 1>,
-        rhs: IRPointer<Value, 1>,
-        ty: IRTypeId,
-        label: IRPointer<Label, 1>,
-        map: bool,
-    ) -> InstructionPtr {
-        let values = self.insert_value(self.get_value(lhs));
-        self.insert_value(self.get_value(rhs));
-        self.insert_instruction(label, Instruction::gte(ty, values.with_length()), map)
-    }
-    ///Less than the provided `lhs` and `rhs` as a binary on the provided `label`. Its idealized to be the current one
-    fn generate_lt_instruction(
-        &mut self,
-        lhs: IRPointer<Value, 1>,
-        rhs: IRPointer<Value, 1>,
-        ty: IRTypeId,
-        label: IRPointer<Label, 1>,
-        map: bool,
-    ) -> InstructionPtr {
-        let values = self.insert_value(self.get_value(lhs));
-        self.insert_value(self.get_value(rhs));
-        self.insert_instruction(label, Instruction::lt(ty, values.with_length()), map)
-    }
-    ///Less than or equal the provided `lhs` and `rhs` as a binary on the provided `label`. Its idealized to be the current one
-    fn generate_lte_instruction(
-        &mut self,
-        lhs: IRPointer<Value, 1>,
-        rhs: IRPointer<Value, 1>,
-        ty: IRTypeId,
-        label: IRPointer<Label, 1>,
-        map: bool,
-    ) -> InstructionPtr {
-        let values = self.insert_value(self.get_value(lhs));
-        self.insert_value(self.get_value(rhs));
-        self.insert_instruction(label, Instruction::lte(ty, values.with_length()), map)
-    }
-    ///Greater than the provided `lhs` and `rhs` as a binary on the provided `label`. Its idealized to be the current one
-    fn generate_and_instruction(
-        &mut self,
-        lhs: IRPointer<Value, 1>,
-        rhs: IRPointer<Value, 1>,
-        ty: IRTypeId,
-        label: IRPointer<Label, 1>,
-        map: bool,
-    ) -> InstructionPtr {
-        let values = self.insert_value(self.get_value(lhs));
-        self.insert_value(self.get_value(rhs));
-        self.insert_instruction(label, Instruction::and(ty, values.with_length()), map)
-    }
-    ///Greater than the provided `lhs` and `rhs` as a binary on the provided `label`. Its idealized to be the current one
-    fn generate_or_instruction(
-        &mut self,
-        lhs: IRPointer<Value, 1>,
-        rhs: IRPointer<Value, 1>,
-        ty: IRTypeId,
-        label: IRPointer<Label, 1>,
-        map: bool,
-    ) -> InstructionPtr {
-        let values = self.insert_value(self.get_value(lhs));
-        self.insert_value(self.get_value(rhs));
-        self.insert_instruction(label, Instruction::or(ty, values.with_length()), map)
-    }
-    ///Greater than the the provided `lhs` and `rhs` as a binary on the provided `label`. Its idealized to be the current one
-    fn generate_shr_instruction(
-        &mut self,
-        lhs: IRPointer<Value, 1>,
-        rhs: IRPointer<Value, 1>,
-        ty: IRTypeId,
-        label: IRPointer<Label, 1>,
-        map: bool,
-    ) -> InstructionPtr {
-        let values = self.insert_value(self.get_value(lhs));
-        self.insert_value(self.get_value(rhs));
-        if self.types.is_negative_int(ty) {
-            self.insert_instruction(label, Instruction::ashr(ty, values.with_length()), map)
-        } else {
-            self.insert_instruction(label, Instruction::shr(ty, values.with_length()), map)
-        }
-    }
-    ///Less than the provided `lhs` and `rhs` as a binary on the provided `label`. Its idealized to be the current one
-    fn generate_shl_instruction(
-        &mut self,
-        lhs: IRPointer<Value, 1>,
-        rhs: IRPointer<Value, 1>,
-        ty: IRTypeId,
-        label: IRPointer<Label, 1>,
-        map: bool,
-    ) -> InstructionPtr {
-        let values = self.insert_value(self.get_value(lhs));
-        self.insert_value(self.get_value(rhs));
-        self.insert_instruction(label, Instruction::shl(ty, values.with_length()), map)
-    }
-    ///Less than or equal the provided `lhs` and `rhs` as a binary on the provided `label`. Its idealized to be the current one
-    fn generate_xor_instruction(
-        &mut self,
-        lhs: IRPointer<Value, 1>,
-        rhs: IRPointer<Value, 1>,
-        ty: IRTypeId,
-        label: IRPointer<Label, 1>,
-        map: bool,
-    ) -> InstructionPtr {
-        let values = self.insert_value(self.get_value(lhs));
-        self.insert_value(self.get_value(rhs));
-        self.insert_instruction(label, Instruction::xor(ty, values.with_length()), map)
-    }
+    impl_bin_expression!(
+        add, sub, mul, div, cmp, gt, gte, lt, lte, and, or, shr, shl, xor
+    );
+
     fn generate_logic_and_instruction(
         &mut self,
         lhs_value: IRPointer<Value, 1>,
