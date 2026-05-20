@@ -113,9 +113,14 @@ impl Parser {
                 break Ok(statements);
             }
             let stmt = self.parse_stylesheet_statement()?;
-            statements.push(stmt);
-            if let TokenKind::Comma = self.peek()?.kind {
-                self.eat()?;
+            match stmt {
+                StyleSheetStatement::Statement(_) => {
+                    self.expect(&TokenKind::SemiColon)?;
+                }
+                _ => {
+                    statements.push(stmt);
+                    break Ok(statements);
+                }
             }
         }
     }
