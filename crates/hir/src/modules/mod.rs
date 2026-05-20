@@ -56,17 +56,9 @@ impl HirModules {
 
     ///Finds some variable based on the given `name`. Checks all the scopes that are there currently
     pub fn find_variable(&self, name: SymbolPointer) -> Option<VariableId> {
-        let mut idx = self.scope_module.len() - 1;
-        while idx != 0 {
-            let scope = &self.scope_module[idx];
-
-            let Some(id) = scope.get_name(&name) else {
-                idx -= 1;
-                continue;
-            };
-            return Some(*id);
-        }
-        None
+        self.scope_module
+            .iter()
+            .find_map(|scope| scope.get_name(&name).cloned())
     }
 
     /// Creates a new variable in the current scope with the given name, mutability, type, and span.

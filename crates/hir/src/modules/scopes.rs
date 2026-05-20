@@ -76,6 +76,30 @@ impl ScopeModule {
     pub fn exit_scope(&mut self) -> Option<HIRScope> {
         self.scopes.pop()
     }
+    ///Returns an iterator that iterates over the most recent scope, until the global one
+    pub fn iter(&self) -> ScopeModuleIterator<'_> {
+        ScopeModuleIterator {
+            scope_module: self,
+            index: self.len(),
+        }
+    }
+}
+
+pub struct ScopeModuleIterator<'a> {
+    scope_module: &'a ScopeModule,
+    index: usize,
+}
+
+impl<'a> Iterator for ScopeModuleIterator<'a> {
+    type Item = &'a HIRScope;
+    fn next(&mut self) -> Option<Self::Item> {
+        if self.index == 0 {
+            None
+        } else {
+            self.index -= 1;
+            Some(&self.scope_module[self.index])
+        }
+    }
 }
 
 impl Deref for ScopeModule {

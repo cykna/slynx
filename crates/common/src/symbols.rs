@@ -68,9 +68,7 @@ impl SymbolsModule {
     }
 
     pub fn get_name(&self, ptr: SymbolPointer) -> &str {
-        let size = ptr.0 & 0xffff;
-        let ptr = ptr.0 >> 16;
-        unsafe { str::from_utf8_unchecked(&self.names.inner[ptr..ptr + size]) }
+        &self[ptr]
     }
 }
 
