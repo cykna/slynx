@@ -14,6 +14,18 @@ impl SlynxIR {
         let ty = self.get_operand_type(operand);
         Value::new_raw(operand, ty)
     }
+    pub fn generate_component_property_value(
+        &self,
+        index: usize,
+        comp: IRPointer<Component, 1>,
+    ) -> Value {
+        let component = self.get_component(comp);
+        let crate::IRType::Component(ty) = self.types.get_type(component.ir_type()) else {
+            unreachable!();
+        };
+        let prop_ty = self.types.get_component_type(ty).fields()[index];
+        Value::new_component_property(index, prop_ty)
+    }
     pub fn generate_component_child_value(
         &self,
         index: usize,

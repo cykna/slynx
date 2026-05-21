@@ -40,6 +40,17 @@ pub enum ValueKind {
     LabelArg(usize),
     FuncArg(usize),
     ComponentChild(usize),
+    /// A symbolic reference to a property of the enclosing component instance.
+    ///
+    /// `ComponentProperty(index)` is resolved at runtime to the actual value of
+    /// the component's property at the given field index. This is analogous to
+    /// [`ComponentChild`], but for properties instead of children.
+    ///
+    /// This value kind exists because component properties are reactive fields,
+    /// not plain variables — their runtime values are set by the parent and read
+    /// during component initialization. The IR cannot evaluate them to a constant,
+    /// so it emits a symbolic handle that the runtime resolves.
+    ComponentProperty(usize),
 }
 
 impl Value {
@@ -96,6 +107,13 @@ impl Value {
     pub fn new_component_child(index: usize, ty: IRTypeId) -> Self {
         Self {
             kind: ValueKind::ComponentChild(index),
+            ty,
+        }
+    }
+    ///Creates a new symbolic reference to a property of the enclosing component
+    pub fn new_component_property(index: usize, ty: IRTypeId) -> Self {
+        Self {
+            kind: ValueKind::ComponentProperty(index),
             ty,
         }
     }

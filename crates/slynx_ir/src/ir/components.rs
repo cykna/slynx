@@ -393,6 +393,21 @@ impl SlynxIR {
             temp.set_current_function(prev_function);
             temp.set_current_label(prev_label);
 
+            // Register component properties as symbolic ComponentProperty values
+            // so that style usage params (e.g. Fg(color)) can reference them.
+            // Properties are reactive fields, not plain variables, so we emit a
+            // runtime handle (#pN) instead of an evaluated constant.
+            for prop in props {
+                if let ComponentMemberDeclaration::Property {
+                    variable_id, index, ..
+                } = prop
+                {
+                    let prop_value = self.generate_component_property_value(*index, comp_ptr);
+                    let prop_ptr = self.insert_value(prop_value);
+                    temp.add_variable(*variable_id, prop_ptr);
+                }
+            }
+
             // Phase 3: Emit @initcall instructions into the component's ui_instruction list.
             let void_ty = self.types.void_type();
 

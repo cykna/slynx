@@ -435,6 +435,7 @@ impl<'a> Formatter<'a> {
             }
             ValueKind::Void => "void".to_string(),
             ValueKind::ComponentChild(index) => format!("#t{index}",),
+            ValueKind::ComponentProperty(index) => format!("#p{index}",),
         }
     }
 

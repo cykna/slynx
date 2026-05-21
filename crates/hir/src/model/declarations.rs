@@ -245,12 +245,21 @@ pub enum ComponentMemberDeclaration {
     /// # Fields
     ///
     /// - `id` — A unique ID for this property
+    /// - `variable_id` — The VariableId assigned to this property's name during HIR resolution
     /// - `index` — The property's position in the component's property list
     /// - `value` — The optional default value expression
     /// - `span` — Source location for error reporting
     Property {
         /// Unique identifier for this property.
         id: PropertyId,
+
+        /// The VariableId assigned by `create_variable` for the property name.
+        ///
+        /// This ID is what `Identifier` expressions inside the component body
+        /// use to reference this property. The IR uses it together with
+        /// `ValueKind::ComponentProperty` to produce a runtime reference to
+        /// the property value.
+        variable_id: VariableId,
 
         /// The index of this property in the component's property list.
         ///
@@ -282,6 +291,7 @@ impl ComponentMemberDeclaration {
     /// # Arguments
     ///
     /// * `index` — The property's position in the component's property list
+    /// * `variable_id` — The VariableId assigned to the property name
     /// * `value` — The optional default value expression
     /// * `span` — The source location of the property
     ///
@@ -296,15 +306,23 @@ impl ComponentMemberDeclaration {
     /// # use common::Span;
     /// # let span = Span::default();
     /// # let value = None;
+    /// # let var_id = VariableId::new();
     /// let prop = ComponentMemberDeclaration::new_property(
-    ///     0,      // index
-    ///     value,  // default value
+    ///     0,        // index
+    ///     var_id,   // variable_id
+    ///     value,    // default value
     ///     span,
     /// );
     /// ```
-    pub fn new_property(index: usize, value: Option<HirExpression>, span: Span) -> Self {
+    pub fn new_property(
+        index: usize,
+        variable_id: VariableId,
+        value: Option<HirExpression>,
+        span: Span,
+    ) -> Self {
         Self::Property {
             id: PropertyId::new(),
+            variable_id,
             index,
             value,
             span,
