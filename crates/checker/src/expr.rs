@@ -292,8 +292,13 @@ impl TypeChecker {
                 self.resolve_statement_while(condition, body, return_type)?
             }
 
-            HirStatementKind::Variable { value, .. } => {
+            HirStatementKind::Variable { name, value } => {
                 value.ty = self.get_type_of_expr(value)?;
+                let is_unresolved =
+                    self.types_module.get_variable(name) == Some(&self.types_module.infer_id());
+                if is_unresolved {
+                    self.types_module.insert_variable(*name, value.ty);
+                }
             }
 
             HirStatementKind::Return { expr } => {
@@ -435,7 +440,17 @@ impl TypeChecker {
                     out
                 }
             }
-            HirExpressionKind::Identifier(_) => self.resolve(&expr.ty, &expr.span)?,
+            HirExpressionKind::Identifier(id) => {
+                let infer = self.types_module.infer_id();
+                if expr.ty == infer
+                    && let Some(variable_type) = self.types_module.get_variable(&id).cloned()
+                    && variable_type != infer
+                {
+                    expr.ty = self.resolve(&variable_type, &expr.span)?;
+                }
+                expr.ty = self.resolve(&expr.ty, &expr.span)?;
+                expr.ty
+            }
             HirExpressionKind::Component(HirComponentExpression::Specialized(_)) => {
                 self.types_module.generic_component_id()
             }

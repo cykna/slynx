@@ -187,7 +187,10 @@ impl SlynxIR {
         properties: &[ResolvedProperty],
         temp: &mut TempIRData,
     ) -> Result<IRPointer<Context, 1>, IRError> {
-        let HirDeclarationKind::StyleSheet { ref args, .. } = decl.kind else {
+        let HirDeclarationKind::StyleSheet {
+            args, statements, ..
+        } = &decl.kind
+        else {
             unreachable!("Should've received a stylesheet");
         };
 
@@ -262,6 +265,15 @@ impl SlynxIR {
             ));
 
             parent_structs[usage_idx] = Some((struct_value, parent_struct_ty));
+        }
+
+        for statment in statements {
+            match statment {
+                HirStyleStatement::Statement(s) => {
+                    self.get_instruction(&s, temp)?;
+                }
+                _ => {}
+            }
         }
 
         // Phase 2: Evaluate each property value
