@@ -254,7 +254,7 @@ impl SlynxIR {
         for statment in statements {
             match statment {
                 HirStyleStatement::Statement(s) => {
-                    self.get_instruction(&s, temp)?;
+                    self.generate_statement(&s, temp)?;
                 }
                 _ => {}
             }
