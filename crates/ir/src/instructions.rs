@@ -11,118 +11,128 @@ pub type InstructionPtr<const K: usize = 0> =
     Either<IRPointer<IRPointer<Instruction, K>, 1>, IRPointer<Instruction, K>>;
 
 impl SlynxIR {
-    ///Gets one(or more) instructions to operate with the given `statement`
-    pub(crate) fn get_instruction(
+    fn emit_while_statement(
+        &mut self,
+        condition: &HirExpression,
+        body: &[HirStatement],
+        temp: &mut TempIRData,
+    ) -> Result<Option<IRPointer<Instruction, 1>>, IRError> {
+        let cond_label = self.insert_label(temp.current_function(), "while_cond");
+        let body_label = self.insert_label(temp.current_function(), "while_body");
+        let end_label = self.insert_label(temp.current_function(), "while_end");
+
+        let bool_type = self.types.bool_type();
+
+        self.insert_instruction(
+            temp.current_label(),
+            Instruction::br(cond_label, IRPointer::null(), bool_type),
+            true,
+        );
+
+        temp.set_current_label(cond_label);
+        let cond_value = self.generate_value_for(condition, temp)?;
+
+        self.insert_instruction(
+            temp.current_label(),
+            Instruction::cbr(
+                cond_value,
+                body_label,
+                end_label,
+                IRPointer::null(),
+                IRPointer::null(),
+                bool_type,
+            ),
+            true,
+        );
+
+        temp.set_current_label(body_label);
+        for stmt in body {
+            self.generate_statement(stmt, temp)?;
+        }
+
+        self.insert_instruction(
+            temp.current_label(),
+            Instruction::br(cond_label, IRPointer::null(), bool_type),
+            true,
+        );
+
+        temp.set_current_label(end_label);
+
+        Ok(None)
+    }
+
+    fn emit_assign_statement(
+        &mut self,
+        lhs: &HirExpression,
+        value: &HirExpression,
+        temp: &mut TempIRData,
+    ) -> Result<Option<IRPointer<Instruction, 1>>, IRError> {
+        let value_ptr = self.generate_value_for(value, temp)?;
+
+        match &lhs.kind {
+            HirExpressionKind::Identifier(id) => {
+                let value_slot = temp
+                    .get_variable(*id)
+                    .expect("Variable not found for assignment");
+                let slot = match &*self.get_value(value_slot) {
+                    ValueKind::Slot(slot) => *slot,
+                    other => panic!("Expected Slot value for variable, got {:?}", other),
+                };
+                self.write(slot, value_ptr, temp);
+            }
+            HirExpressionKind::FieldAccess {
+                expr: parent,
+                field_index,
+            } => {
+                let parent_value = self.generate_value_for(parent, temp)?;
+                let parent_ty = self.get_type_of_value(parent_value);
+
+                let values_ptr = {
+                    let parent = self.get_value(parent_value);
+                    let value = self.get_value(value_ptr);
+                    self.insert_values(&[parent, value])
+                };
+                self.insert_instruction(
+                    temp.current_label(),
+                    Instruction::setfield(*field_index, values_ptr.with_length(), parent_ty),
+                    true,
+                );
+            }
+            _ => unreachable!("LHS of assignment must be Identifier or FieldAccess"),
+        }
+        Ok(None)
+    }
+
+    ///Emits IR instructions for the given HIR `statement`
+    pub(crate) fn generate_statement(
         &mut self,
         statement: &HirStatement,
         temp: &mut TempIRData,
     ) -> Result<Option<IRPointer<Instruction, 1>>, IRError> {
         match &statement.kind {
             HirStatementKind::While { condition, body } => {
-                let cond_label = self.insert_label(temp.current_function(), "while_cond");
-                let body_label = self.insert_label(temp.current_function(), "while_body");
-                let end_label = self.insert_label(temp.current_function(), "while_end");
-
-                let bool_type = self.types.bool_type();
-
-                self.insert_instruction(
-                    temp.current_label(),
-                    Instruction::br(cond_label, IRPointer::null(), bool_type),
-                    true,
-                );
-
-                temp.set_current_label(cond_label);
-                let cond_value = self.get_value_for(condition, temp)?;
-
-                self.insert_instruction(
-                    temp.current_label(),
-                    Instruction::cbr(
-                        cond_value,
-                        body_label,
-                        end_label,
-                        IRPointer::null(),
-                        IRPointer::null(),
-                        bool_type,
-                    ),
-                    true,
-                );
-
-                temp.set_current_label(body_label);
-                for stmt in body {
-                    self.get_instruction(stmt, temp)?;
-                }
-
-                self.insert_instruction(
-                    temp.current_label(),
-                    Instruction::br(cond_label, IRPointer::null(), bool_type),
-                    true,
-                );
-
-                temp.set_current_label(end_label);
-
-                Ok(None)
+                self.emit_while_statement(condition, body, temp)
             }
 
             HirStatementKind::Variable { name, value } => {
                 let vty = self.get_ir_type(&value.ty, temp)?;
                 let (slotvalue, slotptr) = self.allocate(vty, temp);
-                let value = self.get_value_for(value, temp)?;
+                let value = self.generate_value_for(value, temp)?;
 
                 self.write(slotptr, value, temp);
 
                 temp.add_variable(*name, slotvalue);
                 Ok(None)
             }
-            HirStatementKind::Assign { lhs, value } => {
-                let value_ptr = self.get_value_for(value, temp)?;
-
-                match &lhs.kind {
-                    HirExpressionKind::Identifier(id) => {
-                        let value_slot = temp
-                            .get_variable(*id)
-                            .expect("Variable not found for assignment");
-                        let slot = match &*self.get_value(value_slot) {
-                            ValueKind::Slot(slot) => *slot,
-                            other => panic!("Expected Slot value for variable, got {:?}", other),
-                        };
-                        self.write(slot, value_ptr, temp);
-                    }
-                    HirExpressionKind::FieldAccess {
-                        expr: parent,
-                        field_index,
-                    } => {
-                        let parent_value = self.get_value_for(parent, temp)?;
-                        let parent_ty = self.retrieve_type_of_value(parent_value);
-
-                        // SetField: create a new struct with the field modified
-
-                        let values_ptr = {
-                            let parent = self.get_value(parent_value);
-                            let value = self.get_value(value_ptr);
-                            self.insert_values(&[parent, value])
-                        };
-                        self.insert_instruction(
-                            temp.current_label(),
-                            Instruction::setfield(
-                                *field_index,
-                                values_ptr.with_length(),
-                                parent_ty,
-                            ),
-                            true,
-                        );
-                    }
-                    _ => unreachable!("LHS of assignment must be Identifier or FieldAccess"),
-                }
-                Ok(None)
-            }
+            HirStatementKind::Assign { lhs, value } => self.emit_assign_statement(lhs, value, temp),
 
             HirStatementKind::Expression { expr } => {
-                self.get_value_for(expr, temp)?;
+                self.generate_value_for(expr, temp)?;
                 Ok(None)
             }
             HirStatementKind::Return { expr } => {
-                let val = self.get_value_for(expr, temp)?;
-                let ty = self.retrieve_type_of_value(val);
+                let val = self.generate_value_for(expr, temp)?;
+                let ty = self.get_type_of_value(val);
                 let instruction =
                     self.insert_instruction(temp.current_label(), Instruction::ret(val, ty), true);
                 let instruction = self.dereference_instruction_ptr(instruction).with_length();
@@ -151,7 +161,7 @@ impl SlynxIR {
         }
     }
     ///Adds the provided `lhs` and `rhs` as a binary on the provided `label`. Its idealized to be the current one
-    pub(crate) fn get_add_instruction(
+    pub(crate) fn generate_add_instruction(
         &mut self,
         lhs: IRPointer<Value, 1>,
         rhs: IRPointer<Value, 1>,
@@ -164,7 +174,7 @@ impl SlynxIR {
         self.insert_instruction(label, Instruction::add(ty, values.with_length()), map)
     }
     ///Subtracts the provided `lhs` and `rhs` as a binary on the provided `label`. Its idealized to be the current one
-    pub(crate) fn get_sub_instruction(
+    fn generate_sub_instruction(
         &mut self,
         lhs: IRPointer<Value, 1>,
         rhs: IRPointer<Value, 1>,
@@ -177,7 +187,7 @@ impl SlynxIR {
         self.insert_instruction(label, Instruction::sub(ty, values.with_length()), map)
     }
     ///Multiplies the provided `lhs` and `rhs` as a binary on the provided `label`. Its idealized to be the current one
-    pub(crate) fn get_mul_instruction(
+    fn generate_mul_instruction(
         &mut self,
         lhs: IRPointer<Value, 1>,
         rhs: IRPointer<Value, 1>,
@@ -190,7 +200,7 @@ impl SlynxIR {
         self.insert_instruction(label, Instruction::mul(ty, values.with_length()), map)
     }
     ///Divides the provided `lhs` and `rhs` as a binary on the provided `label`. Its idealized to be the current one
-    pub(crate) fn get_div_instruction(
+    fn generate_div_instruction(
         &mut self,
         lhs: IRPointer<Value, 1>,
         rhs: IRPointer<Value, 1>,
@@ -203,7 +213,7 @@ impl SlynxIR {
         self.insert_instruction(label, Instruction::div(ty, values.with_length()), map)
     }
     ///Compares the provided `lhs` and `rhs` as a binary on the provided `label`. Its idealized to be the current one
-    pub(crate) fn get_cmp_instruction(
+    fn generate_cmp_instruction(
         &mut self,
         lhs: IRPointer<Value, 1>,
         rhs: IRPointer<Value, 1>,
@@ -216,7 +226,7 @@ impl SlynxIR {
         self.insert_instruction(label, Instruction::cmp(ty, values.with_length()), map)
     }
     ///Greater than the provided `lhs` and `rhs` as a binary on the provided `label`. Its idealized to be the current one
-    pub(crate) fn get_gt_instruction(
+    fn generate_gt_instruction(
         &mut self,
         lhs: IRPointer<Value, 1>,
         rhs: IRPointer<Value, 1>,
@@ -229,7 +239,7 @@ impl SlynxIR {
         self.insert_instruction(label, Instruction::gt(ty, values.with_length()), map)
     }
     ///Greater than the the provided `lhs` and `rhs` as a binary on the provided `label`. Its idealized to be the current one
-    pub(crate) fn get_gte_instruction(
+    fn generate_gte_instruction(
         &mut self,
         lhs: IRPointer<Value, 1>,
         rhs: IRPointer<Value, 1>,
@@ -242,7 +252,7 @@ impl SlynxIR {
         self.insert_instruction(label, Instruction::gte(ty, values.with_length()), map)
     }
     ///Less than the provided `lhs` and `rhs` as a binary on the provided `label`. Its idealized to be the current one
-    pub(crate) fn get_lt_instruction(
+    fn generate_lt_instruction(
         &mut self,
         lhs: IRPointer<Value, 1>,
         rhs: IRPointer<Value, 1>,
@@ -255,7 +265,7 @@ impl SlynxIR {
         self.insert_instruction(label, Instruction::lt(ty, values.with_length()), map)
     }
     ///Less than or equal the provided `lhs` and `rhs` as a binary on the provided `label`. Its idealized to be the current one
-    pub(crate) fn get_lte_instruction(
+    fn generate_lte_instruction(
         &mut self,
         lhs: IRPointer<Value, 1>,
         rhs: IRPointer<Value, 1>,
@@ -268,7 +278,7 @@ impl SlynxIR {
         self.insert_instruction(label, Instruction::lte(ty, values.with_length()), map)
     }
     ///Greater than the provided `lhs` and `rhs` as a binary on the provided `label`. Its idealized to be the current one
-    pub(crate) fn get_and_instruction(
+    fn generate_and_instruction(
         &mut self,
         lhs: IRPointer<Value, 1>,
         rhs: IRPointer<Value, 1>,
@@ -281,7 +291,7 @@ impl SlynxIR {
         self.insert_instruction(label, Instruction::and(ty, values.with_length()), map)
     }
     ///Greater than the provided `lhs` and `rhs` as a binary on the provided `label`. Its idealized to be the current one
-    pub(crate) fn get_or_instruction(
+    fn generate_or_instruction(
         &mut self,
         lhs: IRPointer<Value, 1>,
         rhs: IRPointer<Value, 1>,
@@ -294,7 +304,7 @@ impl SlynxIR {
         self.insert_instruction(label, Instruction::or(ty, values.with_length()), map)
     }
     ///Greater than the the provided `lhs` and `rhs` as a binary on the provided `label`. Its idealized to be the current one
-    pub(crate) fn get_shr_instruction(
+    fn generate_shr_instruction(
         &mut self,
         lhs: IRPointer<Value, 1>,
         rhs: IRPointer<Value, 1>,
@@ -311,7 +321,7 @@ impl SlynxIR {
         }
     }
     ///Less than the provided `lhs` and `rhs` as a binary on the provided `label`. Its idealized to be the current one
-    pub(crate) fn get_shl_instruction(
+    fn generate_shl_instruction(
         &mut self,
         lhs: IRPointer<Value, 1>,
         rhs: IRPointer<Value, 1>,
@@ -324,7 +334,7 @@ impl SlynxIR {
         self.insert_instruction(label, Instruction::shl(ty, values.with_length()), map)
     }
     ///Less than or equal the provided `lhs` and `rhs` as a binary on the provided `label`. Its idealized to be the current one
-    pub(crate) fn get_xor_instruction(
+    fn generate_xor_instruction(
         &mut self,
         lhs: IRPointer<Value, 1>,
         rhs: IRPointer<Value, 1>,
@@ -336,6 +346,114 @@ impl SlynxIR {
         self.insert_value(self.get_value(rhs));
         self.insert_instruction(label, Instruction::xor(ty, values.with_length()), map)
     }
+    fn generate_logic_and_instruction(
+        &mut self,
+        lhs_value: IRPointer<Value, 1>,
+        rhs_value: IRPointer<Value, 1>,
+        temp: &mut TempIRData,
+    ) -> InstructionPtr {
+        let bool_type = self.types.bool_type();
+        let thenlabel = self.insert_label(temp.current_function(), "and_then");
+        let elselabel = self.insert_label(temp.current_function(), "and_else");
+        let endlabel = {
+            let label = self.insert_label(temp.current_function(), "and_end");
+            self.get_label_mut(label).insert_arguments(&[bool_type]);
+            label
+        };
+
+        self.insert_instruction(
+            temp.current_label(),
+            Instruction::cbr(
+                lhs_value,
+                thenlabel,
+                elselabel,
+                IRPointer::null(),
+                IRPointer::null(),
+                bool_type,
+            ),
+            true,
+        );
+        temp.set_current_label(thenlabel);
+        self.insert_instruction(
+            temp.current_label(),
+            Instruction::br(endlabel, rhs_value.with_length(), bool_type),
+            true,
+        );
+
+        temp.set_current_label(elselabel);
+
+        let false_value = self.insert_operands(&[Operand::Bool(false)]);
+        let false_value = self.insert_value(self.create_raw_value(false_value));
+
+        self.insert_instruction(
+            temp.current_label(),
+            Instruction::br(endlabel, false_value.with_length(), bool_type),
+            true,
+        );
+
+        temp.set_current_label(endlabel);
+        let value = self.get_label(endlabel).get_argument_value(0);
+        let value = self.insert_value(value);
+        self.insert_instruction(
+            temp.current_label(),
+            Instruction::raw(value, bool_type),
+            true,
+        )
+    }
+
+    fn generate_logic_or_instruction(
+        &mut self,
+        lhs_value: IRPointer<Value, 1>,
+        rhs_value: IRPointer<Value, 1>,
+        temp: &mut TempIRData,
+    ) -> InstructionPtr {
+        let bool_type = self.types.bool_type();
+        let elselabel = self.insert_label(temp.current_function(), "or_else");
+        let endlabel = {
+            let label = self.insert_label(temp.current_function(), "or_end");
+            self.get_label_mut(label).insert_arguments(&[bool_type]);
+            label
+        };
+
+        self.insert_instruction(
+            temp.current_label(),
+            Instruction::cbr(
+                lhs_value,
+                endlabel,
+                elselabel,
+                IRPointer::null(),
+                IRPointer::null(),
+                bool_type,
+            ),
+            true,
+        );
+        temp.set_current_label(elselabel);
+
+        self.insert_instruction(
+            temp.current_label(),
+            Instruction::br(endlabel, rhs_value.with_length(), bool_type),
+            true,
+        );
+
+        let false_value = self.insert_operands(&[Operand::Bool(false)]);
+        let false_value = self.insert_value(self.create_raw_value(false_value));
+
+        self.insert_instruction(
+            temp.current_label(),
+            Instruction::br(endlabel, false_value.with_length(), bool_type),
+            true,
+        );
+
+        temp.set_current_label(endlabel);
+        let value = self.get_label(endlabel).get_argument_value(0);
+        let value = self.insert_value(value);
+        self.insert_instruction(
+            temp.current_label(),
+            Instruction::raw(value, bool_type),
+            true,
+        )
+    }
+
     pub(crate) fn handle_binary_expression(
         &mut self,
         lhs: &HirExpression,
@@ -343,149 +461,103 @@ impl SlynxIR {
         op: &Operator,
         temp: &mut TempIRData,
     ) -> Result<Value, IRError> {
-        let lhs_value = self.get_value_for(lhs, temp)?;
-        let rhs_value = self.get_value_for(rhs, temp)?;
-        let lty = self.retrieve_type_of_value(lhs_value);
+        let lhs_value = self.generate_value_for(lhs, temp)?;
+        let rhs_value = self.generate_value_for(rhs, temp)?;
+        let lty = self.get_type_of_value(lhs_value);
 
         let bin_instruction = match op {
-            common::Operator::And => {
-                self.get_and_instruction(lhs_value, rhs_value, lty, temp.current_label(), false)
-            }
+            common::Operator::And => self.generate_and_instruction(
+                lhs_value,
+                rhs_value,
+                lty,
+                temp.current_label(),
+                false,
+            ),
             common::Operator::Or => {
-                self.get_or_instruction(lhs_value, rhs_value, lty, temp.current_label(), false)
+                self.generate_or_instruction(lhs_value, rhs_value, lty, temp.current_label(), false)
             }
-            common::Operator::RightShift => {
-                self.get_shr_instruction(lhs_value, rhs_value, lty, temp.current_label(), false)
-            }
-            common::Operator::LeftShift => {
-                self.get_shl_instruction(lhs_value, rhs_value, lty, temp.current_label(), false)
-            }
-            common::Operator::Xor => {
-                self.get_xor_instruction(lhs_value, rhs_value, lty, temp.current_label(), false)
-            }
+            common::Operator::RightShift => self.generate_shr_instruction(
+                lhs_value,
+                rhs_value,
+                lty,
+                temp.current_label(),
+                false,
+            ),
+            common::Operator::LeftShift => self.generate_shl_instruction(
+                lhs_value,
+                rhs_value,
+                lty,
+                temp.current_label(),
+                false,
+            ),
+            common::Operator::Xor => self.generate_xor_instruction(
+                lhs_value,
+                rhs_value,
+                lty,
+                temp.current_label(),
+                false,
+            ),
 
-            common::Operator::Add => {
-                self.get_add_instruction(lhs_value, rhs_value, lty, temp.current_label(), false)
-            }
-            common::Operator::Sub => {
-                self.get_sub_instruction(lhs_value, rhs_value, lty, temp.current_label(), false)
-            }
-            common::Operator::Star => {
-                self.get_mul_instruction(lhs_value, rhs_value, lty, temp.current_label(), false)
-            }
-            common::Operator::Slash => {
-                self.get_div_instruction(lhs_value, rhs_value, lty, temp.current_label(), false)
-            }
-            common::Operator::Equals => {
-                self.get_cmp_instruction(lhs_value, rhs_value, lty, temp.current_label(), false)
-            }
+            common::Operator::Add => self.generate_add_instruction(
+                lhs_value,
+                rhs_value,
+                lty,
+                temp.current_label(),
+                false,
+            ),
+            common::Operator::Sub => self.generate_sub_instruction(
+                lhs_value,
+                rhs_value,
+                lty,
+                temp.current_label(),
+                false,
+            ),
+            common::Operator::Star => self.generate_mul_instruction(
+                lhs_value,
+                rhs_value,
+                lty,
+                temp.current_label(),
+                false,
+            ),
+            common::Operator::Slash => self.generate_div_instruction(
+                lhs_value,
+                rhs_value,
+                lty,
+                temp.current_label(),
+                false,
+            ),
+            common::Operator::Equals => self.generate_cmp_instruction(
+                lhs_value,
+                rhs_value,
+                lty,
+                temp.current_label(),
+                false,
+            ),
             common::Operator::GreaterThan => {
-                self.get_gt_instruction(lhs_value, rhs_value, lty, temp.current_label(), false)
+                self.generate_gt_instruction(lhs_value, rhs_value, lty, temp.current_label(), false)
             }
-            common::Operator::GreaterThanOrEqual => {
-                self.get_gte_instruction(lhs_value, rhs_value, lty, temp.current_label(), false)
-            }
+            common::Operator::GreaterThanOrEqual => self.generate_gte_instruction(
+                lhs_value,
+                rhs_value,
+                lty,
+                temp.current_label(),
+                false,
+            ),
             common::Operator::LessThan => {
-                self.get_lt_instruction(lhs_value, rhs_value, lty, temp.current_label(), false)
+                self.generate_lt_instruction(lhs_value, rhs_value, lty, temp.current_label(), false)
             }
-            common::Operator::LessThanOrEqual => {
-                self.get_lte_instruction(lhs_value, rhs_value, lty, temp.current_label(), false)
-            }
+            common::Operator::LessThanOrEqual => self.generate_lte_instruction(
+                lhs_value,
+                rhs_value,
+                lty,
+                temp.current_label(),
+                false,
+            ),
             common::Operator::LogicAnd => {
-                let bool_type = self.types.bool_type();
-                let thenlabel = self.insert_label(temp.current_function(), "and_then");
-                let elselabel = self.insert_label(temp.current_function(), "and_else");
-                let endlabel = {
-                    let label = self.insert_label(temp.current_function(), "and_end");
-                    self.get_label_mut(label).insert_arguments(&[bool_type]);
-                    label //$end_label(bool):
-                };
-
-                self.insert_instruction(
-                    temp.current_label(),
-                    Instruction::cbr(
-                        lhs_value,
-                        thenlabel,
-                        elselabel,
-                        IRPointer::null(),
-                        IRPointer::null(),
-                        bool_type,
-                    ),
-                    true,
-                ); //cbr lhs, then, else;
-                temp.set_current_label(thenlabel);
-                self.insert_instruction(
-                    temp.current_label(),
-                    Instruction::br(endlabel, rhs_value.with_length(), bool_type), //br and_end(rhs)
-                    true,
-                );
-
-                temp.set_current_label(elselabel);
-
-                let false_value = self.insert_operands(&[Operand::Bool(false)]);
-                let false_value = self.insert_value(self.generate_raw_value(false_value));
-
-                self.insert_instruction(
-                    temp.current_label(),
-                    Instruction::br(endlabel, false_value.with_length(), bool_type),
-                    true,
-                ); //br and_end(false)
-
-                temp.set_current_label(endlabel);
-                let value = self.get_label(endlabel).get_argument_value(0);
-                let value = self.insert_value(value);
-                self.insert_instruction(
-                    temp.current_label(),
-                    Instruction::raw(value, bool_type),
-                    true,
-                )
+                self.generate_logic_and_instruction(lhs_value, rhs_value, temp)
             }
             common::Operator::LogicOr => {
-                let bool_type = self.types.bool_type();
-                let elselabel = self.insert_label(temp.current_function(), "or_else");
-                let endlabel = {
-                    let label = self.insert_label(temp.current_function(), "or_end");
-                    self.get_label_mut(label).insert_arguments(&[bool_type]);
-                    label //$end_label(bool):
-                };
-
-                self.insert_instruction(
-                    temp.current_label(),
-                    Instruction::cbr(
-                        lhs_value,
-                        endlabel,
-                        elselabel,
-                        IRPointer::null(),
-                        IRPointer::null(),
-                        bool_type,
-                    ),
-                    true,
-                ); //cbr lhs, end, else;
-                temp.set_current_label(elselabel);
-
-                self.insert_instruction(
-                    temp.current_label(),
-                    Instruction::br(endlabel, rhs_value.with_length(), bool_type), //br and_end(rhs)
-                    true,
-                );
-
-                let false_value = self.insert_operands(&[Operand::Bool(false)]);
-                let false_value = self.insert_value(self.generate_raw_value(false_value));
-
-                self.insert_instruction(
-                    temp.current_label(),
-                    Instruction::br(endlabel, false_value.with_length(), bool_type),
-                    true,
-                ); //br and_end(false)
-
-                temp.set_current_label(endlabel);
-                let value = self.get_label(endlabel).get_argument_value(0);
-                let value = self.insert_value(value);
-                self.insert_instruction(
-                    temp.current_label(),
-                    Instruction::raw(value, bool_type),
-                    true,
-                )
+                self.generate_logic_or_instruction(lhs_value, rhs_value, temp)
             }
         };
         let bin_instruction = self.dereference_instruction_ptr(bin_instruction);

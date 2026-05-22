@@ -1,12 +1,10 @@
 pub mod error;
+pub use error::*;
 use std::{collections::VecDeque, ops::Index};
 
-use crate::{
-    error::LexerError,
-    tokens::{Token, TokenKind},
-};
 use common::Span;
 pub mod tokens;
+pub use tokens::*;
 #[derive(Debug)]
 ///A stream of tokens to be used when parsing the content
 pub struct TokenStream {
