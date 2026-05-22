@@ -268,7 +268,10 @@ impl SlynxHir {
                     let name = self.modules.intern_name(name);
                     let variable_id = self.create_variable(name, ty, &def.span)?;
                     out.push(ComponentMemberDeclaration::new_property(
-                        prop_idx, variable_id, rhs, def.span,
+                        prop_idx,
+                        variable_id,
+                        rhs,
+                        def.span,
                     ));
                     prop_idx += 1;
                 }

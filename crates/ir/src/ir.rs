@@ -62,7 +62,6 @@ impl SlynxIR {
     pub fn generate(&mut self, hir: Vec<HirDeclaration>, tys: &TypesModule) -> Result<(), IRError> {
         let mut temp = TempIRData::new(tys, &hir);
 
-
         self.hoist_declarations(&hir, tys, &mut temp);
         self.stylesheet_pre_pass(&hir, &mut temp);
         self.lower_non_stylesheets(&hir, &mut temp)?;

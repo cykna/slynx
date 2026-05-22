@@ -252,11 +252,8 @@ impl SlynxIR {
         }
 
         for statment in statements {
-            match statment {
-                HirStyleStatement::Statement(s) => {
-                    self.generate_statement(&s, temp)?;
-                }
-                _ => {}
+            if let HirStyleStatement::Statement(s) = statment {
+                self.generate_statement(s, temp)?;
             }
         }
 
