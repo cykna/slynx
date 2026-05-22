@@ -67,7 +67,8 @@ which is the code of example 'examples/styles/property_as_param.slx'.
 What this does is to create 2 main styles, Fg and Bg. Fg simply sets the foreground color to be the given param, so Fg(0xff0000), according to RGB, sets the foreground color to be 'red' in css. The Bg in case, has the clause
 'uses' which says that the Bg style applies the 'Fg' style with that params. Thus 'uses Fg(color | 0x00ff00)' is saying that Bg will apply FIRST, Fg, passing to it, as parameter, color | 0x00ff00, which means, the given color
 with Green at max. So when passing for example: Bg(0xff0000), it applies Fg(0xffff00), which is rgb(255,255,0). The main thing is that inside bg, it also writes on 'foregroundColor', thus the 'foregroundColor' inside the 'bg' scope
-will overwrite the 'foregroundColor' that was previously applied by 'Fg'. It is yes redundant, but that is the logic.
+will overwrite the 'foregroundColor' that was previously applied by 'Fg'. It is yes redundant, but that is the logic and 100% intentional. This evicts the problem of how to apply the style if theres already a style that
+uses that property, so, we override.
 
 The main intention for this was to make it easier to simply create an style library. You simply make something like:
 ```slx
@@ -99,7 +100,7 @@ function D(){
   return out;
 }
 The lowering phase is not exactly this, but its more over like this the idea. 
-Observation: Only 'C' by its on is not accepted, but the idea is that i change the parsing and make it accept and become the same as `C()`
+Observation: Only 'C' by its own is not accepted, but the idea is that i change the parsing and make it accept and become the same as `C()`
 
 ## And CSS?
 Im starting to think in a way to support macros in a powerful way and not so painful such as rust. So the idea is to make the macro good enough to the point where you can copy paste css and turn it into stylesheet.
@@ -115,3 +116,31 @@ and this kind of stuff is NOT good for the language on the long run, for obvious
 generate to be implemented, and make it part of std, so the focus of the compiler is improving what has to be done. Even though there might be a way to make the stylesheet expect these types that come from the std.
 
 A list of what is going to be implemented on the future can be found at crates/ir/STYLES_TABLE.md, and in general docs related to the IR
+
+## Future Implementations
+To make the stylesheets more 'safe' they will later require to be pure. So no dependency on things that are outer of the stylesheet scope are allowed. Thus it will be a MUST that the stylesheet rely purely on the
+paremeter it is given.
+
+### States
+Currently the states on the stylesheets are sintactically complete(in theory), and semantically with some feets on the path, the thing is that their lowering isn't yet implemented.
+The main idea behind them is the following:
+```
+stylesheet S(){
+  styles {
+    backgroundColor: red,
+    hover(0.2s) {
+      backgroundColor: blue,
+      click.disabled {
+        backgroundColor: grey
+      }
+    }
+  }
+}
+```
+
+The idea is that 'hover(0.2s)' means that, when hovering the component using the style, it transitions the old state, thus, backgroundColor: red, to backgroundColor: blue, during 0.2 seconds. A second parameter can be given
+and it's the curve of the transition.
+
+When doing so, new states as possible, thus 'click.disabled'. Due to problems with not knowing how to diferentiate state `click:disabled(0.2s) {}` from `click: disabled(0.2s)` `property: expression`, i've chosen to use dots instead.
+So it means that on hover, if click or disabled, turns the color to be grey. The thing is that it's got no transition.
+And thats it. 
