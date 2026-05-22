@@ -3,10 +3,7 @@ use std::collections::HashMap;
 use slynx_hir::{DeclarationId, TypeId, VariableId, model::HirDeclaration, modules::TypesModule};
 use smallvec::SmallVec;
 
-use crate::{
-    Component, IRError, IRTypeId, StyleProperty,
-    ir::model::{Context, IRPointer, Label, Value},
-};
+use crate::{Component, Context, IRError, IRPointer, IRTypeId, Label, StyleProperty, Value};
 
 pub struct AuxiliaryStyle {
     pub init_func: IRPointer<Context, 1>,

@@ -1,4 +1,4 @@
-use crate::{IRTypeId, Label, Slot, StyleProperty, Value, ir::model::Context};
+use crate::{Context, IRTypeId, Label, Slot, StyleProperty, Value};
 
 use super::IRPointer;
 

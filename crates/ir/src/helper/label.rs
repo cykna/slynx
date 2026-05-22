@@ -1,7 +1,4 @@
-use crate::{
-    SlynxIR,
-    ir::model::{IRPointer, Label},
-};
+use crate::{IRPointer, Label, SlynxIR};
 
 impl SlynxIR {
     /// Returns a reference to the label at the given pointer.

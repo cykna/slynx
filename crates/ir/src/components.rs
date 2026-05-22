@@ -4,8 +4,7 @@ use slynx_hir::model::{
 };
 
 use crate::{
-    Context, IRError, IRPointer, IRType, IRTypeId, Instruction, SlynxIR, Value,
-    ir::temp::TempIRData,
+    Context, IRError, IRPointer, IRType, IRTypeId, Instruction, SlynxIR, TempIRData, Value,
 };
 
 /// Holds pointers to the two functions generated for a stylesheet, plus

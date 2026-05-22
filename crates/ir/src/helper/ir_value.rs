@@ -1,4 +1,4 @@
-use crate::{Component, IRPointer, IRTypeId, Operand, Slot, SlynxIR, Value, ir::temp::TempIRData};
+use crate::{Component, IRPointer, IRTypeId, Operand, Slot, SlynxIR, TempIRData, Value};
 
 impl SlynxIR {
     pub fn generate_void_value(&self) -> Value {
