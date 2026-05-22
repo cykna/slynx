@@ -31,7 +31,7 @@ impl HIRScope {
     }
 
     ///Inserts the provided `symbol` on this scope
-    pub fn insert_name(&mut self, symbol: SymbolPointer, var: VariableId, mutable: bool) {
+    pub fn create_name(&mut self, symbol: SymbolPointer, var: VariableId, mutable: bool) {
         self.names.insert(symbol, var);
         if mutable {
             self.mutables.push(var);
@@ -39,7 +39,7 @@ impl HIRScope {
     }
 
     ///Retrieves the id of the provided `name` on the scope
-    pub fn retrieve_name(&self, name: &SymbolPointer) -> Option<&VariableId> {
+    pub fn get_name(&self, name: &SymbolPointer) -> Option<&VariableId> {
         self.names.get(name)
     }
 }
@@ -75,6 +75,30 @@ impl ScopeModule {
     ///Exit the current scope and returns a mutable reference to it.
     pub fn exit_scope(&mut self) -> Option<HIRScope> {
         self.scopes.pop()
+    }
+    ///Returns an iterator that iterates over the most recent scope, until the global one
+    pub fn iter(&self) -> ScopeModuleIterator<'_> {
+        ScopeModuleIterator {
+            scope_module: self,
+            index: self.len(),
+        }
+    }
+}
+
+pub struct ScopeModuleIterator<'a> {
+    scope_module: &'a ScopeModule,
+    index: usize,
+}
+
+impl<'a> Iterator for ScopeModuleIterator<'a> {
+    type Item = &'a HIRScope;
+    fn next(&mut self) -> Option<Self::Item> {
+        if self.index == 0 {
+            None
+        } else {
+            self.index -= 1;
+            Some(&self.scope_module[self.index])
+        }
     }
 }
 

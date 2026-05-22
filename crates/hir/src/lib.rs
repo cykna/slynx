@@ -38,7 +38,7 @@
 //! // Access the resulting HIR
 //! for decl in &hir.declarations {
 //!     match &decl.kind {
-//!         hir::model::HirDeclarationKind::Function { name, .. } => {
+//!         HirDeclarationKind::Function { name, .. } => {
 //!             println!("Function: {}", hir.names.symbol_name(name));
 //!         }
 //!         _ => {}
@@ -54,7 +54,7 @@
 //! - Reference types with generics
 //! - Special types: `infer` for type inference
 //!
-//! See [`model::types::HirType`] for complete type documentation.
+//! See [`HirType`] for complete type documentation.
 //!
 //! # Error Handling
 //!
@@ -69,23 +69,27 @@
 
 #![warn(rustdoc::broken_intra_doc_links)]
 
+mod components;
+mod declarations;
 /// HIR error types and diagnostic information.
 pub mod error;
+mod expression;
 mod helpers;
 /// Unique ID types for HIR elements.
 pub mod id;
-mod implementation;
 pub mod model;
 /// Scope, symbol, type, and declaration management modules.
 pub mod modules;
 /// Name resolution utilities.
 pub mod names;
+mod statements;
 
 pub use crate::error::{HIRError, HIRErrorKind};
-use crate::{model::HirDeclaration, modules::HirModules};
+use crate::modules::HirModules;
 use slynx_parser::{ASTDeclaration, ASTDeclarationKind};
 
 pub use id::{DeclarationId, ExpressionId, PropertyId, TypeId, VariableId};
+pub use model::*;
 
 /// Result type for HIR operations.
 ///

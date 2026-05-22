@@ -45,7 +45,7 @@ impl DeclarationsModule {
     }
 
     ///Returns the informations of a declaration with the provided `symbol`. The informations are its ID and its type. Returns none if it doesn't exist
-    pub fn retrieve_declaration_data_by_name(
+    pub fn get_declaration_data_by_name(
         &self,
         symbol: &SymbolPointer,
     ) -> Option<(DeclarationId, TypeId)> {
@@ -60,17 +60,12 @@ impl DeclarationsModule {
     /// # Panics
     ///
     /// Panics if `id` does not correspond to a registered declaration.
-    pub fn retrieve_declaration_type(&self, id: DeclarationId) -> TypeId {
+    pub fn get_declaration_type(&self, id: DeclarationId) -> TypeId {
         self.declaration_types[id.as_raw() as usize]
     }
 
-    /// Returns the [`TypeId`] of the declaration with the given [`DeclarationId`], or `None` if it does not exist.
-    pub fn try_retrieve_declaration_type(&self, id: DeclarationId) -> Option<TypeId> {
-        self.declaration_types.get(id.as_raw() as usize).copied()
-    }
-
     ///Retrieves the body of the object with provided `id`
-    pub fn retrieve_object_body(&self, id: TypeId) -> Option<&[SymbolPointer]> {
+    pub fn get_object_body(&self, id: TypeId) -> Option<&[SymbolPointer]> {
         self.objects.get(&id).map(|v| &**v)
     }
 }

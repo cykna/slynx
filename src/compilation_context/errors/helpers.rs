@@ -64,11 +64,9 @@ impl ErrorMetadata {
 pub enum SlynxSuggestion {
     /// this error is raised when the Typeckeck
     IncompatibleTypes(String, String),
-    CannotCastType(String, String),
-    CiclicType(String),
+    CyclicType(String),
     IncompatibleComponent(String),
     InvalidFuncallArgLength(String, String),
-    NotARef(String, String),
     /// this error is raised when the lexer
     UnrecognizedChar(String, String),
     MalformedNumber(String, String, String),
@@ -83,11 +81,7 @@ impl fmt::Display for SlynxSuggestion {
                 f,
                 "expected `{expected}`, but got `{received}` — consider explicitly converting the value to `{expected}`"
             ),
-            SlynxSuggestion::CannotCastType(received, expected) => write!(
-                f,
-                "`{received}` cannot be cast to `{expected}` — there is no known conversion between these two types"
-            ),
-            SlynxSuggestion::CiclicType(type_name) => write!(
+            SlynxSuggestion::CyclicType(type_name) => write!(
                 f,
                 "type `{type_name}` refers to itself, which creates an infinite cycle — try breaking the cycle with indirection"
             ),
@@ -98,10 +92,6 @@ impl fmt::Display for SlynxSuggestion {
             SlynxSuggestion::InvalidFuncallArgLength(received, expected) => write!(
                 f,
                 "this function expects {expected} argument(s), but {received} were provided"
-            ),
-            SlynxSuggestion::NotARef(received, expected) => write!(
-                f,
-                "expected a reference to `{expected}`, but got `{received}` — try passing a reference instead"
             ),
             SlynxSuggestion::UnrecognizedChar(char, index) => write!(
                 f,
@@ -134,13 +124,7 @@ pub fn suggestions_from_type_error(err: &TypeError) -> Vec<SlynxSuggestion> {
                 format!("{:?}", expected),
             )]
         }
-        TypeErrorKind::CannotCastType { expected, received } => {
-            vec![SlynxSuggestion::CannotCastType(
-                format!("{:?}", received),
-                format!("{:?}", expected),
-            )]
-        }
-        TypeErrorKind::CiclicType { ty } => vec![SlynxSuggestion::CiclicType(format!("{:?}", ty))],
+        TypeErrorKind::CyclicType { ty } => vec![SlynxSuggestion::CyclicType(format!("{:?}", ty))],
         TypeErrorKind::IncompatibleComponent { reason } => {
             vec![SlynxSuggestion::IncompatibleComponent(format!(
                 "{:?}",
@@ -153,10 +137,6 @@ pub fn suggestions_from_type_error(err: &TypeError) -> Vec<SlynxSuggestion> {
         } => vec![SlynxSuggestion::InvalidFuncallArgLength(
             format!("{}", received_length),
             format!("{}", expected_length),
-        )],
-        TypeErrorKind::NotARef(a, b) => vec![SlynxSuggestion::NotARef(
-            format!("{:?}", a),
-            format!("{:?}", b),
         )],
         _ => vec![],
     }
@@ -203,7 +183,7 @@ pub fn suggestions_from_hir(hir: &SlynxHir, err: &HIRError) -> Vec<SlynxSuggesti
     match &err.kind {
         HIRErrorKind::NameAlreadyDefined(name) => {
             vec![SlynxSuggestion::NameAlreadyDefined(
-                hir.get_name(*name).to_string(),
+                hir.get_name_from_pointer(*name).to_string(),
             )]
         }
         _ => vec![],

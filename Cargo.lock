@@ -457,6 +457,7 @@ dependencies = [
  "color-eyre",
  "common",
  "either",
+ "paste",
  "petgraph",
  "slynx-hir",
  "smallvec",
