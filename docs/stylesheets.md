@@ -79,7 +79,7 @@ stylesheet SomeStyle(arg1: T, arg2: V, arg3: K) {
 
 and the one using your library simply does
 ```slx
-stlyesheet AnotherStyle() uses SomeStyle(...) {}
+stylesheet AnotherStyle() uses SomeStyle(...) {}
 ```
 and boom it works.
 
