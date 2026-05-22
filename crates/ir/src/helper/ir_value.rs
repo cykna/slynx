@@ -27,6 +27,19 @@ impl SlynxIR {
         Value::new_component_child(index, child_ty)
     }
 
+    pub(crate) fn create_component_property_value(
+        &self,
+        index: usize,
+        comp: IRPointer<Component, 1>,
+    ) -> Value {
+        let component = self.get_component(comp);
+        let crate::IRType::Component(ty) = self.types.get_type(component.ir_type()) else {
+            unreachable!();
+        };
+        let prop_ty = self.types.get_component_type(ty).fields()[index];
+        Value::new_component_property(index, prop_ty)
+    }
+
     pub(crate) fn get_type_of_value(&self, ptr: IRPointer<Value, 1>) -> IRTypeId {
         self.values[ptr.ptr()].ir_type()
     }

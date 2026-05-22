@@ -499,6 +499,22 @@ impl SlynxIR {
 
         if let Some((_, first_spec)) = specialized_children.first() {
             let init_func = self.build_init_function(decl, comp_ptr, first_spec, temp)?;
+
+            // Register component properties as symbolic ComponentProperty values
+            // so that style usage params (e.g. Fg(color)) can reference them.
+            // Properties are reactive fields, not plain variables, so we emit a
+            // runtime handle (#pN) instead of an evaluated constant.
+            for prop in props {
+                if let ComponentMemberDeclaration::Property {
+                    variable_id, index, ..
+                } = prop
+                {
+                    let prop_value = self.create_component_property_value(*index, comp_ptr);
+                    let prop_ptr = self.insert_value(prop_value);
+                    temp.add_variable(*variable_id, prop_ptr);
+                }
+            }
+
             self.emit_initcalls(comp_ptr, init_func, &specialized_children, temp)?;
         }
 
