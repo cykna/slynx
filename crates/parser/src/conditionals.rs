@@ -56,7 +56,7 @@ impl Parser {
         while !matches!(self.peek()?.kind, TokenKind::RBrace) {
             let stmt = self.parse_statement()?;
             body.push(stmt);
-            if let ASTStatementKind::Expression(expr) = &body.last().unwrap().kind
+            if let Some(ASTStatementKind::Expression(expr)) = body.last().map(|expr| &expr.kind)
                 && matches!(expr.kind, ASTExpressionKind::If { .. })
             {
                 continue;

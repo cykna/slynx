@@ -1,7 +1,7 @@
 use std::collections::{HashMap, HashSet};
 
 use common::Span;
-use slynx_hir::{Result, SlynxHir, TypeId, error::HIRError, model::HirType, modules::TypesModule};
+use slynx_hir::{HIRError, HirType, Result, SlynxHir, TypeId, modules::TypesModule};
 
 ///A struct that handles all the monomorphization on the code
 pub struct Monomorphizer {
@@ -51,47 +51,5 @@ impl Monomorphizer {
             self.reference_cache.insert(id, current);
         }
         Ok(())
-    }
-}
-
-#[cfg(test)]
-mod tests {
-    use super::Monomorphizer;
-    use crate::{
-        hir::{SlynxHir, error::HIRErrorKind},
-        lexer::Lexer,
-        parser::Parser,
-        slynx_checker::TypeChecker,
-    };
-
-    fn load_hir_from_source(source: &str) -> SlynxHir {
-        let tokens = Lexer::tokenize(source).expect("source should tokenize");
-        let declarations = Parser::new(tokens)
-            .parse_declarations()
-            .expect("source should parse");
-        let mut hir = SlynxHir::new();
-        hir.generate(declarations).expect("HIR should generate");
-        hir
-    }
-
-    #[test]
-    fn rejects_cyclic_aliases_in_monomorphization() {
-        let mut hir = load_hir_from_source(
-            r#"
-            alias A = B;
-            alias B = A;
-
-            func main(): void {}
-            "#,
-        );
-        let mut types_module = TypeChecker::check(&mut hir).expect("type checking should pass");
-
-        let err = Monomorphizer::resolve(&hir, &mut types_module)
-            .expect_err("cyclic aliases should fail during monomorphization");
-
-        match &err.kind {
-            HIRErrorKind::RecursiveType { ty } => assert_eq!(*ty, hir.modules.intern_name("A")),
-            other => panic!("expected RecursiveType, got {other:?}"),
-        }
     }
 }

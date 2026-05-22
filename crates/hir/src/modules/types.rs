@@ -110,8 +110,8 @@ impl TypesModule {
     }
 
     /// Creates a new tuple type with the given field types and returns its [`TypeId`].
-    pub fn add_tuple_type(&mut self, fields: Vec<TypeId>) -> TypeId {
-        self.insert_unnamed_type(HirType::Tuple { fields })
+    pub fn create_tuple_type(&mut self, fields: Vec<TypeId>) -> TypeId {
+        self.create_unnamed_type(HirType::Tuple { fields })
     }
     /// Returns the [`TypeId`] of the built-in `int` type.
     pub fn int_id(&self) -> TypeId {
@@ -147,7 +147,7 @@ impl TypesModule {
     }
 
     ///Inserts the provided `ty` to have the provided `name`
-    pub fn insert_type(&mut self, name: SymbolPointer, ty: HirType) -> TypeId {
+    pub fn create_type(&mut self, name: SymbolPointer, ty: HirType) -> TypeId {
         let raw = self.types.len() as u64;
         let v = TypeId::from_raw(raw);
         self.type_names.insert(name, v);
@@ -169,13 +169,13 @@ impl TypesModule {
     pub fn get_component(&self, ty: &TypeId) -> Option<&HirType> {
         match self.get_type(ty) {
             v @ HirType::Component { .. } => Some(v),
-            HirType::Reference { rf, .. } => self.get_object(rf),
+            HirType::Reference { rf, .. } => self.get_component(rf),
             _ => None,
         }
     }
 
     ///Simply inserts the provided `ty` inside this module. Doesn't map it to anything
-    pub fn insert_unnamed_type(&mut self, ty: HirType) -> TypeId {
+    pub fn create_unnamed_type(&mut self, ty: HirType) -> TypeId {
         let id = TypeId::from_raw(self.types.len() as u64);
         self.types.push(ty);
         id

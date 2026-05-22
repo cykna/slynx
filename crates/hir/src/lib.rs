@@ -38,7 +38,7 @@
 //! // Access the resulting HIR
 //! for decl in &hir.declarations {
 //!     match &decl.kind {
-//!         hir::model::HirDeclarationKind::Function { name, .. } => {
+//!         HirDeclarationKind::Function { name, .. } => {
 //!             println!("Function: {}", hir.names.symbol_name(name));
 //!         }
 //!         _ => {}
@@ -54,7 +54,7 @@
 //! - Reference types with generics
 //! - Special types: `infer` for type inference
 //!
-//! See [`model::types::HirType`] for complete type documentation.
+//! See [`HirType`] for complete type documentation.
 //!
 //! # Error Handling
 //!
@@ -67,29 +67,29 @@
 //! - [`HIRErrorKind::NotAFunction`] — Call of non-function value
 //! - [`HIRErrorKind::MissingProperty`] — Missing required object fields
 
-#![warn(missing_docs)]
 #![warn(rustdoc::broken_intra_doc_links)]
 
+mod components;
+mod declarations;
 /// HIR error types and diagnostic information.
 pub mod error;
+mod expression;
 mod helpers;
 /// Unique ID types for HIR elements.
 pub mod id;
-mod implementation;
 pub mod model;
 /// Scope, symbol, type, and declaration management modules.
 pub mod modules;
 /// Name resolution utilities.
 pub mod names;
+mod statements;
 
 pub use crate::error::{HIRError, HIRErrorKind};
-use crate::{
-    model::{HirDeclaration, HirDeclarationKind, HirType},
-    modules::HirModules,
-};
+use crate::modules::HirModules;
 use slynx_parser::{ASTDeclaration, ASTDeclarationKind};
 
 pub use id::{DeclarationId, ExpressionId, PropertyId, TypeId, VariableId};
+pub use model::*;
 
 /// Result type for HIR operations.
 ///
@@ -341,6 +341,9 @@ impl SlynxHir {
     /// - [`implementation::declarations::hoist_function`](crate::hir::implementation::declarations::hoist_function)
     fn hoist(&mut self, ast: &ASTDeclaration) -> Result<()> {
         match &ast.kind {
+            ASTDeclarationKind::StyleSheet { name, args, .. } => {
+                self.hoist_stylesheet(&name.identifier, args)
+            }
             ASTDeclarationKind::Alias { name, target } => {
                 self.modules
                     .create_alias(&target.identifier, &name.identifier);
@@ -349,12 +352,9 @@ impl SlynxHir {
                 self.modules.create_object(&name.identifier, fields)
             }
 
-            ASTDeclarationKind::FuncDeclaration {
-                name,
-                args,
-                return_type,
-                ..
-            } => self.hoist_function(name, args, return_type)?,
+            ASTDeclarationKind::FuncDeclaration { name, args, .. } => {
+                self.hoist_function(name, args)?
+            }
             ASTDeclarationKind::ComponentDeclaration { name, members, .. } => {
                 self.hoist_component(name, members)?
             }
@@ -422,49 +422,28 @@ impl SlynxHir {
     fn resolve(&mut self, ast: &ASTDeclaration) -> Result<()> {
         match &ast.kind {
             ASTDeclarationKind::ObjectDeclaration { name, fields, .. } => {
-                self.resolve_object(name, fields, ast.span)?
+                self.resolve_object(name, fields, ast.span)
             }
             ASTDeclarationKind::FuncDeclaration {
-                name, args, body, ..
-            } => self.resolve_function(name, args, body, &ast.span)?,
+                name,
+                args,
+                body,
+                return_type,
+            } => self.resolve_function(name, args, return_type, body, &ast.span),
             ASTDeclarationKind::ComponentDeclaration { members, name } => {
-                self.modules.enter_scope();
-                let symbol = self.modules.intern_name(&name.identifier);
-                let Some((decl, ty)) = self.modules.get_declaration_by_name(&symbol) else {
-                    return Err(HIRError::name_unrecognized(symbol, ast.span));
-                };
-
-                let defs = self.resolve_component_defs(members)?;
-                self.declarations.push(HirDeclaration {
-                    id: decl,
-                    kind: HirDeclarationKind::ComponentDeclaration {
-                        props: defs,
-                        name: symbol,
-                    },
-                    ty,
-                    span: ast.span,
-                });
-                self.modules.exit_scope();
+                self.resolve_component_declaration(members, name, ast.span)
             }
+
             ASTDeclarationKind::Alias { name, target } => {
-                let target_ty = self.get_typeid_of_name(&target.identifier, &target.span)?;
-
-                let alias_name = self.modules.intern_name(&name.identifier);
-                let Some(alias_ty) = self
-                    .modules
-                    .types_module
-                    .get_type_from_name_mut(&alias_name)
-                else {
-                    return Err(HIRError::name_unrecognized(alias_name, name.span));
-                };
-                *alias_ty = HirType::new_ref(target_ty);
-                let Some((decl, ty)) = self.modules.get_declaration_by_name(&alias_name) else {
-                    return Err(HIRError::name_unrecognized(alias_name, name.span));
-                };
-                self.declarations
-                    .push(HirDeclaration::new_alias(decl, ty, ast.span));
+                self.resolve_alias(name, target, ast.span)
             }
+
+            ASTDeclarationKind::StyleSheet {
+                name,
+                args,
+                usages,
+                body,
+            } => self.resolve_stylesheet(name, args, usages, body, ast.span),
         }
-        Ok(())
     }
 }

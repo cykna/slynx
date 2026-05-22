@@ -27,38 +27,20 @@ use common::{Span, SymbolPointer};
 
 use crate::{
     DeclarationId, PropertyId, TypeId, VariableId,
-    model::{HirExpression, HirStatement},
+    model::{
+        HirComponentExpression, HirExpression, HirStatement, HirStyleStatement, PropertyExpression,
+    },
 };
 
-/// A built-in specialized component with predefined rendering semantics.
-///
-/// Unlike user-defined components, specialized components (`Text`, `Div`) are
-/// handled directly by the compiler and do not require a component declaration.
 #[derive(Debug)]
-#[repr(C)]
-pub enum SpecializedComponent {
-    /// A text-rendering component with a single `text` expression.
-    Text {
-        /// The expression whose value is rendered as text.
-        text: Box<HirExpression>,
-    },
-    /// A layout container component with zero or more child declarations.
-    Div {
-        /// The child component declarations nested inside this `Div`.
-        children: Vec<ComponentMemberDeclaration>,
-    },
-}
-impl SpecializedComponent {
-    ///Creates a new specialized Text component with the given `text`
-    pub fn new_text(text: HirExpression) -> Self {
-        Self::Text {
-            text: Box::new(text),
-        }
-    }
-    ///Creates a new specialized Div component with the given `children`
-    pub fn new_div(children: Vec<ComponentMemberDeclaration>) -> Self {
-        Self::Div { children }
-    }
+///A style usage. This contains an ID to another stylesheet, and the parameters used to generate before the actual style.
+pub struct HirStyleUsage {
+    /// The id of the style to use
+    pub style: DeclarationId,
+    ///The parameters to it
+    pub params: Vec<HirExpression>,
+    ///The span of this usage, Covers from the name until the ')'
+    pub span: Span,
 }
 
 /// A top-level declaration in the HIR.
@@ -211,6 +193,16 @@ pub enum HirDeclarationKind {
         props: Vec<ComponentMemberDeclaration>,
     },
 
+    ///A stylesheet declaration
+    StyleSheet {
+        ///The IDs of the arguments
+        args: Vec<VariableId>,
+        ///The statements this stylesheet has got
+        statements: Vec<HirStyleStatement>,
+        ///The usages to be applied before
+        usages: Vec<HirStyleUsage>,
+    },
+
     /// A type alias declaration.
     ///
     /// Aliases create alternative names for existing types.
@@ -253,12 +245,21 @@ pub enum ComponentMemberDeclaration {
     /// # Fields
     ///
     /// - `id` — A unique ID for this property
+    /// - `variable_id` — The VariableId assigned to this property's name during HIR resolution
     /// - `index` — The property's position in the component's property list
     /// - `value` — The optional default value expression
     /// - `span` — Source location for error reporting
     Property {
         /// Unique identifier for this property.
         id: PropertyId,
+
+        /// The VariableId assigned by `create_variable` for the property name.
+        ///
+        /// This ID is what `Identifier` expressions inside the component body
+        /// use to reference this property. The IR uses it together with
+        /// `ValueKind::ComponentProperty` to produce a runtime reference to
+        /// the property value.
+        variable_id: VariableId,
 
         /// The index of this property in the component's property list.
         ///
@@ -281,22 +282,7 @@ pub enum ComponentMemberDeclaration {
     /// - `name` — The child component's type
     /// - `values` — The child's property values
     /// - `span` — Source location for error reporting
-    Child {
-        /// The type of the child component.
-        name: TypeId,
-
-        /// The property values passed to the child component.
-        values: Vec<ComponentMemberDeclaration>,
-
-        /// The source location of this child declaration.
-        span: Span,
-    },
-
-    /// A specialized component with predefined behavior.
-    ///
-    /// Specialized components like `Text` and `Div` have built-in rendering
-    /// logic and don't require full component definitions.
-    Specialized(super::SpecializedComponent),
+    Child(HirComponentExpression),
 }
 
 impl ComponentMemberDeclaration {
@@ -305,6 +291,7 @@ impl ComponentMemberDeclaration {
     /// # Arguments
     ///
     /// * `index` — The property's position in the component's property list
+    /// * `variable_id` — The VariableId assigned to the property name
     /// * `value` — The optional default value expression
     /// * `span` — The source location of the property
     ///
@@ -319,15 +306,23 @@ impl ComponentMemberDeclaration {
     /// # use common::Span;
     /// # let span = Span::default();
     /// # let value = None;
+    /// # let var_id = VariableId::new();
     /// let prop = ComponentMemberDeclaration::new_property(
-    ///     0,      // index
-    ///     value,  // default value
+    ///     0,        // index
+    ///     var_id,   // variable_id
+    ///     value,    // default value
     ///     span,
     /// );
     /// ```
-    pub fn new_property(index: usize, value: Option<HirExpression>, span: Span) -> Self {
+    pub fn new_property(
+        index: usize,
+        variable_id: VariableId,
+        value: Option<HirExpression>,
+        span: Span,
+    ) -> Self {
         Self::Property {
             id: PropertyId::new(),
+            variable_id,
             index,
             value,
             span,
@@ -356,8 +351,18 @@ impl ComponentMemberDeclaration {
     /// # let values = vec![];
     /// let child = ComponentMemberDeclaration::new_child(name, values, span);
     /// ```
-    pub fn new_child(name: TypeId, values: Vec<ComponentMemberDeclaration>, span: Span) -> Self {
-        Self::Child { name, values, span }
+    pub fn new_child(
+        name: TypeId,
+        properties: Vec<PropertyExpression>,
+        children: Vec<HirComponentExpression>,
+        span: Span,
+    ) -> Self {
+        Self::Child(HirComponentExpression::Normal {
+            name,
+            properties,
+            children,
+            span,
+        })
     }
 }
 
@@ -416,6 +421,26 @@ impl HirDeclaration {
         }
     }
 
+    ///Creates a new stylesheet declaration with the given `args`, `statements` and `usages`. `span`, `id` and `ty`(pe) are metadata for the declaration
+    pub fn new_stylesheet(
+        args: Vec<VariableId>,
+        statements: Vec<HirStyleStatement>,
+        usages: Vec<HirStyleUsage>,
+        span: Span,
+        id: DeclarationId,
+        ty: TypeId,
+    ) -> Self {
+        Self {
+            kind: HirDeclarationKind::StyleSheet {
+                args,
+                statements,
+                usages,
+            },
+            span,
+            id,
+            ty,
+        }
+    }
     /// Creates a new object declaration.
     ///
     /// # Arguments

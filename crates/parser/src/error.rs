@@ -5,6 +5,7 @@ pub enum ParseError {
     ///An error that occurs when the provided `Token` is received when not intended. The provided `String` is a text to explain what was being expected instead. It's shown as 'Instead, was expecting `string`'
     UnexpectedToken(Token, String),
     UnexpectedEndOfInput,
+    NoStyleUsagesProvided,
 }
 
 impl std::fmt::Display for ParseError {
@@ -18,6 +19,10 @@ impl std::fmt::Display for ParseError {
                 )
             }
             ParseError::UnexpectedEndOfInput => write!(f, "Unexpected end of input"),
+            ParseError::NoStyleUsagesProvided => write!(
+                f,
+                "A style should use at least another 1 style, instead, got none"
+            ),
         }
     }
 }

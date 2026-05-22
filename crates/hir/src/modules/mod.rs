@@ -24,6 +24,12 @@ pub struct HirModules {
     pub scope_module: ScopeModule,
 }
 
+pub struct DeclarationInfo {
+    pub id: DeclarationId,
+    pub ty: TypeId,
+    pub symbol: SymbolPointer,
+}
+
 //specific for naming
 impl HirModules {
     /// Creates a new [`HirModules`] with built-in types pre-registered.
@@ -50,17 +56,9 @@ impl HirModules {
 
     ///Finds some variable based on the given `name`. Checks all the scopes that are there currently
     pub fn find_variable(&self, name: SymbolPointer) -> Option<VariableId> {
-        let mut idx = self.scope_module.len() - 1;
-        while idx != 0 {
-            let scope = &self.scope_module[idx];
-
-            let Some(id) = scope.retrieve_name(&name) else {
-                idx -= 1;
-                continue;
-            };
-            return Some(*id);
-        }
-        None
+        self.scope_module
+            .iter()
+            .find_map(|scope| scope.get_name(&name).cloned())
     }
 
     /// Creates a new variable in the current scope with the given name, mutability, type, and span.
@@ -73,13 +71,13 @@ impl HirModules {
         ty: super::TypeId,
         span: &Span,
     ) -> Result<VariableId> {
-        if self.scope_module.retrieve_name(&name).is_some() {
+        if self.scope_module.get_name(&name).is_some() {
             Err(HIRError::already_defined(name, *span))
         } else {
             let v = VariableId::new();
-            self.scope_module.insert_name(name, v, mutable);
+            self.scope_module.create_name(name, v, mutable);
             self.types_module.insert_variable(v, ty);
-            self.symbols_resolver.register_variable(v, name);
+            self.symbols_resolver.create_variable(v, name);
             Ok(v)
         }
     }
@@ -91,20 +89,20 @@ impl HirModules {
     pub fn create_alias(&mut self, target: &str, name: &str) {
         self.symbols_resolver.intern(target);
         let symbol = self.symbols_resolver.intern(name);
-        let ty = self.types_module.insert_type(symbol, HirType::Infer);
+        let ty = self.types_module.create_type(symbol, HirType::Infer);
         self.declarations_module.create_declaration(symbol, ty);
     }
 
     ///Creates a new declaration with the given `name` and `ty`. returns its symbol, type id, and declaration id.
-    pub fn create_declaration(
-        &mut self,
-        name: &str,
-        ty: HirType,
-    ) -> (SymbolPointer, TypeId, DeclarationId) {
+    pub fn create_declaration(&mut self, name: &str, ty: HirType) -> DeclarationInfo {
         let symbol = self.symbols_resolver.intern(name);
-        let tyid = self.types_module.insert_type(symbol, ty);
+        let tyid = self.types_module.create_type(symbol, ty);
         let decl_id = self.declarations_module.create_declaration(symbol, tyid);
-        (symbol, tyid, decl_id)
+        DeclarationInfo {
+            id: decl_id,
+            ty: tyid,
+            symbol,
+        }
     }
 
     /// Creates an object type with the given name and fields and registers it as a declaration.
@@ -116,8 +114,8 @@ impl HirModules {
             .collect();
         let ty = self
             .types_module
-            .insert_unnamed_type(HirType::new_struct(Vec::new()));
-        let ty = self.types_module.insert_type(name, HirType::new_ref(ty));
+            .create_unnamed_type(HirType::new_struct(Vec::new()));
+        let ty = self.types_module.create_type(name, HirType::new_ref(ty));
         self.declarations_module.create_object(name, ty, def_fields);
     }
     ///Retrieves the declaration ID and type based on the given `symbol`
@@ -126,7 +124,7 @@ impl HirModules {
         symbol: &SymbolPointer,
     ) -> Option<(DeclarationId, TypeId)> {
         self.declarations_module
-            .retrieve_declaration_data_by_name(symbol)
+            .get_declaration_data_by_name(symbol)
     }
 }
 
@@ -137,8 +135,8 @@ impl HirModules {
         self.scope_module.enter_scope()
     }
     /// Pops the current scope from the scope stack and returns a mutable reference to the new top scope.
-    pub fn exit_scope(&mut self) -> &mut HIRScope {
-        self.scope_module.enter_scope()
+    pub fn exit_scope(&mut self) -> Option<HIRScope> {
+        self.scope_module.exit_scope()
     }
 }
 
@@ -147,7 +145,7 @@ impl HirModules {
     /// Looks up a type by name, interning the name if needed.
     ///
     /// Returns an error if no type with the given name is registered.
-    pub fn find_type_by_name(&mut self, name: &str, span: &Span) -> Result<&TypeId> {
+    pub fn get_type_by_name(&mut self, name: &str, span: &Span) -> Result<&TypeId> {
         let name = self.symbols_resolver.intern(name);
         self.types_module
             .get_id(&name)

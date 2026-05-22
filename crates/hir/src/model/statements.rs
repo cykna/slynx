@@ -76,9 +76,67 @@
 //!
 //! During HIR generation, this expression is wrapped in a [`Return`] statement.
 
-use common::Span;
+use common::{Span, SymbolPointer};
 
-use crate::{VariableId, model::HirExpression};
+use crate::{TypeId, VariableId, model::HirExpression};
+
+#[derive(Debug)]
+///A Style definition when declaring a stylesheet
+pub struct StylesDefinition {
+    ///The name of the style
+    pub name: SymbolPointer,
+    ///The expression related to it
+    pub expr: HirExpression,
+    ///The type it should have. Used on Type checker
+    pub expected_type: TypeId,
+    ///The span of this definition
+    pub span: Span,
+}
+
+impl StylesDefinition {
+    ///Creates a new style definition with the given `symb` name, `expr` and `expected_type`. The given `expected_type` may not be the same as `expr` type when created,
+    ///but that'll be asserted on Type checking
+    pub fn new(
+        symb: SymbolPointer,
+        expr: HirExpression,
+        expected_type: TypeId,
+        span: Span,
+    ) -> Self {
+        Self {
+            name: symb,
+            expr,
+            expected_type,
+            span,
+        }
+    }
+}
+
+#[derive(Debug)]
+///The kind of block to apply the stylesheet. This refers to the event that is happening on the component that uses the style.
+pub enum HirStyleBlockKind {
+    ///The default style to be applied
+    Default,
+    ///The style to be applied when the component is hovered
+    Hover,
+}
+
+#[derive(Debug)]
+///A style block containing information about the styles to apply and when the styles should be applied
+pub struct HirStyleBlock {
+    ///The kind of the block, thus, when the `definitions` should be applied
+    pub kind: HirStyleBlockKind,
+    ///The styles definitions to apply to the component
+    pub definitions: Vec<StylesDefinition>,
+}
+
+#[derive(Debug)]
+///An statement that might occurr inside a stylesheet
+pub enum HirStyleStatement {
+    ///A normal statement
+    Statement(Box<HirStatement>),
+    ///Styling definitions
+    Styles(Vec<HirStyleBlock>),
+}
 
 /// A statement node in the HIR.
 ///

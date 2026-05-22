@@ -65,6 +65,36 @@ pub struct ObjectField {
 }
 
 #[derive(Debug)]
+pub struct StyleState {
+    pub states: Vec<String>,
+    pub duration: Option<ASTExpression>,
+    pub transition_curve: Option<String>,
+}
+impl StyleState {
+    ///Creates a style state which represents the base state of the style
+    pub fn new_base() -> Self {
+        Self {
+            states: vec!["default".to_string()],
+            duration: None,
+            transition_curve: None,
+        }
+    }
+}
+#[derive(Debug)]
+pub struct StyleBlock {
+    pub state: StyleState,
+    pub properties: Vec<NamedExpr>,
+    pub children: Vec<StyleBlock>,
+    pub span: Span,
+}
+
+#[derive(Debug)]
+pub enum StyleSheetStatement {
+    Statement(Box<ASTStatement>),
+    Styles { styles: Vec<StyleBlock>, span: Span },
+}
+
+#[derive(Debug)]
 pub enum ASTDeclarationKind {
     Alias {
         name: GenericIdentifier,
@@ -83,6 +113,12 @@ pub enum ASTDeclarationKind {
         args: Vec<TypedName>,
         return_type: GenericIdentifier,
         body: Vec<ASTStatement>,
+    },
+    StyleSheet {
+        name: GenericIdentifier,
+        args: Vec<TypedName>,
+        usages: Vec<ASTExpression>,
+        body: Vec<StyleSheetStatement>,
     },
 }
 

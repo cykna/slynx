@@ -17,9 +17,9 @@ common.workspace=true
 slynx-lexer.path="./crates/lexer"
 slynx-parser.path="./crates/parser"
 slynx-hir.path="./crates/hir"
-slynx-typechecker.path="./crates/checker"
+slynx-typechecker.path="./crates/type_checker"
 slynx-monomorphizer.path="./crates/monomorphizer"
-slynx-ir.path="./crates/slynx_ir"
+slynx-ir.path="./crates/ir"
 
 [workspace]
 members = ["crates/*"]

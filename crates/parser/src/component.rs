@@ -69,7 +69,7 @@ impl Parser {
                 let Token {
                     kind: TokenKind::Identifier(ident),
                     ..
-                } = self.expect(&TokenKind::Identifier(String::new()))?
+                } = self.expect_identifier()?
                 else {
                     unreachable!()
                 };

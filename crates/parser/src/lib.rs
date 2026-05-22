@@ -2,18 +2,16 @@ mod ast;
 mod component;
 pub mod conditionals;
 pub mod error;
+pub use error::*;
 mod expr;
 mod functions;
 pub mod objects;
 mod statement;
+mod styles;
 mod types;
 pub use ast::*;
 
-use crate::error::ParseError;
-use slynx_lexer::{
-    TokenStream,
-    tokens::{Token, TokenKind},
-};
+use slynx_lexer::{Token, TokenKind, TokenStream};
 
 pub type Result<T> = std::result::Result<T, ParseError>;
 
@@ -76,6 +74,12 @@ impl Parser {
             Err(ParseError::UnexpectedToken(token, kind))
         }
     }
+
+    ///Does the same as `self.expect()` but expecting specifically an identifier
+    pub fn expect_identifier(&mut self) -> Result<Token> {
+        self.expect(&TokenKind::Identifier(String::new()))
+    }
+
     /// Parses the declarations in the source code and returns them as a vector of `ASTDeclaration`s.
     /// The parser will continue parsing until it reaches the end of the input stream.
     /// If it encounters an unexpected token, it will return an error indicating the expected token type.
@@ -104,6 +108,16 @@ impl Parser {
                         unreachable!();
                     };
                     out.push(self.parse_func(span)?)
+                }
+                TokenKind::StyleSheet => {
+                    let Token {
+                        kind: TokenKind::StyleSheet,
+                        span,
+                    } = self.eat()?
+                    else {
+                        unreachable!();
+                    };
+                    out.push(self.parse_stylesheet(span)?)
                 }
                 _ => {
                     return Err(ParseError::UnexpectedToken(

@@ -7,7 +7,6 @@ use common::{Span, SymbolPointer};
 /// Each error carries a [`HIRErrorKind`] describing what went wrong and a
 /// [`Span`] pointing to the relevant source location.
 #[derive(Debug)]
-#[warn(unused)]
 pub struct HIRError {
     /// The specific kind of error that occurred.
     pub kind: HIRErrorKind,
@@ -88,9 +87,60 @@ pub enum HIRErrorKind {
         /// The number of arguments that were provided.
         received_length: usize,
     },
+    ///An error that occurs when an style event is used on a stylesheet. For example:
+    ///```slx
+    /// stylesheet Example(){
+    ///     styles {
+    ///       blob(){/*wtf is blob?*/}
+    ///     }
+    /// }```
+    InvalidStyleEvent {
+        ///The name of the event that is invalid
+        name: SymbolPointer,
+    },
+    ///An error that occurs when a style definition is invalid, such as `fg: red`, where `fg` does not exist
+    InvalidStyleDefinition {
+        ///The name of the definition that is invalid
+        name: SymbolPointer,
+    },
 }
 
 impl HIRError {
+    ///Creates a new `InvalidStyleDefinition` error, where the name of the style definition is the given `name` and the given `span` is
+    ///the span on the code that generated so
+    pub fn invalid_tuple_index(index: usize, max_index: usize, span: Span) -> Self {
+        Self {
+            kind: HIRErrorKind::InvalidTupleIndex {
+                index,
+                length: max_index,
+            },
+            span,
+        }
+    }
+    ///Creates a new `InvalidStyleDefinition` error, where the name of the style definition is the given `name` and the given `span` is
+    ///the span on the code that generated so
+    pub fn invalid_tuple_target(target: HirType, span: Span) -> Self {
+        Self {
+            kind: HIRErrorKind::InvalidTupleAccessTarget { ty: target },
+            span,
+        }
+    }
+    ///Creates a new `InvalidStyleDefinition` error, where the name of the style definition is the given `name` and the given `span` is
+    ///the span on the code that generated so
+    pub fn invalid_style_definition(name: SymbolPointer, span: Span) -> Self {
+        Self {
+            kind: HIRErrorKind::InvalidStyleDefinition { name },
+            span,
+        }
+    }
+    ///Creates a new `InvalidStyleEvent` error, where the `name` is the invalid style event
+    pub fn invalid_style_event(name: SymbolPointer, span: Span) -> Self {
+        Self {
+            kind: HIRErrorKind::InvalidStyleEvent { name },
+            span,
+        }
+    }
+
     /// Creates a [`HIRErrorKind::RecursiveType`] error for the given type symbol.
     pub fn recursive(ty: SymbolPointer, span: Span) -> Self {
         Self {
@@ -204,6 +254,10 @@ impl std::fmt::Display for HIRError {
                     f,
                     "Expected {expected_length} arguments, got {received_length}"
                 )
+            }
+            HIRErrorKind::InvalidStyleEvent { .. } => write!(f, "Invalid style event"),
+            HIRErrorKind::InvalidStyleDefinition { .. } => {
+                write!(f, "Invalid style definition name")
             }
         }
     }
