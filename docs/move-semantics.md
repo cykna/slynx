@@ -56,7 +56,8 @@ let a = increment(a);   // moved in and back out
 
 ### References (`&` and `&mut`)
 
-Slynx supports `&T` and `&mut T`. However, these references **do not** come with borrow checker guarantees. A `&mut SomeStruct` does not guarantee that the reference is still valid or that no other mutation has happened since it was created.
+Slynx supports `&T` and `&mut T`. However, these references **do not** come with borrow checker guarantees. A `&mut SomeStruct` does not guarantee that the reference is still valid or that no other mutation has happened since it was created. Since the `&mut SomeStruct` is valid, the
+no other writer/reader to that reference is possible until it's released.
 
 This is an intentional design choice to keep the language simpler. The safety of references is expected to be handled through **typestates / automata**, which is the main mechanism the language will use to prevent use-after-free, invalid mutation, and similar bugs.
 

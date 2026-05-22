@@ -198,3 +198,32 @@ struct Name {
 	...
 }
 and the Name function generates it, and when applying, apply the given style based on the duration.
+
+## Optimizations
+
+The optimizations for stylesheets are not available yet, since it's a new feature. But the ones i can think on is, first of all, caching, second of all, alert the backend for a constant one. General optimizations such as
+constant folding will work in here as well.
+### Constant Stylesheets
+Suppose the given:
+
+```
+stylesheet Bg(color: color) uses Blur(4px, 0px, 0px){
+	styles {
+		backgroundColor: color
+	}
+}
+
+stylesheet Blur(radius: pixel, offsetx: pixel, offsety:pixel) {
+	let radiusPx = radius * 2px;
+	styles {
+		blur: Blur(radius: radiusPx, offset:(offsetx,offsety))
+	}
+}
+```
+Both are known ahead of time, even though B receives parameters, first, we can inline it, and second, if the params are constants, then we know them all during comptime. Since this is a possibility, it can tell the backend that
+is compiling the IR that 'hey this style is fully known during comptime, you can transform it into a more optimized version', supposing the current target I'm handling, JS, it means that i can transform it into a CSS class and use
+that class instead of setting a function and executing it.
+
+### Stylsheet diffing.
+
+Since the stylesheets are intended to be pure, we can assume that given S(x) = S(y) if x = y, then it's possible to: cache, and memoize the style which'd avoid it to execute desnecessary style applications
