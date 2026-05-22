@@ -1,4 +1,5 @@
 # Lanes
+Observation: This is just an idealization, and yet not implemented
 
 Lanes are not a thing that I personally recognize in most of the languages. Since the language is idealized to have a good support to DOD, the idea of lanes is to make it easy to write SoA instead of AoS but making
 it less painfull.
