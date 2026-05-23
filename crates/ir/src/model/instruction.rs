@@ -1,4 +1,4 @@
-use crate::{Context, IRTypeId, Label, Slot, StyleProperty, Value};
+use crate::{Function, IRTypeId, Label, Slot, StyleProperty, Value};
 
 use super::IRPointer;
 
@@ -12,7 +12,7 @@ pub enum UIInstruction {
     },
     /// Initialize call: apply a style function to a component.
     /// operands[0] = component, operands[1] = style struct value
-    InitCall(IRPointer<Context, 1>),
+    InitCall(IRPointer<Function, 1>),
 }
 
 #[derive(Debug, Clone)]
@@ -22,8 +22,8 @@ pub enum InstructionType {
     RawValue,
     Struct,
     Component,
-    ///Variant used for function calls. The `func` field is the pointer to the function context
-    FunctionCall(IRPointer<Context, 1>),
+    ///Variant used for function calls. The `func` field is the pointer to the function
+    FunctionCall(IRPointer<Function, 1>),
     ///Variant used for binary add. The type is determines by the `value_type` and the left and right hand side are the `operands`
     Add,
     ///Variant used for binary sub. The type is determines by the `value_type` and the left and right hand side are the `operands`
@@ -114,7 +114,7 @@ impl Instruction {
     }
     ///Creates a call instruction that calls the function `func` with the arguments `args`. The provided `func_ret` is the return type of the function used as type of the instruction
     pub fn call(
-        func: IRPointer<Context, 1>,
+        func: IRPointer<Function, 1>,
         func_ret: IRTypeId,
         args: IRPointer<Value>,
     ) -> Instruction {
@@ -310,7 +310,11 @@ impl Instruction {
         }
     }
 
-    pub fn initcall(func: IRPointer<Context, 1>, operands: IRPointer<Value>, ty: IRTypeId) -> Self {
+    pub fn initcall(
+        func: IRPointer<Function, 1>,
+        operands: IRPointer<Value>,
+        ty: IRTypeId,
+    ) -> Self {
         Self {
             operands,
             instruction_type: InstructionType::UI(UIInstruction::InitCall(func)),

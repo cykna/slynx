@@ -6,7 +6,7 @@ use std::{
 use common::SymbolsModule;
 
 use crate::{
-    Component, Context, IRComponentId, IRPointer, IRSpecializedComponentType, IRStructId, IRType,
+    Component, Function, IRComponentId, IRPointer, IRSpecializedComponentType, IRStructId, IRType,
     IRTypes, Instruction, InstructionType, Label, Operand, SlynxIR, UIInstruction, Value,
     ValueKind,
 };
@@ -14,7 +14,7 @@ use crate::{
 pub struct Formatter<'a> {
     pub ir: &'a SlynxIR,
     pub labels: &'a [Label],
-    pub contexts: &'a [Context],
+    pub functions: &'a [Function],
     pub components: &'a [Component],
     pub values: &'a [Value],
     pub operands: &'a [Operand],
@@ -29,7 +29,7 @@ pub struct Formatter<'a> {
 impl<'a> Formatter<'a> {
     pub fn new(ir: &'a SlynxIR, symbols: &'a SymbolsModule) -> Self {
         let labels = &ir.labels;
-        let contexts = &ir.contexts;
+        let functions = &ir.functions();
         let components = &ir.components;
         let values = &ir.values;
         let operands = &ir.operands;
@@ -38,7 +38,7 @@ impl<'a> Formatter<'a> {
         let instructions = &ir.instructions;
         Self {
             ir,
-            contexts,
+            functions,
             components,
             labels,
             values,
@@ -131,9 +131,9 @@ impl<'a> Formatter<'a> {
         out
     }
 
-    pub fn format_contexts(&self) -> String {
+    pub fn format_functions(&self) -> String {
         let mut out = Vec::new();
-        for ctx in self.contexts {
+        for ctx in self.functions {
             out.push(self.format_function(ctx));
         }
         for component in self.components {
@@ -142,13 +142,13 @@ impl<'a> Formatter<'a> {
         out.join("\n")
     }
 
-    fn format_function_name(&self, ctx: &Context) -> String {
+    fn format_function_name(&self, ctx: &Function) -> String {
         self.symbols.get_name(ctx.name()).to_string()
     }
 
-    fn format_function(&self, ctx: &Context) -> String {
+    fn format_function(&self, ctx: &Function) -> String {
         let IRType::Function(fty) = self.types.get_type(ctx.ty()) else {
-            unreachable!("Type of context should be function");
+            unreachable!("Type of function should be function");
         };
         let func_ty = self.types.get_function_type(fty);
         let args = func_ty
@@ -342,7 +342,7 @@ impl<'a> Formatter<'a> {
             }
             InstructionType::FunctionCall(func) => {
                 let args = self.fmt_operands_range(0, instr.operands.len(), &instr.operands);
-                let ctx = self.format_function_name(self.ir.get_context(*func));
+                let ctx = self.format_function_name(self.ir.get_function(*func));
                 format!("{ctx}({args})")
             }
             InstructionType::Allocate(_) => {
@@ -382,7 +382,7 @@ impl<'a> Formatter<'a> {
             }
             InstructionType::UI(UIInstruction::InitCall(func)) => {
                 let comp = self.fmt_value(&instr.operands.ptr_to(0));
-                let fname = self.format_function_name(self.ir.get_context(*func));
+                let fname = self.format_function_name(self.ir.get_function(*func));
                 if instr.operands.len() == 1 {
                     format!("@initcall {fname}, {comp};")
                 } else {

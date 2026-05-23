@@ -1,25 +1,29 @@
 use either::Either::{Left, Right};
 
 use crate::{
-    Component, Context, ControlFlowGraph, IRPointer, IRTypes, Instruction, Label, Operand, SlynxIR,
-    Value, instructions::InstructionPtr,
+    Component, ControlFlowGraph, Function, IRPointer, IRTypeId, IRTypes, Instruction, Label,
+    Operand, SlynxIR, Value, builder::StructBuilder,
 };
 
 impl SlynxIR {
-    pub fn generate_context_cfg(&self, context: &Context) -> ControlFlowGraph {
-        let labels = context.labels_ptr().with_length();
+    pub fn create_struct<'a>(&'a mut self, ty: IRTypeId) -> Result<StructBuilder<'a>, ()> {
+        StructBuilder::new(ty, self)
+    }
+
+    pub fn generate_function_cfg(&self, function: &Function) -> ControlFlowGraph {
+        let labels = function.labels_ptr().with_length();
         ControlFlowGraph::new(labels, self)
     }
 
-    pub fn contexts(&self) -> &[Context] {
-        &self.contexts
+    pub fn functions(&self) -> &[Function] {
+        &self.functions
     }
 
     pub fn components(&self) -> &[Component] {
         &self.components
     }
 
-    pub fn get_context_labels(&self, ctx: &Context) -> &[Label] {
+    pub fn get_function_labels(&self, ctx: &Function) -> &[Label] {
         let ptr = ctx.labels_ptr();
         &self.labels[ptr.range()]
     }

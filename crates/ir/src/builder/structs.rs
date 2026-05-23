@@ -5,19 +5,21 @@ use crate::{IRStructId, IRType, IRTypeId, SlynxIR};
 pub struct StructBuilder<'a> {
     ir: &'a mut SlynxIR,
     ir_struct_id: IRStructId,
+    ty: IRTypeId,
 }
 
 impl<'a> StructBuilder<'a> {
     ///Creates a new Struct builder with the given `ty` and inner `ir` to build properly. Returns error if the given `ty` is not a struct type
-    pub fn new(name: SymbolPointer, ir: &'a mut SlynxIR) -> Self {
-        let ty = ir.types.create_empty_struct(name);
-        let IRType::Struct(sid) = ir.types.get_type(ty) else {
-            unreachable!();
+    pub fn new(ty: IRTypeId, ir: &'a mut SlynxIR) -> Result<Self, ()> {
+        let IRType::Struct(struct_id) = ir.types.get_type(ty) else {
+            return Err(());
         };
-        Self {
+
+        Ok(Self {
             ir,
-            ir_struct_id: sid,
-        }
+            ty,
+            ir_struct_id: struct_id,
+        })
     }
     pub fn insert_type(&mut self, ty: IRTypeId) {
         self.ir
@@ -33,5 +35,7 @@ impl<'a> StructBuilder<'a> {
             .get_fields()[index]
     }
 
-    pub fn generate(self) {}
+    pub fn generate(self) -> IRTypeId {
+        self.ty
+    }
 }

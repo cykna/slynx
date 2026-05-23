@@ -168,28 +168,34 @@ impl IRTypes {
             .unwrap()
     }
     ///Creates a new empty struct and returns its type ID
-    pub fn create_empty_struct(&mut self, name: SymbolPointer) -> IRTypeId {
+    pub fn create_empty_struct(&mut self, name: SymbolPointer) -> (IRTypeId, IRStructId) {
         let sout = self.structs.len();
         self.structs.push(IRStruct::new(Some(name)));
+        let struct_id = IRStructId(sout);
         let out = self.types.len();
-        self.types.push(IRType::Struct(IRStructId(sout)));
-        IRTypeId(out)
+        self.types.push(IRType::Struct(struct_id));
+        (IRTypeId(out), struct_id)
     }
     ///Creates a new empty struct and returns its type ID
-    pub fn create_empty_component(&mut self, name: common::SymbolPointer) -> IRTypeId {
+    pub fn create_empty_component(
+        &mut self,
+        name: common::SymbolPointer,
+    ) -> (IRTypeId, IRComponentId) {
         let sout = self.components.len();
         self.components.push(IRComponent::new(name));
         let out = self.types.len();
-        self.types.push(IRType::Component(IRComponentId(sout)));
-        IRTypeId(out)
+        let component_id = IRComponentId(sout);
+        self.types.push(IRType::Component(component_id));
+        (IRTypeId(out), component_id)
     }
     ///Creates a new empty function type with return `void`
-    pub fn create_empty_function(&mut self) -> IRTypeId {
+    pub fn create_empty_function(&mut self) -> (IRTypeId, IRFunctionId) {
         let fout = self.functions.len();
         self.functions.push(IRFunction::new(&[], self.void_type()));
         let out = self.types.len();
-        self.types.push(IRType::Function(IRFunctionId(fout)));
-        IRTypeId(out)
+        let func_id = IRFunctionId(fout);
+        self.types.push(IRType::Function(func_id));
+        (IRTypeId(out), func_id)
     }
     pub fn create_or_get_tuple(&mut self, elements: Vec<IRTypeId>) -> IRTypeId {
         for (i, strukt) in self.structs.iter().enumerate() {
