@@ -1,4 +1,6 @@
-use crate::{Function, IRPointer, IRType, IRTypeId, Instruction, Label, SlynxIR};
+use common::SymbolPointer;
+
+use crate::{Function, IRPointer, IRStorage, IRType, IRTypeId, Instruction, Label, SlynxIR};
 
 pub struct FunctionBuilder<'a> {
     ir: &'a mut SlynxIR,
@@ -45,12 +47,12 @@ impl<'a> FunctionBuilder<'a> {
         let IRType::Function(_) = self.ir.types.get_type(ty) else {
             return Err(());
         };
-        *self.ir.get_function_mut(self.func_id).ty_mut() = ty;
+        *self.ir.get_mut(self.func_id).ty_mut() = ty;
         Ok(())
     }
 
-    pub fn create_label(&'a mut self, name: &str) -> LabelBuilder<'a> {
-        let label = self.ir.insert_label(self.func_id, name);
+    pub fn create_label(&'a mut self) -> LabelBuilder<'a> {
+        let label = self.ir.insert_label(self.func_id, SymbolPointer::new(0, 0));
         LabelBuilder {
             instructions: Vec::new(),
             label: label,
@@ -64,14 +66,14 @@ impl<'a> FunctionBuilder<'a> {
                 return self.func_id;
             };
             self.ir
-                .get_function_mut(self.func_id)
+                .get_mut(self.func_id)
                 .set_label_ptr(first.label.with_runtime_length(self.results.len())); //defines where its label pointer initializes and ends.
         }
 
         let mut initial_ptr = self.ir.get_next_mapeable_instruction_ptr();
         for label_result in self.results.into_iter() {
             self.ir
-                .get_label_mut(label_result.label)
+                .get_mut(label_result.label)
                 .set_instructions_pointer(initial_ptr.with_length());
             for instruction in label_result.instructions {
                 self.ir

@@ -342,8 +342,7 @@ impl<'a> Formatter<'a> {
             }
             InstructionType::FunctionCall(func) => {
                 let args = self.fmt_operands_range(0, instr.operands.len(), &instr.operands);
-                let ctx = self.format_function_name(self.ir.get_function(*func));
-                format!("{ctx}({args})")
+                format!("{}({args})", self.ir.get_view(*func).get_name())
             }
             InstructionType::Allocate(_) => {
                 format!(
@@ -382,9 +381,10 @@ impl<'a> Formatter<'a> {
             }
             InstructionType::UI(UIInstruction::InitCall(func)) => {
                 let comp = self.fmt_value(&instr.operands.ptr_to(0));
-                let fname = self.format_function_name(self.ir.get_function(*func));
+                let view = self.ir.get_view(*func);
+                let name = view.get_name();
                 if instr.operands.len() == 1 {
-                    format!("@initcall {fname}, {comp};")
+                    format!("@initcall {name}, {comp};",)
                 } else {
                     let struct_operand = instr.operands.ptr_to(1);
                     let struct_str = match &*self.values[struct_operand.ptr()] {
@@ -396,7 +396,7 @@ impl<'a> Formatter<'a> {
                         }
                         _ => self.fmt_value(&struct_operand),
                     };
-                    format!("@initcall {fname}, {comp}, {struct_str};")
+                    format!("@initcall {name}, {comp}, {struct_str};",)
                 }
             }
             InstructionType::Struct | InstructionType::Component => {

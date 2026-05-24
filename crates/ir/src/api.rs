@@ -1,13 +1,32 @@
-use either::Either::{Left, Right};
+use either::Either::{self, Left, Right};
 
 use crate::{
-    Component, ControlFlowGraph, Function, IRPointer, IRTypeId, IRTypes, Instruction, Label,
-    Operand, SlynxIR, Value, builder::StructBuilder,
+    Component, ControlFlowGraph, Function, IRPointer, IRTypeId, IRTypes, IRViewer, Instruction,
+    Label, Operand, SlynxIR, Value,
+    builder::{FunctionBuilder, StructBuilder},
 };
-
+pub type InstructionPtr<const K: usize = 0> =
+    Either<IRPointer<IRPointer<Instruction, K>, 1>, IRPointer<Instruction, K>>;
 impl SlynxIR {
-    pub fn create_struct<'a>(&'a mut self, ty: IRTypeId) -> Result<StructBuilder<'a>, ()> {
+    ///Creates a new empty struct with the given name
+    pub fn create_struct(&mut self, name: &str) -> IRTypeId {
+        let name = self.strings.intern(name);
+        self.types.create_empty_struct(name).0
+    }
+
+    pub fn build_struct<'a>(&'a mut self, ty: IRTypeId) -> Result<StructBuilder<'a>, ()> {
         StructBuilder::new(ty, self)
+    }
+    ///Creates a new empty function with the given name and returns it's pointer on the IR
+    pub fn create_function(&mut self, name: &str) -> IRPointer<Function, 1> {
+        let name = self.strings.intern(name);
+        let func = Function::new(name, self.types.create_empty_function().0);
+        let ptr = self.functions.len(); //since we push, len = next index
+        self.functions.push(func);
+        IRPointer::new(ptr, 1)
+    }
+    pub fn build_function<'a>(&'a mut self, ptr: IRPointer<Function, 1>) -> FunctionBuilder<'a> {
+        FunctionBuilder::new(ptr, self)
     }
 
     pub fn generate_function_cfg(&self, function: &Function) -> ControlFlowGraph {
@@ -83,6 +102,10 @@ impl SlynxIR {
     ///Retriueves the instructions pointed by the given `ptr`
     pub fn get_instruction_by_pointer(&self, ptr: IRPointer<Instruction>) -> &[Instruction] {
         &self.instructions[ptr.range()]
+    }
+
+    pub fn get_view<'a, T>(&'a self, ptr: IRPointer<T, 1>) -> IRViewer<'a, T> {
+        IRViewer { ptr, ir: self }
     }
 
     #[inline]

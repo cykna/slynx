@@ -1,5 +1,6 @@
-use crate::views::IRStorage;
+use crate::{api::InstructionPtr, views::IRStorage};
 use common::{SymbolPointer, SymbolsModule};
+use either::Either;
 
 use crate::{
     Component, Formatter, Function, IRPointer, IRTypes, Instruction, Label, Operand, Slot, Value,
@@ -29,7 +30,7 @@ pub struct SlynxIR {
 
 impl SlynxIR {
     ///Creates a new empty IR
-    pub fn new(symbols: SymbolsModule) -> Self {
+    pub fn new() -> Self {
         Self {
             components: Vec::new(),
             functions: Vec::new(),
@@ -40,10 +41,30 @@ impl SlynxIR {
             values: Vec::new(),
             slots: Vec::new(),
             types: IRTypes::new(),
-            strings: symbols,
+            strings: SymbolsModule::new(),
         }
     }
 
+    ///Inserts the provided `instr` on the given `label`. If `map` is `true` then the label will be able to read it when compiling, thus, otherwise, its just an intermediate instruction.
+    ///On `map=true`, is garanteed to be `Left` variant, otherwise `Right`
+    pub(crate) fn insert_instruction(
+        &mut self,
+        label: IRPointer<Label, 1>,
+        instr: Instruction,
+        map: bool,
+    ) -> InstructionPtr {
+        let ptr = self.instructions.len();
+        self.instructions.push(instr);
+        if map {
+            let outptr = self.instruction_pointers.len();
+            self.instruction_pointers.push(IRPointer::new(ptr, 1));
+            let label = self.get_mut(label);
+            label.insert_instruction();
+            Either::Left(IRPointer::new(outptr, 1))
+        } else {
+            Either::Right(IRPointer::new(ptr, 1))
+        }
+    }
     ///Returns a reference to the string pool
     pub fn string_pool(&self) -> &SymbolsModule {
         &self.strings
@@ -80,11 +101,10 @@ impl SlynxIR {
     pub(crate) fn insert_label(
         &mut self,
         ir: IRPointer<Function, 1>,
-        label: &str,
+        label_name: SymbolPointer,
     ) -> IRPointer<Label, 1> {
         self.functions[ir.ptr()].insert_label(); //this just increases the label count on the context
-        let name = self.strings.intern(label);
-        let label_ptr = self.create_label(name);
+        let label_ptr = self.create_label(label_name);
         // Initialize the instruction pointer offset to the current end of instruction_pointers,
         // so instructions inserted later are correctly attributed to this label.
         let next = self.get_next_mapeable_instruction_ptr();

@@ -14,7 +14,6 @@ pub use cfg::*;
 
 pub use ir::*;
 pub use model::*;
-pub use petgraph;
 
 pub use types::*;
 pub use visualize::*;

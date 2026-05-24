@@ -1,5 +1,3 @@
-use common::SymbolPointer;
-
 use crate::{IRStructId, IRType, IRTypeId, SlynxIR};
 
 pub struct StructBuilder<'a> {

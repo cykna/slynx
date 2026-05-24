@@ -2,7 +2,7 @@ use std::collections::{HashMap, VecDeque};
 
 use petgraph::{algo::Cycle, graph::NodeIndex, prelude::StableDiGraph};
 
-use crate::{IRPointer, InstructionType, Label, SlynxIR};
+use crate::{IRPointer, IRStorage, InstructionType, Label, SlynxIR};
 
 type CfgGraph = StableDiGraph<BasicBlock, EdgeKind>;
 
@@ -49,7 +49,7 @@ impl ControlFlowGraph {
             if label_to_node.contains_key(&current) {
                 continue;
             }
-            let label = ir.get_label(current);
+            let label = ir.get(current);
             if let Some((successors, kinds)) = Self::get_sucessors_of(label, ir) {
                 let index = graph.add_node(BasicBlock::new(current, successors.clone()));
                 label_to_node.insert(current, (index, kinds));

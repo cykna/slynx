@@ -1,5 +1,7 @@
+mod component;
 mod function;
-use crate::{Component, Function, IRPointer, Label, SlynxIR};
+mod instructions;
+use crate::{Component, Function, IRPointer, Instruction, Label, SlynxIR};
 
 pub trait IRStorage<T> {
     fn get_storage(&self) -> &[T];
@@ -19,14 +21,21 @@ pub trait IRStorage<T> {
 }
 
 pub struct IRViewer<'a, T> {
-    ptr: IRPointer<T, 1>,
-    ir: &'a SlynxIR,
+    pub(crate) ptr: IRPointer<T, 1>,
+    pub(crate) ir: &'a SlynxIR,
 }
-
+impl<'a, T> IRViewer<'a, T>
+where
+    SlynxIR: IRStorage<T>,
+{
+    pub fn value(&self) -> &T {
+        self.ir.get(self.ptr)
+    }
+}
 macro_rules! impl_storage {
     ($storage_type: ty, $storage_name: ident) => {
         paste::paste! {
-            impl IRStorage<$storage_type> for SlynxIR {
+            impl<'a> IRStorage<$storage_type> for SlynxIR {
                 fn get_storage(&self) -> &[$storage_type] {
                     &self.$storage_name
                 }
@@ -41,3 +50,4 @@ macro_rules! impl_storage {
 impl_storage!(Function, functions);
 impl_storage!(Label, labels);
 impl_storage!(Component, components);
+impl_storage!(Instruction, instructions);
