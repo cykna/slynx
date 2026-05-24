@@ -56,7 +56,7 @@ impl SlynxHir {
     }
 
     /// Resolves the provided values on a component. The `ty` is the type of the component we are resolving it
-    pub fn resolve_component_members(
+    pub(crate) fn resolve_component_members(
         &mut self,
         members: &[ComponentMemberValue],
         ty: TypeId,
@@ -73,7 +73,7 @@ impl SlynxHir {
     /// Resolves the provided `values` as members of the `Text` specialized component.
     ///
     /// Expects exactly one `text` property assignment and no children.
-    pub fn resolve_specialize_text(
+    pub(crate) fn resolve_specialize_text(
         &mut self,
         values: &[ComponentMemberValue],
         span: &Span,
@@ -116,7 +116,7 @@ impl SlynxHir {
     }
 
     ///Resolves the provided `children` knowning it is a specialized div component
-    pub fn resolve_specialized_div(
+    pub(crate) fn resolve_specialized_div(
         &mut self,
         children: &[ComponentMemberValue],
         _: &Span,
@@ -151,7 +151,7 @@ impl SlynxHir {
         Ok(HirSpecializedComponentExpression::new_div(children, style))
     }
     ///Tries to resolve the given `child` as, either a specialized component, or a normal user defined component
-    pub fn try_resolve_specialized<'a>(
+    pub(crate) fn try_resolve_specialized<'a>(
         &mut self,
         child: &'a ComponentExpression,
     ) -> (
@@ -172,7 +172,7 @@ impl SlynxHir {
     }
 
     ///Resolves the provided `component` expression. If it's a specialized one, resolves as a `SpecializedComponent`, otherwise as a normal 'Component'
-    pub fn resolve_component_expression(
+    pub(crate) fn resolve_component_expression(
         &mut self,
         component: &ComponentExpression,
     ) -> Result<HirComponentExpression> {

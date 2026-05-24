@@ -14,7 +14,7 @@ use slynx_parser::{
 
 impl SlynxHir {
     ///Hoists a `stylesheet` declaration
-    pub fn hoist_stylesheet(&mut self, name: &str, args: &[TypedName]) {
+    pub(crate) fn hoist_stylesheet(&mut self, name: &str, args: &[TypedName]) {
         self.modules.create_declaration(
             name,
             HirType::Style {
@@ -24,7 +24,7 @@ impl SlynxHir {
     }
 
     ///Resolves a `stylesheet` declaration
-    pub fn resolve_stylesheet(
+    pub(crate) fn resolve_stylesheet(
         &mut self,
         name: &GenericIdentifier,
         args: &[TypedName],
@@ -73,7 +73,7 @@ impl SlynxHir {
     }
 
     ///Resolves a style usage from the given `usage` expression. It's expected to be a function call. The reason is cause the same syntax for function call is used when calling styles
-    pub fn resolve_style_usage(&mut self, usage: &ASTExpression) -> Result<HirStyleUsage> {
+    pub(crate) fn resolve_style_usage(&mut self, usage: &ASTExpression) -> Result<HirStyleUsage> {
         let (name, args) = match &usage.kind {
             ASTExpressionKind::FunctionCall { name, args } => (name, args),
             _ => unreachable!("Style usage should be a function call on parsing"),
@@ -95,7 +95,7 @@ impl SlynxHir {
     }
 
     /// Resolves an object declaration, filling in its field types and pushing the declaration.
-    pub fn resolve_object(
+    pub(crate) fn resolve_object(
         &mut self,
         name: &GenericIdentifier,
         fields: &[ObjectField],
@@ -133,7 +133,11 @@ impl SlynxHir {
     }
 
     /// Hoists a function declaration by registering its signature without processing its body.
-    pub fn hoist_function(&mut self, name: &GenericIdentifier, args: &[TypedName]) -> Result<()> {
+    pub(crate) fn hoist_function(
+        &mut self,
+        name: &GenericIdentifier,
+        args: &[TypedName],
+    ) -> Result<()> {
         let args = args.iter().map(|_| self.int32_type()).collect();
         let return_type = self.int32_type();
         self.modules
@@ -143,7 +147,7 @@ impl SlynxHir {
     }
 
     /// Resolves a function declaration, type-checking its body and pushing the HIR declaration.
-    pub fn resolve_function(
+    pub(crate) fn resolve_function(
         &mut self,
         name: &GenericIdentifier,
         args: &[TypedName],
@@ -209,7 +213,7 @@ impl SlynxHir {
     }
 
     /// Hoists a component declaration by registering its property layout without resolving children.
-    pub fn hoist_component(
+    pub(crate) fn hoist_component(
         &mut self,
         name: &GenericIdentifier,
         members: &[ComponentMember],
@@ -255,7 +259,7 @@ impl SlynxHir {
     }
 
     /// Resolves the member definitions of a component body into [`ComponentMemberDeclaration`]s.
-    pub fn resolve_component_defs(
+    pub(crate) fn resolve_component_defs(
         &mut self,
         def: &[ComponentMember],
     ) -> Result<Vec<ComponentMemberDeclaration>> {
@@ -293,7 +297,7 @@ impl SlynxHir {
     }
 
     ///Resolves a component declaration that contains the given `members` and the given `name`
-    pub fn resolve_component_declaration(
+    pub(crate) fn resolve_component_declaration(
         &mut self,
         members: &[ComponentMember],
         name: &GenericIdentifier,
