@@ -35,15 +35,6 @@ impl SlynxHir {
     pub fn component_type(&self) -> TypeId {
         self.modules.types_module.generic_component_id()
     }
-    ///Gets the HIR type of the given `ty`
-    pub fn get_type(&self, ty: &TypeId) -> &HirType {
-        self.modules.types_module.get_type(ty)
-    }
-
-    ///Gets the HIR type of the given `ty`
-    pub fn get_type_mut(&mut self, ty: &TypeId) -> &mut HirType {
-        self.modules.types_module.get_type_mut(ty)
-    }
 
     ///Creates a new tuple type with the given `fields` and returns its typeid
     pub fn create_tuple_type(&mut self, fields: Vec<TypeId>) -> TypeId {

@@ -82,6 +82,7 @@ pub mod model;
 pub mod modules;
 /// Name resolution utilities.
 pub mod names;
+mod queries;
 mod statements;
 
 pub use crate::error::{HIRError, HIRErrorKind};

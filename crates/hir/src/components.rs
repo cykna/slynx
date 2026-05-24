@@ -27,7 +27,7 @@ impl SlynxHir {
                 let HirType::Component { props } = self.get_type(&ty) else {
                     unreachable!("The type should be a component instead");
                 };
-                match props.iter().position(|prop| prop.name() == prop_name) {
+                match props.iter().position(|prop| prop.name() == interned_name) {
                     None => Err(HIRError::name_unrecognized(interned_name, *span)),
                     Some(index)
                         if matches!(

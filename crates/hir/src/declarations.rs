@@ -94,15 +94,6 @@ impl SlynxHir {
         })
     }
 
-    ///Retrieves the type of something by knowing the provided `ref_ty` is a reference to it
-    pub fn get_type_from_ref(&self, ref_ty: crate::TypeId) -> &HirType {
-        if let HirType::Reference { rf, .. } = self.get_type(&ref_ty) {
-            self.get_type(rf)
-        } else {
-            unreachable!("The provided ref_ty should be of type Reference");
-        }
-    }
-
     /// Resolves an object declaration, filling in its field types and pushing the declaration.
     pub fn resolve_object(
         &mut self,
@@ -227,13 +218,32 @@ impl SlynxHir {
             .iter()
             .filter_map(|member| match &member.kind {
                 ComponentMemberKind::Property {
-                    name, modifier, ty, ..
+                    name,
+                    modifier,
+                    ty: Some(generic),
+                    ..
                 } => {
-                    let ty = match ty {
-                        Some(generic) => self.get_typeid_of_name(&generic.identifier, &member.span),
-                        _ => Ok(self.infer_type()),
+                    let name = self.intern_name(name);
+                    let ty_name = self.intern_name(&generic.identifier);
+                    let ty = match self.get_type_of_name(ty_name, &member.span) {
+                        Ok(v) => v,
+                        Err(e) => return Some(Err(e)),
                     };
-                    Some(ty.map(|ty| ComponentProperty::new(*modifier, name.clone(), ty)))
+
+                    Some(Ok(ComponentProperty::new(*modifier, name, ty)))
+                }
+                ComponentMemberKind::Property {
+                    name,
+                    modifier,
+                    ty: None,
+                    ..
+                } => {
+                    let name = self.intern_name(&name);
+                    Some(Ok(ComponentProperty::new(
+                        *modifier,
+                        name,
+                        self.infer_type(),
+                    )))
                 }
                 ComponentMemberKind::Child(_) => None,
             })
@@ -310,25 +320,25 @@ impl SlynxHir {
     }
 
     ///Resolves an alias type, mapping the given `name` to the given `target`
-    pub fn resolve_alias(
+    pub(crate) fn resolve_alias(
         &mut self,
         name: &GenericIdentifier,
         target: &GenericIdentifier,
         span: Span,
     ) -> Result<()> {
-        let target_ty = self.get_typeid_of_name(&target.identifier, &target.span)?;
+        let intern_name = self.intern_name(&target.identifier);
+        let target_ty = self.get_type_of_name(intern_name, &target.span)?;
 
-        let alias_name = self.modules.intern_name(&name.identifier);
         let Some(alias_ty) = self
             .modules
             .types_module
-            .get_type_from_name_mut(&alias_name)
+            .get_type_from_name_mut(&intern_name)
         else {
-            return Err(HIRError::name_unrecognized(alias_name, name.span));
+            return Err(HIRError::name_unrecognized(intern_name, name.span));
         };
         *alias_ty = HirType::new_ref(target_ty);
-        let Some((decl, ty)) = self.modules.get_declaration_by_name(&alias_name) else {
-            return Err(HIRError::name_unrecognized(alias_name, name.span));
+        let Some((decl, ty)) = self.modules.get_declaration_by_name(&intern_name) else {
+            return Err(HIRError::name_unrecognized(intern_name, name.span));
         };
         self.declarations
             .push(HirDeclaration::new_alias(decl, ty, span));
