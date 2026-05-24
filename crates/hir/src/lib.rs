@@ -82,6 +82,7 @@ pub mod model;
 pub mod modules;
 /// Name resolution utilities.
 pub mod names;
+mod queries;
 mod statements;
 
 pub use crate::error::{HIRError, HIRErrorKind};
@@ -155,7 +156,7 @@ pub struct SlynxHir {
     /// This is the primary interface for working with the HIR's namespace and
     /// type system. It provides methods for creating variables, looking up
     /// declarations, and managing nested scopes.
-    pub modules: HirModules,
+    pub(crate) modules: HirModules,
 
     /// All top-level declarations generated from the source.
     ///
