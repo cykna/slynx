@@ -35,7 +35,6 @@ impl SlynxHir {
     pub fn component_type(&self) -> TypeId {
         self.modules.types_module.generic_component_id()
     }
-
     ///Creates a new tuple type with the given `fields` and returns its typeid
     pub fn create_tuple_type(&mut self, fields: Vec<TypeId>) -> TypeId {
         self.modules.types_module.create_tuple_type(fields)
@@ -48,21 +47,6 @@ impl SlynxHir {
     /// Inserts a named type into the HIR and returns its [`TypeId`].
     pub fn create_type(&mut self, name: SymbolPointer, ty: HirType) -> TypeId {
         self.modules.types_module.create_type(name, ty)
-    }
-
-    /// Returns the [`HirType`] associated with the given name, if it exists.
-    pub fn get_type_from_pointer(&self, name: &SymbolPointer) -> Option<&HirType> {
-        self.modules.types_module.get_type_from_name(name)
-    }
-
-    /// Returns a mutable reference to the [`HirType`] associated with the given name, if it exists.
-    pub fn get_type_mut_from_name(&mut self, name: &SymbolPointer) -> Option<&mut HirType> {
-        self.modules.types_module.get_type_from_name_mut(name)
-    }
-
-    /// Returns the [`TypeId`] associated with the given name, if it exists.
-    pub fn get_typeid_from_name(&self, name: &SymbolPointer) -> Option<&TypeId> {
-        self.modules.types_module.get_id(name)
     }
 
     /// Returns the field layout (as a slice of symbol pointers) for the object with the given [`TypeId`].

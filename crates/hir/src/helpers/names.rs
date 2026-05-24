@@ -1,6 +1,6 @@
 use common::{Span, SymbolPointer};
 
-use crate::{HIRError, HirType, Result, SlynxHir, VariableId};
+use crate::{HIRError, Result, SlynxHir, VariableId};
 
 impl SlynxHir {
     /// Returns the source-level name string for the given symbol pointer.

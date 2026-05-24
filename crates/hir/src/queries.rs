@@ -1,5 +1,4 @@
 use common::{Span, SymbolPointer};
-use slynx_parser::GenericIdentifier;
 
 use crate::{DeclarationId, HIRError, HirType, Result, SlynxHir, TypeId};
 
@@ -53,34 +52,6 @@ impl SlynxHir {
                 .get_id(&name)
                 .cloned()
                 .ok_or(HIRError::type_unrecognized(name, *span)),
-        }
-    }
-
-    /// Resolves the [`TypeId`] for a [`GenericIdentifier`], handling tuple and generic types.
-    pub(crate) fn get_type_of_generic(&mut self, gener: &GenericIdentifier) -> Result<TypeId> {
-        let name = self.intern_name(&gener.identifier);
-        match gener.identifier.as_str() {
-            "tuple" if let Some(ref types) = gener.generic => {
-                let fields = types
-                    .iter()
-                    .map(|field| self.get_type_of_generic(field))
-                    .collect::<Result<Vec<_>>>()?;
-                Ok(self.create_tuple_type(fields))
-            }
-            "tuple" if let None = &gener.generic => {
-                let interned = self.modules.intern_name(&gener.identifier);
-                Err(HIRError::name_unrecognized(interned, gener.span))
-            }
-            "()" => Ok(self.void_type()),
-            _ if let Some(ref generics) = gener.generic => {
-                let gen_ids = generics
-                    .iter()
-                    .map(|generic| self.get_type_of_generic(generic))
-                    .collect::<Result<Vec<_>>>()?;
-                let base_id = self.get_type_of_name(name, &gener.span)?;
-                Ok(self.create_unnamed_type(HirType::new_generic_ref(base_id, gen_ids)))
-            }
-            _ => self.get_type_of_name(name, &gener.span),
         }
     }
 }

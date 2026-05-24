@@ -1,33 +1,10 @@
-use crate::{
-    Result, SlynxHir, TypeId, VariableId,
-    error::{HIRError, InvalidTypeReason},
-    model::HirType,
-};
+use crate::{Result, SlynxHir, TypeId, VariableId, error::HIRError, model::HirType};
 
 use common::{Span, SymbolPointer};
 //file specific to implement things related to name resolution
 impl SlynxHir {
     pub fn intern_name(&mut self, name: &str) -> SymbolPointer {
         self.modules.intern_name(name)
-    }
-    ///Since when a object is defined, its generated as an unnamed type, and has got a reference to it, this retrieves the inner layout of the object
-    pub(crate) fn get_object_type_from_name(
-        &mut self,
-        name: &str,
-        span: &Span,
-    ) -> Result<&HirType> {
-        let name_symbol = self.modules.intern_name(name);
-        if let Some(ref_id) = self.modules.types_module.get_id(&name_symbol)
-            && let HirType::Reference { rf, .. } = self.modules.types_module.get_type(ref_id)
-        {
-            Ok(self.modules.types_module.get_type(rf))
-        } else {
-            Err(HIRError::invalid_type(
-                name_symbol,
-                InvalidTypeReason::IncorrectUsage,
-                *span,
-            ))
-        }
     }
 
     ///Creates a mutable variable with the given `name` and `ty`
