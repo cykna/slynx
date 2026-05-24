@@ -42,8 +42,8 @@ impl SlynxHir {
             .iter()
             .map(|arg| {
                 let symbol = self.modules.intern_name(&arg.name);
-                let (ty, _) =
-                    self.retrieve_information_of_type(&arg.kind.identifier, &arg.kind.span)?;
+                let ty_symbol = self.modules.intern_name(&arg.kind.identifier);
+                let ty = self.get_type_of_name(ty_symbol, &arg.kind.span)?;
                 self.create_variable(symbol, ty, &arg.span).map(|v| (v, ty))
             })
             .collect::<Result<(Vec<_>, Vec<_>)>>()?;
@@ -108,8 +108,8 @@ impl SlynxHir {
                 if self.modules.intern_name(&field.name.name) == symbol_name {
                     Err(HIRError::recursive(symbol_name, field.name.span))
                 } else {
-                    self.retrieve_information_of_type(&field.name.kind.identifier, &field.name.span)
-                        .map(|v| v.0)
+                    let name = self.intern_name(&field.name.kind.identifier);
+                    self.get_type_of_name(name, &field.name.span)
                 }
             })
             .collect::<Result<Vec<_>>>()?;
@@ -165,16 +165,15 @@ impl SlynxHir {
         let (args, argsty) = args
             .iter()
             .map(|arg| {
+                let ty_symbol = self.modules.intern_name(&arg.kind.identifier);
                 let symbol = self.modules.intern_name(&arg.name);
-                let (ty, _) =
-                    self.retrieve_information_of_type(&arg.kind.identifier, &arg.kind.span)?;
+                let ty = self.get_type_of_name(ty_symbol, &arg.kind.span)?;
                 self.create_variable(symbol, ty, &arg.span).map(|v| (v, ty))
             })
             .collect::<Result<(Vec<_>, Vec<_>)>>()?;
         {
-            let ret_tyid = self
-                .retrieve_information_of_type(&return_type.identifier, span)?
-                .0;
+            let return_symbol = self.intern_name(&return_type.identifier);
+            let ret_tyid = self.get_type_of_name(return_symbol, span)?;
             let HirType::Function {
                 args,
                 return_type: ret,
@@ -269,8 +268,8 @@ impl SlynxHir {
             match &def.kind {
                 ComponentMemberKind::Property { ty, rhs, name, .. } => {
                     let ty = if let Some(ty) = ty {
-                        self.retrieve_information_of_type(&ty.identifier, &ty.span)?
-                            .0
+                        let symbol = self.intern_name(&ty.identifier);
+                        self.get_type_of_name(symbol, &ty.span)?
                     } else {
                         self.infer_type()
                     };

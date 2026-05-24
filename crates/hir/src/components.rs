@@ -179,8 +179,8 @@ impl SlynxHir {
         match self.try_resolve_specialized(component) {
             (Some(spec), None) => spec.map(HirComponentExpression::Specialized),
             (None, Some(component)) => {
-                let (id, _) =
-                    self.retrieve_information_of_type(&component.name.identifier, &component.span)?;
+                let name = self.intern_name(&component.name.identifier);
+                let id = self.get_type_of_name(name, &component.span)?;
                 let (properties, children) =
                     self.resolve_component_members(&component.values, id)?;
                 Ok(HirComponentExpression::new_normal(

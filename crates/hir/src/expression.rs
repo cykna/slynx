@@ -376,8 +376,8 @@ impl SlynxHir {
                 Ok(self.create_float_expression(*float, expr.span))
             }
             ASTExpressionKind::Component(component) => {
-                let (id, _) =
-                    self.retrieve_information_of_type(&component.name.identifier, &component.span)?;
+                let symbol = self.intern_name(&component.name.identifier);
+                let id = self.get_type_of_name(symbol, &component.span)?;
                 let component = self.resolve_component_expression(component)?;
                 Ok(self.create_component_expression(component, id, expr.span))
             }

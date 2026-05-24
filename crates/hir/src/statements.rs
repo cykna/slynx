@@ -25,27 +25,19 @@ impl SlynxHir {
                     span: statement.span,
                 })
             }
-            ASTStatementKind::MutableVar { name, ty, rhs } => {
+            kind @ (ASTStatementKind::MutableVar { name, ty, rhs }
+            | ASTStatementKind::Var { name, ty, rhs }) => {
                 let typeid = ty.as_ref().and_then(|t| {
-                    self.retrieve_information_of_type(&t.identifier, &statement.span)
-                        .ok()
-                        .map(|inner| inner.0)
+                    let symbol = self.intern_name(&t.identifier);
+                    self.get_type_of_name(symbol, &statement.span).ok()
                 });
+                let name = self.intern_name(name);
                 let rhs = self.generate_expression(rhs, typeid)?;
-                let name = self.modules.intern_name(name);
-                let id = self.create_mutable_variable(name, rhs.ty, &statement.span)?;
-
-                Ok(HirStatement::new_variable(id, rhs, statement.span))
-            }
-            ASTStatementKind::Var { name, ty, rhs } => {
-                let typeid = ty.as_ref().and_then(|t| {
-                    self.retrieve_information_of_type(&t.identifier, &statement.span)
-                        .ok()
-                        .map(|inner| inner.0)
-                });
-                let rhs = self.generate_expression(rhs, typeid)?;
-                let name = self.modules.intern_name(name);
-                let id = self.create_variable(name, rhs.ty, &statement.span)?;
+                let id = if let ASTStatementKind::MutableVar { .. } = kind {
+                    self.create_mutable_variable(name, rhs.ty, &statement.span)
+                } else {
+                    self.create_variable(name, rhs.ty, &statement.span)
+                }?;
 
                 Ok(HirStatement::new_variable(id, rhs, statement.span))
             }

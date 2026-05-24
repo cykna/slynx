@@ -1,4 +1,4 @@
-use crate::{Result, SlynxHir, TypeId, VariableId, error::HIRError, model::HirType};
+use crate::{Result, SlynxHir, TypeId, VariableId};
 
 use common::{Span, SymbolPointer};
 //file specific to implement things related to name resolution
@@ -24,20 +24,5 @@ impl SlynxHir {
         span: &Span,
     ) -> Result<VariableId> {
         self.modules.create_variable(symbol, false, ty, span)
-    }
-
-    ///Tries to retrieve the type and `TypeId` of the provided `name` in the global scope
-    pub(crate) fn retrieve_information_of_type(
-        &mut self,
-        name: &str,
-        span: &Span,
-    ) -> Result<(TypeId, &HirType)> {
-        let name_symbol = self.modules.intern_name(name);
-        match () {
-            _ if let Ok(id) = self.get_type_of_name(name_symbol, span) => {
-                Ok((id, self.get_type(&id)))
-            }
-            _ => Err(HIRError::name_unrecognized(name_symbol, *span)),
-        }
     }
 }
